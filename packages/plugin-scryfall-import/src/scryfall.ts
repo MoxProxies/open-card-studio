@@ -2,7 +2,14 @@
  * Thin client for Scryfall's public card API (https://scryfall.com/docs/api)
  * — CORS-enabled for direct browser use, no API key. Two calls: a cheap
  * autocomplete for the search box's live suggestions, then a full card
- * fetch once the user picks a name — see ScryfallSearchModal.tsx.
+ * fetch once the user picks a name — see SearchModal.tsx.
+ *
+ * This is the only file in this package that talks to Scryfall
+ * specifically; everything else (SearchModal.tsx, index.ts) only knows
+ * about the CardFields shape below and the generic plugin contract from
+ * @card-studio/plugin-sdk. A different data-source plugin (a different
+ * game's API, a local card database, a CSV file) replaces just this file
+ * and toCardFields()'s mapping — the rest of the plugin is reusable.
  */
 
 const API_BASE = "https://api.scryfall.com";
@@ -52,10 +59,10 @@ export interface CardFields {
 }
 
 /**
- * Flattens a card into the fields Toolbar.tsx's importFromScryfall maps
- * onto text/image layers. Double-faced cards (transform, MDFC, ...) carry
- * most fields on card_faces[0] instead of the top level — this only ever
- * looks at the front face; picking a specific face isn't supported yet.
+ * Flattens a card into the fields index.ts maps onto GeneratedCardFields.
+ * Double-faced cards (transform, MDFC, ...) carry most fields on
+ * card_faces[0] instead of the top level — this only ever looks at the
+ * front face; picking a specific face isn't supported yet.
  */
 export function primaryCardFields(card: ScryfallCard): CardFields {
   const front = card.card_faces?.[0];

@@ -1,19 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Search, Loader2 } from "lucide-react";
-import { autocompleteCardNames, fetchCardByName, type ScryfallCard } from "../scryfall";
-
-interface ScryfallSearchModalProps {
-  onSelect: (card: ScryfallCard) => void;
-  onClose: () => void;
-}
+import type { ImportSourceSearchProps } from "@card-studio/plugin-sdk";
+import { autocompleteCardNames, fetchCardByName, primaryCardFields } from "./scryfall.js";
 
 const DEBOUNCE_MS = 250;
 
 /** Search-as-you-type against Scryfall's public card API: a debounced
  * autocomplete call lists matching names as you type, picking one fetches
- * the full card and hands it to onSelect (Toolbar.tsx's
- * importFromScryfall) — no API key, CORS-enabled for direct browser use. */
-export function ScryfallSearchModal({ onSelect, onClose }: ScryfallSearchModalProps) {
+ * the full card, maps it to GeneratedCardFields, and calls onImport — no
+ * API key, CORS-enabled for direct browser use. This is the
+ * ImportSourcePlugin's SearchComponent (see index.ts); the editor core
+ * knows nothing about Scryfall or this component's existence beyond
+ * rendering it where the active import plugin's SearchComponent goes. */
+export function SearchModal({ onImport, onClose }: ImportSourceSearchProps) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +52,18 @@ export function ScryfallSearchModal({ onSelect, onClose }: ScryfallSearchModalPr
     setError(null);
     try {
       const card = await fetchCardByName(name);
-      onSelect(card);
+      const fields = primaryCardFields(card);
+      onImport({
+        name: fields.name,
+        manaCost: fields.manaCost,
+        typeLine: fields.typeLine,
+        rulesText: fields.oracleText,
+        flavorText: fields.flavorText,
+        powerToughness: fields.powerToughness,
+        artist: fields.artist,
+        rarity: fields.rarity,
+        imageSrc: fields.artCropUrl,
+      });
     } catch {
       setError(`Couldn't load "${name}" — check your connection and try again.`);
     } finally {

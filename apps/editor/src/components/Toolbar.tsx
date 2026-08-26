@@ -8,14 +8,13 @@ import { PRINT_DPI, createEmptyDesign, STANDARD_CARD_SIZE_MM } from "@card-studi
 import { exportStageToPngDataUrl } from "../export";
 import { FrameLibraryModal } from "./FrameLibraryModal";
 import { TextTemplateMenu } from "./TextTemplateMenu";
-import { ScryfallSearchModal } from "./ScryfallSearchModal";
 import { AiArtModal } from "./AiArtModal";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 import { getTextTemplates, type TextFieldTemplate } from "../textTemplates";
 import { RARITY_ASSETS, getRarityAssetUrl } from "../rarityAssets";
 import { RARITY_DISPLAY_ORDER, RARITY_LAYER_ID, RARITY_SYMBOL_BOX, RARITY_DEFAULT_LOCKED, RARITY_DEFAULT_CONTENT_LOCKED } from "../rarityConfig";
 import { DEFAULT_FONT_FAMILY } from "../config";
-import { primaryCardFields, type ScryfallCard } from "../scryfall";
+import { pluginManager } from "../plugins";
 import { designStorage } from "../designStorage";
 import { resolveArtWindowMm } from "../frameArtWindow";
 import { getFrameAsset } from "../frameAssets";
@@ -66,9 +65,13 @@ export function Toolbar({
   const panX = useDesignStore((s) => s.panX);
   const panY = useDesignStore((s) => s.panY);
   const [showFrameLibrary, setShowFrameLibrary] = useState(false);
-  const [showScryfallSearch, setShowScryfallSearch] = useState(false);
+  const [showImportSearch, setShowImportSearch] = useState(false);
   const [showAiArtModal, setShowAiArtModal] = useState(false);
   const [showDesignLibrary, setShowDesignLibrary] = useState(false);
+  // Whichever ImportSourcePlugin the host app registered as active (see
+  // src/plugins.ts) — undefined when none is installed, in which case the
+  // Import button below doesn't render at all rather than doing nothing.
+  const activeImportSource = pluginManager.getActiveImportSource();
 
   const centerBox = () => {
     const w = design.size.widthMm * 0.6;
@@ -380,20 +383,22 @@ export function Toolbar({
 
   /**
    * Adds all the text fields (and art, and a rarity symbol) a
-   * GeneratedCardFields value has data for, as one undo step — shared by
-   * importFromScryfall (below, adapting a ScryfallCard into this shape)
-   * and the AI card-generation wizard's `generated-fields` payload
-   * (embed.ts / designStore.ts's pendingGeneratedCard). Only fields with
-   * an actual value get added — no placeholder text for e.g. a card with
-   * no flavor text. Applies the same default groupings as "Add all
-   * fields" (addAllTextFields above) — title+mana cost, typeline+rarity,
+   * GeneratedCardFields value has data for, as one undo step — the single
+   * entry point every producer of that shape funnels through: an
+   * ImportSourcePlugin's SearchComponent (see src/plugins.ts and the
+   * "Import" button below) and the AI card-generation wizard's
+   * `generated-fields` payload (embed.ts / designStore.ts's
+   * pendingGeneratedCard) alike. Only fields with an actual value get
+   * added — no placeholder text for e.g. a card with no flavor text.
+   * Applies the same default groupings as "Add all fields"
+   * (addAllTextFields above) — title+mana cost, typeline+rarity,
    * rules+flavour — restricted to whichever pairs this card actually had
    * both members for.
    *
    * `frameAssetId`, when given, adds a brand-new frame layer of that
    * asset and lays fields out against *its* category — the AI wizard
    * builds a design from nothing, so it has to choose a frame itself.
-   * Left undefined (Scryfall import's case), fields apply against
+   * Left undefined (an import plugin's case), fields apply against
    * whatever frame — if any — is already on the canvas, unchanged from
    * before this was generalized.
    */
@@ -506,21 +511,6 @@ export function Toolbar({
 
     const selectIds = [...(frameLayer ? [frameLayer.id] : []), ...(artLayer ? [artLayer.id] : []), ...textLayers.map((l) => l.id)];
     replaceLayers(finalLayers, selectIds, groupDefs);
-  };
-
-  const importFromScryfall = (card: ScryfallCard) => {
-    const fields = primaryCardFields(card);
-    applyGeneratedFields({
-      name: fields.name,
-      manaCost: fields.manaCost,
-      typeLine: fields.typeLine,
-      rulesText: fields.oracleText,
-      flavorText: fields.flavorText,
-      powerToughness: fields.powerToughness,
-      artist: fields.artist,
-      rarity: fields.rarity,
-      imageSrc: fields.artCropUrl,
-    });
   };
 
   // Applies the AI card-generation wizard's payload (embed.ts's
@@ -655,9 +645,11 @@ export function Toolbar({
           </option>
         ))}
       </select>
-      <button className="cs-btn" onClick={() => setShowScryfallSearch(true)} title="Look up a real card and fill in its text fields, art, and rarity">
-        <Search size={16} /> Scryfall
-      </button>
+      {activeImportSource && (
+        <button className="cs-btn" onClick={() => setShowImportSearch(true)} title={activeImportSource.description ?? `Import from ${activeImportSource.label}`}>
+          <Search size={16} /> Import
+        </button>
+      )}
       <button
         className="cs-btn"
         onClick={() => setShowAiArtModal(true)}
@@ -767,13 +759,13 @@ export function Toolbar({
         />
       )}
 
-      {showScryfallSearch && (
-        <ScryfallSearchModal
-          onSelect={(card) => {
-            void importFromScryfall(card);
-            setShowScryfallSearch(false);
+      {showImportSearch && activeImportSource && (
+        <activeImportSource.SearchComponent
+          onImport={(fields) => {
+            applyGeneratedFields(fields);
+            setShowImportSearch(false);
           }}
-          onClose={() => setShowScryfallSearch(false)}
+          onClose={() => setShowImportSearch(false)}
         />
       )}
 

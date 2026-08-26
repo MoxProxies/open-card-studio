@@ -1,11 +1,30 @@
-# Card Studio
+# open-card-studio
 
-A standalone card-design tool — mix and match frames, custom text, and
-free-floating elements to build custom trading-card designs. Think
-[Card Conjurer](https://github.com/Investigamer/cardconjurer) crossed
-with Canva. Maintained as its own repo/deploy so it can evolve
-independently of [moxproxies-website](https://github.com/moxproxies/moxproxies-website),
-and "injected" into that site rather than merged into its codebase.
+A standalone, cross-platform card-design tool — mix and match frames,
+custom text, and free-floating elements to build custom trading-card
+designs. Think [Card Conjurer](https://github.com/Investigamer/cardconjurer)
+crossed with Canva.
+
+This is a **fork of [card-studio](https://github.com/moxproxies/card-studio)**,
+restructured into a standalone product: a React frontend + a new Laravel
+API backend (`backend/`, token-auth via Sanctum — the same auth a future
+iOS/Android client would use), decoupled entirely from MoxProxies. The two
+things that changed on top of everything card-studio already did:
+
+1. **A backend now exists.** The original had none — pure `localStorage`.
+   `backend/` is a from-scratch Laravel API (auth, card-design CRUD, a
+   plugin registry endpoint). See [Backend (API)](#backend-api) below —
+   and note it's a fresh API skeleton the frontend doesn't call yet; see
+   that section for exactly what's wired vs. still to connect.
+2. **Hardcoded Scryfall integration became an optional plugin.** See
+   [Plugin system](#plugin-system) — the goal is that nothing IP-specific
+   (a particular card game's database, a particular visual style) is
+   baked into the core editor; it's all swappable, community-extensible
+   packages instead.
+
+Everything else below (layers, frames, text fitting, undo/redo, the embed
+build, etc.) is inherited from the original fork point largely unchanged
+— this README documents the whole app, not just what's new.
 
 ## Status
 
@@ -15,6 +34,104 @@ UX checks — including the embedded shadow-DOM path, not just the
 standalone dev server), but there's still no auth, and persistence is
 `localStorage`-only (no backend/database/account yet) — see [Not built
 yet](#not-built-yet).
+
+## Plugin system
+
+The core editor (`apps/editor`) ships with **zero knowledge of any
+specific card game, data source, or visual theme baked in.** Two kinds
+of plugin fill that gap, both defined by `@card-studio/plugin-sdk`
+(`packages/plugin-sdk`):
+
+- **`ImportSourcePlugin`** — lets a shopper pull card data in from
+  somewhere external instead of typing every field by hand. Registering
+  one adds an "Import" button to the toolbar; registering none means no
+  button at all, not a broken one. `packages/plugin-scryfall-import` is
+  the reference implementation, wrapping Scryfall's public API.
+- **`AssetPackPlugin`** — a themeable bundle of frames and rarity
+  symbols. `packages/plugin-asset-pack-default` wraps this app's
+  existing bundled frame/rarity catalogs the same way. **Caveat:** only
+  the *registration* path is real right now — the render pipeline
+  (`LayerNode.tsx`, `renderDesign.ts` in `services/render`,
+  `rulesFlavorFit.ts`) doesn't resolve assets *through* the active pack
+  yet, it still reads the default pack's catalogs directly. Making every
+  render path pack-aware is the next real step here; the interface
+  exists now so a second pack can be built against a stable contract in
+  the meantime.
+
+`apps/editor/src/plugins.ts` is the one place plugins get registered,
+into a single app-wide `PluginManager` instance:
+
+```ts
+import { PluginManager } from "@card-studio/plugin-sdk";
+import { scryfallImportPlugin } from "@card-studio/plugin-scryfall-import";
+
+export const pluginManager = new PluginManager();
+pluginManager.registerImportSource(scryfallImportPlugin);
+```
+
+**Removing Scryfall** (or any import plugin) is exactly: delete its
+`registerImportSource(...)` line here, remove the package from
+`apps/editor/package.json`'s dependencies — the app still builds and
+runs, the toolbar's Import button just stops rendering. No other file
+changes. That's the concrete proof this isn't just an interface that
+happens to have one hardcoded implementation underneath — the dependency
+really is optional.
+
+**Adding a community plugin** means writing a package that exports an
+object satisfying `ImportSourcePlugin` or `AssetPackPlugin`
+(`packages/plugin-sdk/src/types.ts` has the full shape and doc
+comments), then registering it the same way. `GeneratedCardFields` (also
+from `@card-studio/plugin-sdk`) is the entire contract an import
+plugin's `SearchComponent` has to produce — it never touches layers,
+Konva, or the design schema directly.
+
+`backend/`'s `GET /api/plugins` (see [Backend (API)](#backend-api))
+additionally serves a small discovery registry — the metadata for known
+community plugins (npm package name, description, homepage), separate
+from the actual plugin code, similar to how a package manager's
+"featured" list works. It's currently a hand-maintained config file
+(`backend/config/plugins.php`), not a submission/moderation workflow.
+
+## Backend (API)
+
+`backend/` is a fresh Laravel 11 API — separate from, and much smaller
+than, moxproxies-website's Laravel app; this fork's editor was never
+meant to depend on that codebase. **What it has:**
+
+- Token auth via [Sanctum](https://laravel.com/docs/sanctum)
+  (`POST /api/auth/register`, `/login`, `/logout`, `GET /api/auth/me`) —
+  plain bearer tokens, no cookies/CSRF/SPA-session dance, so a future
+  iOS/Android client authenticates identically to the web app. See
+  `backend/bootstrap/app.php`'s doc comment for why there's no `web`
+  route file at all.
+- `card_designs` CRUD (`GET/POST /api/card-designs`,
+  `GET/PATCH/DELETE /api/card-designs/{id}`), scoped to
+  `$request->user()` throughout — see `CardDesignController`. The
+  `design` column is stored and returned completely opaque (whatever
+  JSON the frontend's `getDesign()` produces), so the frontend's schema
+  can evolve without a backend migration.
+- `GET /api/plugins` — the plugin discovery registry described above.
+
+**What it doesn't have yet, honestly:** the React editor doesn't call
+any of this. `apps/editor` still only has `localStorageDesignStorage`
+(see [Save/load](#saveload)) and no login screen. This is a backend
+that's ready to be wired up, not one that's wired up already — treat it
+as the next milestone, not a finished feature.
+
+**Running it:**
+
+```sh
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite   # default DB_CONNECTION=sqlite
+php artisan migrate
+php artisan serve                # http://localhost:8000
+```
+
+`CORS_ALLOWED_ORIGINS` in `.env` needs to include wherever the frontend
+dev server runs (defaults to Vite's `http://localhost:5173`).
 
 The editor (`apps/editor`) currently supports:
 - Add frame/text/image/shape layers; drag, resize, rotate via a Konva
@@ -687,7 +804,13 @@ the field loses focus, not one per keystroke.
 
 ## Scryfall import
 
-The toolbar's "Scryfall" button opens a search box (`ScryfallSearchModal.tsx`)
+> Since the fork: this now lives in `packages/plugin-scryfall-import/`
+> as an `ImportSourcePlugin` (see [Plugin system](#plugin-system)), not
+> in `apps/editor` — the file names below (`scryfall.ts`,
+> `ScryfallSearchModal.tsx`) are unchanged, just moved. Everything this
+> section describes about the actual import behavior is still accurate.
+
+The toolbar's "Import" button opens a search box (`SearchModal.tsx`)
 against [Scryfall's public card API](https://scryfall.com/docs/api) — no
 API key, CORS-enabled for direct browser calls (`scryfall.ts`). Type a
 card name, pick a result, and it adds — as a single undo step — whichever
@@ -883,10 +1006,21 @@ tint to reinforce it.
 
 ## Save/load
 
+> Since the fork: `backend/`'s `card_designs` API (see [Backend
+> (API)](#backend-api)) is exactly the "real backend" this section's
+> `DesignStorage` interface was designed to swap in, but that swap
+> hasn't been made yet — `apps/editor` still only uses
+> `localStorageDesignStorage`, unchanged from card-studio. Wiring a
+> `apiDesignStorage` implementation (auth token from a login screen this
+> app doesn't have yet either, then `GET/POST/PATCH/DELETE
+> /api/card-designs`) is the next real integration step, not something
+> already done.
+
 `designStorage.ts` is a small interface (`list`/`load`/`save`/`remove`)
 with one implementation today, `localStorageDesignStorage` — this app
-has no backend of its own (see [Not built yet](#not-built-yet)), so
-"save" currently means the browser's `localStorage`, one JSON blob
+has no backend of its own wired up yet (see [Not built
+yet](#not-built-yet)), so "save" currently means the browser's
+`localStorage`, one JSON blob
 holding every save keyed by `design.id`. `DesignLibraryModal.tsx` (the
 toolbar's "Designs" button) is the only consumer, and it only ever talks
 to the `DesignStorage` interface — swapping in a real

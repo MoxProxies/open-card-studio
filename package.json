@@ -1,5 +1,5 @@
 {
-  "name": "card-studio",
+  "name": "open-card-studio",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -16,8 +16,7 @@
     "sync-rarity": "node scripts/sync-rarity-library.mjs",
     "sync-symbols": "node scripts/sync-symbol-library.mjs",
     "sync-text-templates": "node scripts/sync-text-templates.mjs",
-    "watch-text-templates": "node scripts/watch-text-templates.mjs",
-    "deploy:moxproxies": "powershell -ExecutionPolicy Bypass -File scripts/deploy-to-moxproxies.ps1"
+    "watch-text-templates": "node scripts/watch-text-templates.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.3"
