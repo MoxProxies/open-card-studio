@@ -10,6 +10,7 @@ import { FrameLibraryModal } from "./FrameLibraryModal";
 import { TextTemplateMenu } from "./TextTemplateMenu";
 import { AiArtModal } from "./AiArtModal";
 import { DesignLibraryModal } from "./DesignLibraryModal";
+import { AccountButton } from "./AccountButton";
 import { getTextTemplates, type TextFieldTemplate } from "../textTemplates";
 import { RARITY_ASSETS, getRarityAssetUrl } from "../rarityAssets";
 import { RARITY_DISPLAY_ORDER, RARITY_LAYER_ID, RARITY_SYMBOL_BOX, RARITY_DEFAULT_LOCKED, RARITY_DEFAULT_CONTENT_LOCKED } from "../rarityConfig";
@@ -728,6 +729,7 @@ export function Toolbar({
           <Save size={16} /> Designs
         </button>
       )}
+      {!hideLocalDesignLibrary && <AccountButton />}
       <button className="cs-btn" onClick={handleExport} title={`Export PNG at ${PRINT_DPI} DPI`}>
         <Download size={16} /> Export ({PRINT_DPI} DPI)
       </button>

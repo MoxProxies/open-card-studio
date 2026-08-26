@@ -10,7 +10,13 @@ class CardDesign extends Model
 {
     use HasFactory;
 
+    /** Primary key is a client-supplied UUID, not an auto-increment int — see the migration's doc comment. */
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
     protected $fillable = [
+        'id',
         'user_id',
         'name',
         'design',

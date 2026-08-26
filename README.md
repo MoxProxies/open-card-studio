@@ -104,19 +104,29 @@ meant to depend on that codebase. **What it has:**
   iOS/Android client authenticates identically to the web app. See
   `backend/bootstrap/app.php`'s doc comment for why there's no `web`
   route file at all.
-- `card_designs` CRUD (`GET/POST /api/card-designs`,
-  `GET/PATCH/DELETE /api/card-designs/{id}`), scoped to
-  `$request->user()` throughout — see `CardDesignController`. The
-  `design` column is stored and returned completely opaque (whatever
-  JSON the frontend's `getDesign()` produces), so the frontend's schema
-  can evolve without a backend migration.
+- `card_designs` upsert-by-id (`GET /api/card-designs`,
+  `GET/PUT/DELETE /api/card-designs/{id}`), scoped to
+  `$request->user()` throughout — see `CardDesignController`. The `id`
+  is client-generated (the frontend's own `crypto.randomUUID()`), so
+  `PUT` is the only write verb: saving an existing design and creating a
+  new one are the same call, `updateOrCreate`d against
+  `{id, user_id}`. A `PUT` with an `id` that already belongs to another
+  account 409s rather than colliding. The `design` column itself is
+  stored and returned completely opaque (whatever JSON the frontend's
+  `getDesign()` produces), so the frontend's schema can evolve without a
+  backend migration.
 - `GET /api/plugins` — the plugin discovery registry described above.
 
-**What it doesn't have yet, honestly:** the React editor doesn't call
-any of this. `apps/editor` still only has `localStorageDesignStorage`
-(see [Save/load](#saveload)) and no login screen. This is a backend
-that's ready to be wired up, not one that's wired up already — treat it
-as the next milestone, not a finished feature.
+**Wired up:** `apps/editor` calls all of this. `AccountButton` (top-right
+of the toolbar, hidden behind the same `hideLocalDesignLibrary` flag as
+the local "Designs" button — see [Save/load](#saveload)) handles
+register/sign-in/sign-out and restores the session from a stored bearer
+token on load; once signed in, `designStorage` (see
+`apps/editor/src/designStorage.ts`) transparently swaps from
+`localStorageDesignStorage` to `apiDesignStorage`, so the same
+`DesignLibraryModal` save/load/delete UI now round-trips through this
+API instead of `localStorage`. Point the editor at a different backend
+with `VITE_API_BASE_URL` (defaults to `http://localhost:8000`).
 
 **Running it:**
 
@@ -131,7 +141,8 @@ php artisan serve                # http://localhost:8000
 ```
 
 `CORS_ALLOWED_ORIGINS` in `.env` needs to include wherever the frontend
-dev server runs (defaults to Vite's `http://localhost:5173`).
+dev server runs (defaults to `apps/editor`'s configured
+`http://localhost:4173` — see `apps/editor/vite.config.ts`).
 
 The editor (`apps/editor`) currently supports:
 - Add frame/text/image/shape layers; drag, resize, rotate via a Konva
@@ -249,7 +260,7 @@ automatically; each app's `predev`/`prebuild` script does too).
 ```
 pnpm install
 pnpm build          # builds scene-schema, then editor (app + embed), then render
-pnpm dev:editor      # http://localhost:5173 — standalone editor
+pnpm dev:editor      # http://localhost:4173 — standalone editor
 pnpm dev:render      # http://localhost:3001 — render service
 ```
 
@@ -1006,32 +1017,41 @@ tint to reinforce it.
 
 ## Save/load
 
-> Since the fork: `backend/`'s `card_designs` API (see [Backend
-> (API)](#backend-api)) is exactly the "real backend" this section's
-> `DesignStorage` interface was designed to swap in, but that swap
-> hasn't been made yet — `apps/editor` still only uses
-> `localStorageDesignStorage`, unchanged from card-studio. Wiring a
-> `apiDesignStorage` implementation (auth token from a login screen this
-> app doesn't have yet either, then `GET/POST/PATCH/DELETE
-> /api/card-designs`) is the next real integration step, not something
-> already done.
+> Since the fork: this swap has now been made. `apps/editor` calls
+> `backend/`'s `card_designs` API (see [Backend (API)](#backend-api))
+> whenever a shopper is signed in — `AccountButton.tsx` handles
+> register/sign-in against `POST /api/auth/register`/`/login`, stores
+> the returned Sanctum bearer token, and restores the session from it on
+> load. Everything below describing `designStorage.ts` as a single
+> `localStorageDesignStorage` implementation is the *pre-swap* state,
+> kept for context; see the "now" paragraph right after it for what
+> actually runs today.
 
-`designStorage.ts` is a small interface (`list`/`load`/`save`/`remove`)
-with one implementation today, `localStorageDesignStorage` — this app
-has no backend of its own wired up yet (see [Not built
-yet](#not-built-yet)), so "save" currently means the browser's
-`localStorage`, one JSON blob
-holding every save keyed by `design.id`. `DesignLibraryModal.tsx` (the
-toolbar's "Designs" button) is the only consumer, and it only ever talks
-to the `DesignStorage` interface — swapping in a real
-moxproxies-website-backed API later (list/save/load/remove against a
-`CardDesign` row, once auth/session handoff exists) means reassigning
-what the module's exported `designStorage` points to; the modal itself
-doesn't change. Loading always goes through `Design.parse()`, so a save
-made by an older version of this app (missing a field a newer schema
-added since) still loads cleanly — the same defaulting behavior the
-embed's `initial-design` attribute and the render service's request
-body already rely on.
+`designStorage.ts` started as a small interface (`list`/`load`/`save`/
+`remove`) with one implementation, `localStorageDesignStorage` — "save"
+meant the browser's `localStorage`, one JSON blob holding every save
+keyed by `design.id`. `DesignLibraryModal.tsx` (the toolbar's "Designs"
+button) is the only consumer, and it only ever talks to the
+`DesignStorage` interface, never to `localStorage` or the API directly —
+which is exactly what made the later swap possible without touching the
+modal. Loading always goes through `Design.parse()`, so a save made by
+an older version of this app (missing a field a newer schema added
+since) still loads cleanly — the same defaulting behavior the embed's
+`initial-design` attribute and the render service's request body
+already rely on.
+
+**Now:** `designStorage.ts` exports a module-level `active` binding
+(default `localStorageDesignStorage`) behind `setActiveDesignStorage()`,
+and the `designStorage` object `DesignLibraryModal.tsx` imports just
+proxies to whichever implementation is currently active — so that
+import stays one stable reference no matter which backend is live.
+`AccountButton.tsx` calls `setActiveDesignStorage(apiDesignStorage)` on
+sign-in and flips it back to `localStorageDesignStorage` on sign-out.
+`apiDesignStorage` (`apps/editor/src/api/apiDesignStorage.ts`) implements
+the same four methods against `backend/`'s upsert-by-id `card_designs`
+routes, so anonymous use still works exactly as before (local-only,
+per-browser) and signing in is what makes designs follow the account
+instead.
 
 Saving/loading/starting a new design all confirm first if the current
 design might have unsaved changes (a plain `window.confirm`) — loading a
@@ -1728,12 +1748,14 @@ on the `.sh`) — override either if your layout differs.
   [Adding/changing rarity symbols](#addingchanging-rarity-symbols) — not
   a button in the UI; there's also no way yet for a running deployment
   to pick up a new one without a rebuild/redeploy)
-- Real (database-backed) persistence — designs can be saved/loaded now
-  (see [Save/load](#saveload)), but only to the browser's own
-  `localStorage`; nothing syncs to a server, account, or across devices
-  yet. Panel widths and the safe-area/bleed-preview toggles are still
-  pure in-memory view state either way (not part of a saved design) and
-  reset on reload regardless.
+- Real (database-backed) persistence now exists for signed-in accounts
+  (see [Save/load](#saveload) and [Backend (API)](#backend-api)) — a
+  design saved while signed in syncs to `backend/`'s `card_designs` table
+  and follows the account across devices/browsers. Anonymous use is
+  unchanged: still `localStorage` only, per-browser, nothing synced.
+  Panel widths and the safe-area/bleed-preview toggles are still pure
+  in-memory view state either way (not part of a saved design) and reset
+  on reload regardless.
 - The moxproxies-website side of the integration described in [How this is
   meant to connect](#how-this-is-meant-to-connect-to-moxproxies-website) —
   the `studio_design` column, the submission endpoint, the render-triggering

@@ -9,7 +9,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('card_designs', function (Blueprint $table) {
-            $table->id();
+            // A client-generated UUID (Design.id — see designStore.ts's
+            // createEmptyDesign, crypto.randomUUID()), not an
+            // auto-increment int: the frontend already has its own id the
+            // moment a design exists, offline-capable and stable across a
+            // save that later gets attributed to an account, so the
+            // primary key here just adopts it instead of introducing a
+            // second id the frontend would have to reconcile. See
+            // CardDesign::$incrementing / $keyType.
+            $table->uuid('id')->primary();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             // The scene-schema Design document (see packages/scene-schema in

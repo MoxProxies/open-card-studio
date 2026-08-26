@@ -7,26 +7,29 @@ export interface DesignSummary {
 }
 
 /**
- * Where saved designs live — deliberately small and swappable. Today
- * `localStorageDesignStorage` is the only implementation (this app has no
- * backend of its own yet — see README's "Not built yet"), but every
- * consumer (DesignLibraryModal.tsx) only ever talks to this interface, so
- * plugging in a real moxproxies-website-backed API later (list/save/load/
- * remove against a `CardDesign` row instead of localStorage) is a
- * drop-in replacement: swap what `designStorage` below is assigned to,
- * touch nothing else. `Design.parse()` on load is what makes a save from
- * an older version of this app (missing a field a newer schema added)
- * still load cleanly either way — same defaulting behavior the embed's
- * `initial-design` attribute and the render service's request body
- * already rely on.
+ * Where saved designs live — deliberately small, swappable, and async
+ * (a real backend can never be sync the way localStorage is, so the
+ * interface is shaped for that from the start rather than assuming
+ * otherwise). `localStorageDesignStorage` below and `apiDesignStorage`
+ * (api/apiDesignStorage.ts, backed by backend/'s `card_designs` API —
+ * see root README's "Backend (API)") both satisfy it; every consumer
+ * (DesignLibraryModal.tsx) only ever talks to the `designStorage`
+ * binding at the bottom of this file, never to a specific
+ * implementation directly, so which one is actually active can change
+ * at runtime (AccountButton.tsx calls setActiveDesignStorage() on
+ * sign-in/sign-out) without any consumer changing. `Design.parse()` on
+ * load is what makes a save from an older version of this app (missing
+ * a field a newer schema added) still load cleanly either way — same
+ * defaulting behavior the embed's `initial-design` attribute and the
+ * render service's request body already rely on.
  */
 export interface DesignStorage {
-  list(): DesignSummary[];
-  load(id: string): Design | undefined;
+  list(): Promise<DesignSummary[]>;
+  load(id: string): Promise<Design | undefined>;
   /** Upserts by `design.id` — saving a design twice updates the same
    * record rather than creating a second one. */
-  save(design: Design): DesignSummary;
-  remove(id: string): void;
+  save(design: Design): Promise<DesignSummary>;
+  remove(id: string): Promise<void>;
 }
 
 const STORAGE_KEY = "card-studio:designs:v1";
@@ -52,13 +55,13 @@ function writeAll(records: Record<string, StoredRecord>): void {
 }
 
 export const localStorageDesignStorage: DesignStorage = {
-  list() {
+  async list() {
     return Object.values(readAll())
       .map(({ design, updatedAt }) => ({ id: design.id, name: design.name, updatedAt }))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   },
 
-  load(id) {
+  async load(id) {
     const record = readAll()[id];
     if (!record) return undefined;
     try {
@@ -68,7 +71,7 @@ export const localStorageDesignStorage: DesignStorage = {
     }
   },
 
-  save(design) {
+  async save(design) {
     const records = readAll();
     const updatedAt = new Date().toISOString();
     records[design.id] = { updatedAt, design };
@@ -76,13 +79,31 @@ export const localStorageDesignStorage: DesignStorage = {
     return { id: design.id, name: design.name, updatedAt };
   },
 
-  remove(id) {
+  async remove(id) {
     const records = readAll();
     delete records[id];
     writeAll(records);
   },
 };
 
-/** The storage implementation the app actually uses — see DesignStorage's
- * doc comment for how this gets swapped for a real backend later. */
-export const designStorage: DesignStorage = localStorageDesignStorage;
+let active: DesignStorage = localStorageDesignStorage;
+
+/**
+ * The one place that decides which backend `designStorage` below
+ * delegates to. AccountButton.tsx is the only caller — see this file's
+ * top doc comment.
+ */
+export function setActiveDesignStorage(storage: DesignStorage): void {
+  active = storage;
+}
+
+/** The storage implementation the app actually uses — a thin proxy over
+ * whatever setActiveDesignStorage() last set, so every consumer can hold
+ * a single stable reference (imported once, at module load) rather than
+ * re-reading which implementation is active on every call. */
+export const designStorage: DesignStorage = {
+  list: () => active.list(),
+  load: (id) => active.load(id),
+  save: (design) => active.save(design),
+  remove: (id) => active.remove(id),
+};

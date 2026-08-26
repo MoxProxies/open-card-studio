@@ -16,5 +16,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
 
-    Route::apiResource('card-designs', CardDesignController::class);
+    // PUT, not POST+PATCH: the frontend always already has an id (a
+    // client-generated UUID — see CardDesignController::upsert()'s doc
+    // comment), so every save is the same upsert call regardless of
+    // whether this is the design's first save or its fiftieth.
+    Route::get('/card-designs', [CardDesignController::class, 'index']);
+    Route::get('/card-designs/{id}', [CardDesignController::class, 'show']);
+    Route::put('/card-designs/{id}', [CardDesignController::class, 'upsert']);
+    Route::delete('/card-designs/{id}', [CardDesignController::class, 'destroy']);
 });

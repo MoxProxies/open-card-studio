@@ -18,8 +18,24 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        // There's no 'login' route to redirect an unauthenticated
+        // request to (see the doc comment above) — Laravel's default
+        // Authenticate::redirectTo() calls route('login') to build that
+        // redirect target for any request that didn't send
+        // `Accept: application/json`, and since that route doesn't
+        // exist, resolving it throws RouteNotFoundException *during
+        // middleware handling*, before the exception renderer below ever
+        // runs — surfacing as an opaque 500 instead of a clean 401.
+        // Always returning null here means "never redirect", so the
+        // AuthenticationException instead propagates normally to be
+        // rendered by shouldRenderJsonWhen below.
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Every response this app ever sends is JSON — forcing this
+        // unconditionally (rather than relying on every client
+        // remembering an `Accept: application/json` header) is what a
+        // pure API backend with no HTML views to fall back to should do
+        // regardless of what a particular request's headers claim.
+        $exceptions->shouldRenderJsonWhen(fn () => true);
     })->create();
