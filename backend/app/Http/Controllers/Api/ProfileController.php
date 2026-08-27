@@ -41,6 +41,13 @@ class ProfileController extends Controller
                 ->map(fn ($template) => $template->setRelation('user', $user)->toSummary()),
             'designs' => $user->cardDesigns()->published()->latest('updated_at')->limit(self::LISTING_LIMIT)->get()
                 ->map->toSummary(),
+            // Counting only what a visitor could actually open: an
+            // unfiltered count would tell them how many private designs
+            // the collection holds.
+            'collections' => $user->collections()->published()
+                ->withCount(['cardDesigns as design_count' => fn ($query) => $query->publiclyReadable()])
+                ->latest('updated_at')->limit(self::LISTING_LIMIT)->get()
+                ->map(fn ($collection) => $collection->setRelation('user', $user)->toSummary()),
         ]);
     }
 

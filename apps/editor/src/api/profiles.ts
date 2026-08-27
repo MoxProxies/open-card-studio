@@ -1,6 +1,7 @@
 import { api } from "./client";
 import type { AuthUser } from "./auth";
 import type { TemplateSummary } from "./templates";
+import type { CollectionSummary } from "./collections";
 
 export interface PublicProfile {
   id: number;
@@ -22,12 +23,14 @@ export interface ProfilePage {
   profile: PublicProfile;
   templates: TemplateSummary[];
   designs: ProfileDesign[];
+  collections: CollectionSummary[];
 }
 
 interface ProfileRow {
   profile: PublicProfile;
   templates: Array<Record<string, unknown>>;
   designs: ProfileDesign[];
+  collections: Array<Record<string, unknown>>;
 }
 
 /** A public profile and everything that account has published. No auth —
@@ -38,6 +41,15 @@ export async function loadProfile(username: string): Promise<ProfilePage> {
   return {
     profile: row.profile,
     designs: row.designs,
+    collections: (row.collections ?? []).map((c) => ({
+      id: c.id as string,
+      name: c.name as string,
+      description: (c.description ?? null) as string | null,
+      visibility: c.visibility as CollectionSummary["visibility"],
+      designCount: (c.design_count ?? null) as number | null,
+      updatedAt: c.updated_at as string,
+      author: c.author as CollectionSummary["author"],
+    })),
     templates: row.templates.map((t) => ({
       id: t.id as string,
       name: t.name as string,
@@ -64,7 +76,7 @@ export async function updateProfile(edit: ProfileEdit): Promise<AuthUser> {
 }
 
 /** What a client may report. Mirrors ReportController::REPORTABLE. */
-export type ReportableType = "template" | "design" | "user";
+export type ReportableType = "template" | "design" | "user" | "collection";
 
 /** Mirrors ReportController::REASONS — a shortlist for the UI, not a schema constraint. */
 export const REPORT_REASONS = [

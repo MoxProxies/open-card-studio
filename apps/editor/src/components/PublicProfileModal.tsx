@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, LayoutTemplate, Flag, FileImage } from "lucide-react";
+import { Loader2, LayoutTemplate, Flag, FileImage, Library } from "lucide-react";
 import type { Design } from "@card-studio/scene-schema";
 import { apiErrorMessage } from "../api/client";
 import { getCurrentUser } from "../api/auth";
@@ -7,6 +7,7 @@ import { loadProfile, type ProfilePage } from "../api/profiles";
 import { loadTemplate, markTemplateUsed } from "../api/templates";
 import { designFromTemplate } from "../cardTemplates";
 import { Modal } from "./Modal";
+import { ListRow } from "./ListRow";
 import { ReportModal } from "./ReportModal";
 
 interface PublicProfileModalProps {
@@ -29,7 +30,7 @@ export function PublicProfileModal({ username, onUseTemplate, onClose }: PublicP
   const [page, setPage] = useState<ProfilePage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [reporting, setReporting] = useState<{ type: "template" | "user"; id: string; label: string } | null>(null);
+  const [reporting, setReporting] = useState<{ type: "template" | "user" | "collection"; id: string; label: string } | null>(null);
   const viewer = getCurrentUser();
 
   useEffect(() => {
@@ -105,7 +106,7 @@ export function PublicProfileModal({ username, onUseTemplate, onClose }: PublicP
 
             <Section icon={<LayoutTemplate size={13} />} title="Published templates" count={page.templates.length} testId="profile-templates">
               {page.templates.map((t) => (
-                <Row key={t.id} title={t.name} subtitle={`used ${t.usageCount}× ${t.tags.length ? `· ${t.tags.join(", ")}` : ""}`}>
+                <ListRow key={t.id} testId="profile-row" title={t.name} subtitle={`used ${t.usageCount}× ${t.tags.length ? `· ${t.tags.join(", ")}` : ""}`}>
                   <button className="cs-btn" onClick={() => void useTemplate(t.id, t.name)} disabled={busyId === t.id} data-testid="profile-use-template">
                     {busyId === t.id ? <Loader2 size={14} className="cs-spin" /> : <LayoutTemplate size={14} />} Use
                   </button>
@@ -114,13 +115,30 @@ export function PublicProfileModal({ username, onUseTemplate, onClose }: PublicP
                       <Flag size={13} />
                     </button>
                   )}
-                </Row>
+                </ListRow>
+              ))}
+            </Section>
+
+            <Section icon={<Library size={13} />} title="Published collections" count={page.collections.length} testId="profile-collections">
+              {page.collections.map((c) => (
+                <ListRow
+                  key={c.id}
+                  testId="profile-row"
+                  title={c.name}
+                  subtitle={`${c.designCount ?? 0} design${c.designCount === 1 ? "" : "s"}${c.description ? ` · ${c.description}` : ""}`}
+                >
+                  {viewer && !isSelf && (
+                    <button className="cs-icon-btn" title="Report this collection" onClick={() => setReporting({ type: "collection", id: c.id, label: `“${c.name}”` })}>
+                      <Flag size={13} />
+                    </button>
+                  )}
+                </ListRow>
               ))}
             </Section>
 
             <Section icon={<FileImage size={13} />} title="Published designs" count={page.designs.length} testId="profile-designs">
               {page.designs.map((d) => (
-                <Row key={d.id} title={d.name} subtitle={new Date(d.updated_at).toLocaleDateString()} />
+                <ListRow key={d.id} testId="profile-row" title={d.name} subtitle={new Date(d.updated_at).toLocaleDateString()} />
               ))}
             </Section>
           </div>
@@ -139,18 +157,6 @@ function Section({ icon, title, count, testId, children }: { icon: React.ReactNo
         {icon} {title} ({count})
       </h3>
       {count === 0 ? <p style={{ margin: 0, fontSize: 12, color: "var(--cs-text-muted)" }}>Nothing published yet.</p> : children}
-    </div>
-  );
-}
-
-function Row({ title, subtitle, children }: { title: string; subtitle?: string; children?: React.ReactNode }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderTop: "1px solid var(--cs-border)" }} data-testid="profile-row">
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>
-        {subtitle && <div style={{ fontSize: 11, color: "var(--cs-text-muted)" }}>{subtitle}</div>}
-      </div>
-      {children}
     </div>
   );
 }

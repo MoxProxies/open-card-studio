@@ -1,11 +1,15 @@
-import { useEffect, useState, type MouseEvent } from "react";
-import { Save, FilePlus, FolderOpen, Trash2, Loader2 } from "lucide-react";
+import { useEffect, useState, useSyncExternalStore, type MouseEvent } from "react";
+import { Save, FilePlus, FolderOpen, Trash2, Loader2, Library, FileImage } from "lucide-react";
 import type { Design } from "@card-studio/scene-schema";
 import { designStorage, type DesignSummary } from "../designStorage";
 import { apiErrorMessage } from "../api/client";
 import { publishDesign } from "../api/apiDesignStorage";
-import { VISIBILITIES, VISIBILITY_LABELS, type Visibility } from "../visibility";
+import { getCurrentUser, subscribe } from "../api/auth";
+import { type Visibility } from "../visibility";
 import { Modal } from "./Modal";
+import { ListRow } from "./ListRow";
+import { VisibilitySelect } from "./VisibilitySelect";
+import { CollectionsPanel } from "./CollectionsPanel";
 
 interface DesignLibraryModalProps {
   design: Design;
@@ -35,6 +39,8 @@ export function DesignLibraryModal({ design, onRename, onSave, onNew, onLoad, on
   const [saving, setSaving] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"designs" | "collections">("designs");
+  const user = useSyncExternalStore(subscribe, getCurrentUser);
 
   const refresh = () => {
     setListLoading(true);
@@ -93,8 +99,7 @@ export function DesignLibraryModal({ design, onRename, onSave, onNew, onLoad, on
     }
   };
 
-  const handleVisibility = async (id: string, visibility: Visibility, e: { stopPropagation: () => void }) => {
-    e.stopPropagation();
+  const handleVisibility = async (id: string, visibility: Visibility) => {
     setActionError(null);
     try {
       await publishDesign(id, visibility);
@@ -115,86 +120,70 @@ export function DesignLibraryModal({ design, onRename, onSave, onNew, onLoad, on
       onClose={onClose}
       toolbar={
         <>
-          <input className="cs-input" value={design.name} onChange={(e) => onRename(e.target.value)} placeholder="Design name" style={{ flex: 1 }} />
-          <button className="cs-btn" onClick={() => void handleSave()} disabled={saving} title="Save this design">
-            {saving ? <Loader2 size={14} className="cs-spin" /> : <Save size={14} />} Save
+          <button className={`cs-btn${tab === "designs" ? " cs-active" : ""}`} onClick={() => setTab("designs")} data-testid="tab-designs">
+            <FileImage size={14} /> Designs
           </button>
-          <button className="cs-btn" onClick={handleNew} title="Start a new blank design">
-            <FilePlus size={14} /> New
+          <button className={`cs-btn${tab === "collections" ? " cs-active" : ""}`} onClick={() => setTab("collections")} data-testid="tab-collections">
+            <Library size={14} /> Collections
           </button>
+          <div style={{ display: "flex", gap: 8, width: "100%" }}>
+            <input className="cs-input" value={design.name} onChange={(e) => onRename(e.target.value)} placeholder="Design name" style={{ flex: 1 }} />
+            <button className="cs-btn" onClick={() => void handleSave()} disabled={saving} title="Save this design">
+              {saving ? <Loader2 size={14} className="cs-spin" /> : <Save size={14} />} Save
+            </button>
+            <button className="cs-btn" onClick={handleNew} title="Start a new blank design">
+              <FilePlus size={14} /> New
+            </button>
+          </div>
         </>
       }
     >
-      {actionError && <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "8px 16px", margin: 0 }}>{actionError}</p>}
+      {tab === "collections" ? (
+        <CollectionsPanel currentDesignId={design.id} currentDesignName={design.name} signedIn={Boolean(user)} />
+      ) : (
+        <>
+          {actionError && <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "8px 16px", margin: 0 }}>{actionError}</p>}
 
-      <div style={{ padding: 8 }}>
-        {listLoading ? (
-          <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
-            <Loader2 size={14} className="cs-spin" /> Loading…
-          </p>
-        ) : listError ? (
-          <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "6px 8px" }}>{listError}</p>
-        ) : summaries.length === 0 ? (
-          <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>No saved designs yet — click Save above.</p>
-        ) : (
-          summaries.map((s) => {
-            const isCurrent = s.id === design.id;
-            return (
-              <div
-                key={s.id}
-                data-testid="saved-design-row"
-                onClick={() => void handleLoad(s.id)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "8px 8px",
-                  borderRadius: 6,
-                  cursor: isCurrent ? "default" : "pointer",
-                  background: isCurrent ? "var(--cs-accent-soft)" : "transparent",
-                  marginBottom: 2,
-                  opacity: loadingId === s.id ? 0.6 : 1,
-                }}
-              >
-                {loadingId === s.id ? (
-                  <Loader2 size={15} color="var(--cs-text-muted)" className="cs-spin" style={{ flex: "none" }} />
-                ) : (
-                  <FolderOpen size={15} color="var(--cs-text-muted)" style={{ flex: "none" }} />
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {s.name}
-                    {isCurrent && <span style={{ color: "var(--cs-text-muted)" }}> (current)</span>}
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--cs-text-muted)" }}>{new Date(s.updatedAt).toLocaleString()}</div>
-                </div>
-                {/* Only when signed in: a localStorage design has nowhere
-                    to be published to (see DesignSummary.visibility). */}
-                {s.visibility && (
-                  <select
-                    className="cs-input"
-                    value={s.visibility}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => void handleVisibility(s.id, e.target.value as Visibility, e)}
-                    style={{ width: 110, flex: "none" }}
-                    title="Who can see this design"
-                    data-testid="design-visibility"
-                  >
-                    {VISIBILITIES.map((v) => (
-                      <option key={v} value={v}>
-                        {VISIBILITY_LABELS[v]}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <button className="cs-icon-btn" title="Delete" onClick={(e) => void handleDelete(s.id, s.name, e)}>
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            );
-          })
-        )}
-      </div>
+          <div style={{ padding: 8 }}>
+            {listLoading ? (
+              <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+                <Loader2 size={14} className="cs-spin" /> Loading…
+              </p>
+            ) : listError ? (
+              <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "6px 8px" }}>{listError}</p>
+            ) : summaries.length === 0 ? (
+              <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>No saved designs yet — click Save above.</p>
+            ) : (
+              summaries.map((s) => (
+                <ListRow
+                  key={s.id}
+                  testId="saved-design-row"
+                  icon={loadingId === s.id ? <Loader2 size={15} className="cs-spin" /> : <FolderOpen size={15} />}
+                  title={
+                    <>
+                      {s.name}
+                      {s.id === design.id && <span style={{ color: "var(--cs-text-muted)" }}> (current)</span>}
+                    </>
+                  }
+                  subtitle={new Date(s.updatedAt).toLocaleString()}
+                  onClick={() => void handleLoad(s.id)}
+                  active={s.id === design.id}
+                  dimmed={loadingId === s.id}
+                >
+                  {/* Only when signed in: a localStorage design has nowhere
+                      to be published to (see DesignSummary.visibility). */}
+                  {s.visibility && (
+                    <VisibilitySelect value={s.visibility} onChange={(v) => void handleVisibility(s.id, v)} testId="design-visibility" />
+                  )}
+                  <button className="cs-icon-btn" title="Delete" onClick={(e) => void handleDelete(s.id, s.name, e)}>
+                    <Trash2 size={13} />
+                  </button>
+                </ListRow>
+              ))
+            )}
+          </div>
+        </>
+      )}
     </Modal>
   );
 }

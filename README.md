@@ -1216,6 +1216,34 @@ credit on any gallery row opens that person's public profile, where
 their templates can be used directly. Report buttons sit on other
 people's templates and profiles, never your own.
 
+## Collections
+
+A collection is a named group of the owner's **own** designs — a binder,
+a deck, a set. Almost no code of its own: `OwnedByUser` +
+`Publishable` + `OwnedContentController` give it the UUID key,
+ownership scoping, the visibility vocabulary, moderation state, and
+publish/delete for free. What's specific is the membership pivot
+(`card_design_collection`, hand-ordered by `position`) and one rule:
+
+> A published collection can hold private designs. Everyone except the
+> owner sees only the ones they could open anyway — **and a count that
+> matches**, since an unfiltered count would leak how many private
+> designs are in there. `Publishable::scopePubliclyReadable` is the
+> query-side twin of `isPubliclyReadable()`; keep them in step.
+
+| route | auth | notes |
+| --- | --- | --- |
+| `GET /api/collections/{id}` | optional | with its designs, filtered for the viewer |
+| `GET /api/collections` | ✓ | mine, with counts |
+| `PUT /api/collections/{id}` | ✓ | upsert by id |
+| `PUT/DELETE /api/collections/{id}/designs/{designId}` | ✓ | membership; both sides owner-scoped |
+| `POST /api/collections/{id}/publish` | ✓ | visibility only |
+| `DELETE /api/collections/{id}` | ✓ | doesn't delete the designs |
+
+**UI.** A "Collections" tab in the Designs dialog: create, publish,
+delete, and file the design you're editing into one. Published
+collections appear on the public profile.
+
 ## Community templates
 
 A **template is a `Design` plus publishing metadata** — no second scene

@@ -43,6 +43,15 @@ trait Publishable
         return $query->visibleToPublic()->where('visibility', self::PUBLISHED);
     }
 
+    /** The query-side twin of isPubliclyReadable() below — rows a
+     * non-owner may see. Keep the two in step: one decides what a listing
+     * counts, the other what a detail page shows, and a mismatch leaks the
+     * *number* of private rows even when their contents stay hidden. */
+    public function scopePubliclyReadable(Builder $query): Builder
+    {
+        return $query->visibleToPublic()->whereIn('visibility', [self::PUBLISHED, self::UNLISTED]);
+    }
+
     /** True when anyone holding the id may read this, owner or not. */
     public function isPubliclyReadable(): bool
     {

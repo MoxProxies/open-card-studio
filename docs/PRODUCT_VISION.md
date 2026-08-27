@@ -177,6 +177,13 @@ the schema for every content type that's about to become public.
 
 ### Phase 3 — Collections
 
+> **Shipped** — see the root README's
+> [Collections](../README.md#collections). It did what it was meant to
+> as a test of the earlier phases: the model is two concerns and an
+> abstract controller, and the only genuinely new code is the membership
+> pivot and the rule that a public collection hides (and doesn't count)
+> its owner's private designs.
+
 Grouping owned designs (think: a binder or a deck) — ownership scoping,
 visibility, and a collection detail page follow the same pattern
 `card_designs` already established. Should be a relatively small phase;

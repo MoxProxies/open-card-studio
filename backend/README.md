@@ -23,10 +23,11 @@ php artisan route:list     # see every registered route
 
 ## Layout
 
-- `app/Models/` — `User`, `CardDesign`, `Template`, `Report`;
+- `app/Models/` — `User`, `CardDesign`, `Template`, `Collection`, `Report`;
   `Concerns/` holds what they share (`OwnedByUser`, `Publishable`).
 - `app/Http/Controllers/Api/` — `AuthController`, `CardDesignController`,
-  `TemplateController`, `ProfileController`, `ReportController`,
+  `TemplateController`, `CollectionController`, `ProfileController`,
+  `ReportController`,
   `PluginController`. The owned-content controllers share
   `OwnedContentController` (publish/delete).
 - `routes/api.php` — the entire route list; there is no `web.php`, see
@@ -36,7 +37,8 @@ php artisan route:list     # see every registered route
 - `database/migrations/` — `users`/`sessions`/`cache`/`jobs` are
   Laravel's own framework tables (needed since `.env.example` defaults
   cache/queue/session to the `database` driver); `personal_access_tokens`
-  is Sanctum's; `card_designs`, `templates` and `reports` are the
+  is Sanctum's; `card_designs`, `templates`, `collections`
+  (+ its `card_design_collection` pivot) and `reports` are the
   app-specific tables. `templates` holds community-authored card layouts — a scene
   Design blob plus owner/name/description/tags/visibility/usage count,
   see the root README's [Community

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CardDesign;
+use App\Models\Collection;
 use App\Models\Report;
 use App\Models\Template;
 use App\Models\User;
@@ -24,6 +25,7 @@ class ReportController extends Controller
     private const REPORTABLE = [
         'template' => Template::class,
         'design' => CardDesign::class,
+        'collection' => Collection::class,
         'user' => User::class,
     ];
 

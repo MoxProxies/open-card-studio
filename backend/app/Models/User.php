@@ -49,6 +49,11 @@ class User extends Authenticatable
         return $this->hasMany(Template::class);
     }
 
+    public function collections(): HasMany
+    {
+        return $this->hasMany(Collection::class);
+    }
+
     /** Reports this user filed — not reports *about* them (those are
      * polymorphic; see the Report model). */
     public function reports(): HasMany

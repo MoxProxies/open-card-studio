@@ -177,9 +177,7 @@ class TemplateController extends OwnedContentController
      */
     public function use(Request $request, string $id)
     {
-        $template = Template::visibleToPublic()
-            ->whereIn('visibility', [Template::PUBLISHED, Template::UNLISTED])
-            ->findOrFail($id);
+        $template = Template::publiclyReadable()->findOrFail($id);
 
         $template->increment('usage_count');
 

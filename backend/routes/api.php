@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CardDesignController;
+use App\Http\Controllers\Api\CollectionController;
 use App\Http\Controllers\Api\PluginController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReportController;
@@ -32,6 +33,8 @@ Route::post('/templates/{id}/use', [TemplateController::class, 'use'])->middlewa
 // so it can't require an account either. `email` never appears in one —
 // see User::$hidden.
 Route::get('/users/{username}', [ProfileController::class, 'show']);
+// A published collection is a public page, like a published template.
+Route::get('/collections/{id}', [CollectionController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -57,6 +60,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // editor already has the id before the first save. `/templates` here
     // is "my templates" (every visibility); the public gallery is
     // `/templates/browse` above.
+    Route::get('/collections', [CollectionController::class, 'index']);
+    Route::put('/collections/{id}', [CollectionController::class, 'upsert']);
+    Route::post('/collections/{id}/publish', [CollectionController::class, 'publish']);
+    Route::delete('/collections/{id}', [CollectionController::class, 'destroy']);
+    // Membership: both sides owner-scoped — see CollectionController::addDesign.
+    Route::put('/collections/{id}/designs/{designId}', [CollectionController::class, 'addDesign']);
+    Route::delete('/collections/{id}/designs/{designId}', [CollectionController::class, 'removeDesign']);
+
     Route::get('/templates', [TemplateController::class, 'index']);
     Route::put('/templates/{id}', [TemplateController::class, 'upsert']);
     Route::post('/templates/{id}/publish', [TemplateController::class, 'publish']);
