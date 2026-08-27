@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useIsNarrow } from "../hooks/useIsNarrow";
 import type Konva from "konva";
 import type { RefObject } from "react";
 import type { Layer } from "@card-studio/scene-schema";
@@ -72,6 +73,7 @@ export function Toolbar({
   const [showAiArtModal, setShowAiArtModal] = useState(false);
   const [showDesignLibrary, setShowDesignLibrary] = useState(false);
   const [showTemplateBrowser, setShowTemplateBrowser] = useState(false);
+  const narrow = useIsNarrow();
   // Whose public profile is open, if any — set from an author's name in the
   // template gallery or from your own profile editor.
   const [viewingProfile, setViewingProfile] = useState<string | null>(null);
@@ -609,7 +611,22 @@ export function Toolbar({
   };
 
   return (
-    <div className="cs-root" style={{ display: "flex", alignItems: "center", gap: 6, padding: 8, borderBottom: "1px solid var(--cs-border)" }}>
+    <div
+      className="cs-root"
+      data-testid="toolbar"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        padding: 8,
+        borderBottom: "1px solid var(--cs-border)",
+        // On a phone there's no room for every tool at once, so the bar
+        // scrolls sideways rather than wrapping into three stacked rows
+        // that eat the canvas. flex:none on the children stops them being
+        // squashed to nothing by the overflow.
+        ...(narrow ? { overflowX: "auto" as const, overflowY: "hidden" as const, flexWrap: "nowrap" as const, flex: "none" } : {}),
+      }}
+    >
       <button className="cs-btn" onClick={() => setShowFrameLibrary(true)}>
         <Frame size={16} /> Frame
       </button>
@@ -695,7 +712,7 @@ export function Toolbar({
         <Trash2 size={16} />
       </button>
 
-      <div style={{ flex: 1 }} />
+      <div style={{ flex: narrow ? "none" : 1 }} />
 
       <button
         className={`cs-icon-btn${showSafeArea ? " cs-active" : ""}`}

@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 
 /**
- * Phone-shaped viewport. The one breakpoint the shell needs: below it,
- * navigation is a bottom tab bar; above it, a top nav bar the way a
- * website has one. 768px is the usual tablet-portrait line — a tablet
- * gets the website layout, which is what its width can carry.
+ * Phone-shaped viewport — the app's one breakpoint. Below it the shell
+ * puts navigation in a bottom tab bar and the editor collapses its three
+ * panes into a canvas plus a bottom sheet; above it, both lay out the way
+ * a desktop app does. 768px is the usual tablet-portrait line: a tablet
+ * gets the wide layout, which is what its width can carry.
+ *
+ * Lives in hooks/, not shell/, because the editor needs it too — an
+ * embedded <card-studio-editor> on a phone has no shell but is just as
+ * narrow.
  */
 const NARROW = "(max-width: 767px)";
 

@@ -7,6 +7,8 @@ import { PropertiesPanel } from "./components/PropertiesPanel";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useFullscreenLightbox } from "./hooks/useFullscreenLightbox";
+import { useIsNarrow } from "./hooks/useIsNarrow";
+import { Layers as LayersIcon, SlidersHorizontal, X } from "lucide-react";
 
 // Above anything a host page could plausibly stack above it — this is a
 // deliberate lightbox, meant to sit on top of the entire page regardless of
@@ -35,6 +37,12 @@ export function App() {
   const [layerPanelWidth, setLayerPanelWidth] = useState(DEFAULT_LAYER_PANEL_WIDTH);
   const [propertiesPanelWidth, setPropertiesPanelWidth] = useState(DEFAULT_PROPERTIES_PANEL_WIDTH);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // On a phone the three-pane layout doesn't fit, so the two side panels
+  // become one bottom sheet with a segmented control — the pattern every
+  // mobile design tool converges on, because the canvas is the thing you
+  // need to see and the panels are what you dip into.
+  const narrow = useIsNarrow();
+  const [sheet, setSheet] = useState<"layers" | "properties" | null>(null);
   useKeyboardShortcuts();
   useFullscreenLightbox(
     isFullscreen,
@@ -79,20 +87,90 @@ export function App() {
       }}
     >
       <Toolbar stageRef={stageRef} isFullscreen={isFullscreen} onToggleFullscreen={() => setIsFullscreen((v) => !v)} />
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <CanvasStage stageRef={stageRef} />
+
+      {narrow ? (
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }} data-testid="editor-narrow">
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <CanvasStage stageRef={stageRef} />
+          </div>
+
+          {sheet && (
+            <div
+              data-testid="editor-sheet"
+              style={{
+                // Capped so the canvas never disappears entirely behind
+                // the sheet — you have to be able to see what you're editing.
+                height: "min(46vh, 380px)",
+                borderTop: "1px solid var(--cs-border)",
+                background: "var(--cs-surface)",
+                display: "flex",
+                flexDirection: "column",
+                minHeight: 0,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", padding: "6px 8px", borderBottom: "1px solid var(--cs-border)", flex: "none" }}>
+                <span className="cs-heading" style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
+                  {sheet === "layers" ? "Layers" : "Properties"}
+                </span>
+                <button className="cs-icon-btn" onClick={() => setSheet(null)} title="Close" data-testid="editor-sheet-close">
+                  <X size={16} />
+                </button>
+              </div>
+              <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex" }}>
+                {/* width="100%" rather than a pixel width: the panels take
+                    a number for the desktop resizable columns, but here they
+                    just fill the sheet. */}
+                {sheet === "layers" ? <LayerPanel width="100%" /> : <PropertiesPanel width="100%" />}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: "flex", borderTop: "1px solid var(--cs-border)", flex: "none", background: "var(--cs-surface)" }} data-testid="editor-sheet-tabs">
+            {([
+              ["layers", "Layers", <LayersIcon key="l" size={18} />],
+              ["properties", "Properties", <SlidersHorizontal key="p" size={18} />],
+            ] as const).map(([key, label, icon]) => (
+              <button
+                key={key}
+                data-testid={`editor-sheet-${key}`}
+                data-active={sheet === key}
+                onClick={() => setSheet((current) => (current === key ? null : key))}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  minHeight: 48,
+                  border: "none",
+                  background: "none",
+                  cursor: "pointer",
+                  color: sheet === key ? "var(--cs-accent)" : "var(--cs-text-muted)",
+                  fontSize: 12,
+                }}
+              >
+                {icon}
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
+      ) : (
+        <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <CanvasStage stageRef={stageRef} />
+          </div>
 
-        {/* Each handle owns the panel to its right: dragging right shrinks
-            that panel (and grows whatever's to the left); dragging left
-            grows it. The canvas area (flex:1) absorbs the difference. */}
-        <ResizeHandle onDrag={(dx) => setLayerPanelWidth((w) => clamp(w - dx))} />
-        <LayerPanel width={layerPanelWidth} />
+          {/* Each handle owns the panel to its right: dragging right shrinks
+              that panel (and grows whatever's to the left); dragging left
+              grows it. The canvas area (flex:1) absorbs the difference. */}
+          <ResizeHandle onDrag={(dx) => setLayerPanelWidth((w) => clamp(w - dx))} />
+          <LayerPanel width={layerPanelWidth} />
 
-        <ResizeHandle onDrag={(dx) => setPropertiesPanelWidth((w) => clamp(w - dx))} />
-        <PropertiesPanel width={propertiesPanelWidth} />
-      </div>
+          <ResizeHandle onDrag={(dx) => setPropertiesPanelWidth((w) => clamp(w - dx))} />
+          <PropertiesPanel width={propertiesPanelWidth} />
+        </div>
+      )}
     </div>
   );
 }

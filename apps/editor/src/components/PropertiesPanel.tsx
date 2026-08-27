@@ -31,7 +31,7 @@ import { useActiveFrameCategory } from "../hooks/useActiveFrameCategory";
 import { getTextTemplates } from "../textTemplates";
 import { computeRulesFlavorPatch } from "../rulesFlavorFit";
 
-const getPanelStyle = (width: number): CSSProperties => ({
+const getPanelStyle = (width: number | string): CSSProperties => ({
   width,
   flex: "none",
   minWidth: 0,
@@ -46,7 +46,8 @@ const fieldRowStyle: CSSProperties = { display: "flex", flexDirection: "column",
 const twoColStyle: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, minWidth: 0 };
 const labelStyle: CSSProperties = { color: "var(--cs-text-muted)", fontSize: 11 };
 
-export function PropertiesPanel({ width }: { width: number }) {
+/** See LayerPanel — a number on desktop, "100%" inside the mobile sheet. */
+export function PropertiesPanel({ width }: { width: number | string }) {
   const design = useDesignStore((s) => s.design);
   const selectedLayerIds = useDesignStore((s) => s.selectedLayerIds);
   const commitLayerChange = useDesignStore((s) => s.commitLayerChange);
