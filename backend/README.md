@@ -19,6 +19,8 @@ php artisan migrate:fresh  # drop + re-run all migrations
 php artisan route:list     # see every registered route
 ./vendor/bin/pint          # code style
 ./vendor/bin/phpunit       # PHP tests (tests/Feature)
+
+php artisan auth:reset-link me@example.com   # a reset link, no mail sent
 ```
 
 ## Layout
@@ -28,7 +30,7 @@ php artisan route:list     # see every registered route
   `Concerns/` holds what they share (`OwnedByUser`, `Publishable`).
 - `app/Http/Controllers/Api/` — `AuthController`, `CardDesignController`,
   `TemplateController`, `CollectionController`, `ProfileController`,
-  `ReportController`,
+  `ReportController`, `SocialAuthController`, `EmailController`,
   `PluginController`. The owned-content controllers share
   `OwnedContentController` (publish/delete).
 - `routes/api.php` — the entire route list; there is no `web.php`, see
@@ -40,8 +42,11 @@ php artisan route:list     # see every registered route
   `BlockSuspendedUsers`.
 - `app/Support/SocialProviders.php` + `config/services.php` — which OAuth
   providers this deployment offers.
-- `tests/Feature/` — PHP tests for logic a live provider can't be asked
-  to prove on every run (social account linking).
+- `app/Notifications/` + `config/mail.php` — the two transactional emails
+  (verify address, reset password) over Brevo's SMTP relay; see the root
+  README's [Transactional email](../README.md#transactional-email-brevo).
+- `tests/Feature/` — PHP tests for logic a live run can't be asked to
+  prove (social account linking, mail actually being sent).
 - `config/plugins.php` — the plugin discovery registry `GET /api/plugins`
   serves.
 - `database/migrations/` — `users`/`sessions`/`cache`/`jobs` are

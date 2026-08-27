@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { login, loadSocialProviders, register, startSocialSignIn, type SocialProvider } from "../api/auth";
+import { login, loadSocialProviders, register, requestPasswordReset, startSocialSignIn, type SocialProvider } from "../api/auth";
 import { apiErrorMessage } from "../api/client";
 import { Modal } from "./Modal";
 
@@ -23,6 +23,7 @@ export function AccountModal({ onSignedIn, onClose }: AccountModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [providers, setProviders] = useState<SocialProvider[]>([]);
+  const [resetNotice, setResetNotice] = useState<string | null>(null);
 
   // A deployment with no OAuth credentials configured gets no buttons —
   // see the backend's SocialProviders::enabled.
@@ -103,6 +104,32 @@ export function AccountModal({ onSignedIn, onClose }: AccountModalProps) {
           {submitting && <Loader2 size={14} className="cs-spin" />}
           {mode === "login" ? "Sign in" : "Create account"}
         </button>
+
+        {mode === "login" && (
+          <button
+            type="button"
+            data-testid="forgot-password"
+            onClick={() => {
+              if (!email.trim()) {
+                setError("Enter your email address first, then choose 'Forgot password'.");
+                return;
+              }
+              setError(null);
+              requestPasswordReset(email.trim())
+                .then(setResetNotice)
+                .catch(() => setResetNotice("If that address has an account, we've sent a reset link."));
+            }}
+            style={{ background: "none", border: "none", color: "var(--cs-text-muted)", fontSize: 12, cursor: "pointer", padding: 0 }}
+          >
+            Forgot password?
+          </button>
+        )}
+
+        {resetNotice && (
+          <p style={{ fontSize: 12, color: "var(--cs-text-muted)", margin: 0 }} data-testid="reset-notice">
+            {resetNotice}
+          </p>
+        )}
 
         <button
           type="button"

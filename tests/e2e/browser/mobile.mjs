@@ -3,7 +3,7 @@
 import { chromium } from "playwright";
 import { reporter, EDITOR, SHOT_DIR } from "./helpers.mjs";
 
-const { check, finish } = reporter();
+const { check, fail, finish } = reporter();
 const browser = await chromium.launch();
 
 const phone = async () => {
@@ -34,7 +34,9 @@ try {
   check("so are the app's bottom tabs", true, (navBox?.height ?? 0) >= 44);
 
   console.log("== the toolbar scrolls rather than eating the canvas ==");
-  const toolbar = await page.getByTestId("toolbar").evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth, height: el.getBoundingClientRect().height }));
+  const toolbar = await page
+    .getByTestId("toolbar")
+    .evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth, height: el.getBoundingClientRect().height }));
   check("it overflows horizontally", true, toolbar.scroll > toolbar.client);
   check("and stays one row tall", true, toolbar.height < 120);
   const lastTool = page.getByRole("button", { name: /Export/ });
@@ -81,13 +83,16 @@ try {
   check("no sheet switcher", 0, await wide.getByTestId("editor-sheet-tabs").count());
   check("the properties panel is a column", true, await wide.getByTestId("properties-panel").isVisible());
   const wideButtons = await wide.locator(".cs-btn").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
-  check("a mouse-driven window keeps compact buttons", true, wideButtons.some((h) => h < 40));
+  check(
+    "a mouse-driven window keeps compact buttons",
+    true,
+    wideButtons.some((h) => h < 40),
+  );
   await wide.screenshot({ path: `${SHOT_DIR}/m3-editor-desktop.png` });
 } catch (e) {
-  console.log("  FAIL  threw:", e.message);
-  process.exitCode = 1;
+  fail(`threw: ${e.message}`);
 } finally {
   await browser.close();
 }
 
-process.exit(finish() === 0 && !process.exitCode ? 0 : 1);
+process.exit(finish() === 0 ? 0 : 1);

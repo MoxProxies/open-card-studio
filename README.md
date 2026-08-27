@@ -1387,6 +1387,36 @@ The linking rules are covered by `backend/tests/Feature/SocialAuthTest.php`
 with a mocked provider — including the takeover case — since a live OAuth
 round-trip can't be part of every run.
 
+### Transactional email (Brevo)
+
+Two emails: **verify your address** and **reset your password**. Both go
+out over Brevo's SMTP relay, configured entirely through `.env` (see
+`backend/.env.example`) — Laravel's own mail stack, no SDK. `MAIL_MAILER`
+defaults to `log`, so a dev box writes the email to `storage/logs`
+instead of mailing a real person.
+
+- Links are **signed and expiring** (`URL::temporarySignedRoute`, 60
+  minutes) — verification carries a hash of the address it was issued
+  for, so it stops working if the address changes.
+- **Forgot-password answers identically whether or not the account
+  exists.** A different response is a membership oracle.
+- Completing a reset **revokes every token**, since the likeliest reason
+  to reset is that someone else has one.
+- Sending is **best-effort at registration**: a Brevo outage must not
+  fail a signup. The account exists unverified and can ask again.
+- The two routes have **separate rate limits** — requesting a reset is
+  mail sent to an address the caller names (3/min per email+IP), while
+  completing one needs a valid single-use token (10/min per IP). Sharing
+  a bucket meant asking for a reset could use up your ability to finish
+  one.
+
+Verification is not yet enforced anywhere: an unverified account is
+prompted on its profile but nothing is gated on it. Gate what should be
+gated when there's a reason to.
+
+`php artisan auth:reset-link <email>` prints the link an operator (or a
+test) needs without going through mail at all.
+
 ## Accounts & profiles
 
 Every account has a **username** (the public handle a profile is
@@ -2094,10 +2124,14 @@ on the `.sh`) — override either if your layout differs.
 
 ## Tests
 
-396 end-to-end checks in `tests/e2e/` — curl against a running backend,
-Playwright against the running editor. No unit tests: every bug that
-actually shipped here was one reading the diff missed and running the app
+434 end-to-end checks in `tests/e2e/` — curl against a running backend,
+Playwright against the running editor. That's the default here: every bug
+that actually shipped was one reading the diff missed and running the app
 caught.
+
+The exception is `backend/tests/Feature/` (23 PHPUnit tests), for the
+handful of things a live run can't honestly prove — an OAuth provider
+lying about a verified email, or an email actually being queued.
 
 ```sh
 pnpm test:e2e            # boots its own backend + editor, runs everything
@@ -2110,8 +2144,8 @@ whatever `pnpm dev:editor` left running — see
 [`tests/e2e/README.md`](tests/e2e/README.md) for why, and for the two
 assertion rules worth knowing before adding more.
 
-CI (`.github/workflows/ci.yml`) runs typecheck + build in one job and the
-full suite in another, on every PR.
+CI (`.github/workflows/ci.yml`) runs typecheck + build, PHPUnit, and the
+full e2e suite as three jobs on every PR.
 
 ## Not built yet
 

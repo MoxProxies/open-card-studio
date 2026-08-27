@@ -3,6 +3,7 @@ import { LogIn, LogOut, User } from "lucide-react";
 import { App } from "../App";
 import { AccountModal } from "../components/AccountModal";
 import { ProfileModal } from "../components/ProfileModal";
+import { ResetPasswordModal } from "../components/ResetPasswordModal";
 import { consumeSocialRedirect, getCurrentUser, logout, restoreSession, subscribe } from "../api/auth";
 import { apiDesignStorage } from "../api/apiDesignStorage";
 import { localStorageDesignStorage, setActiveDesignStorage } from "../designStorage";
@@ -42,6 +43,8 @@ export function AppShell() {
   const [showSignIn, setShowSignIn] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [resetting, setResetting] = useState<{ token: string; email: string } | null>(null);
 
   useEffect(() => {
     syncFromLocation();
@@ -56,15 +59,52 @@ export function AppShell() {
   // Coming back from a provider: the token rides in the URL fragment and
   // is claimed (and scrubbed from the address bar) before anything else
   // reads the session. See api/auth.ts's consumeSocialRedirect.
+  // A reset link lands as #/reset-password?token=…&email=…, an email
+  // confirmation bounces back as #verify=ok|invalid, and a provider
+  // sign-in as #token=…. All three are read here.
+  //
+  // On mount *and* on hashchange: clicking one of those links with the
+  // app already open in that tab is a same-document navigation, so a
+  // mount-only listener would let the hash change and nothing happen.
   useEffect(() => {
-    const { error } = consumeSocialRedirect();
-    if (error) {
-      setAuthError(
-        error === "email_unverified"
-          ? "That provider couldn't confirm your email address, and an account here already uses it. Sign in with your password instead."
-          : "Sign-in was cancelled or the provider refused. Nothing has changed."
-      );
-    }
+    const handleAuthHash = () => {
+      const hash = window.location.hash;
+      const scrub = () => window.history.replaceState(null, "", window.location.pathname + window.location.search);
+
+      const reset = /^#\/reset-password\?(.*)$/.exec(hash);
+      if (reset) {
+        const params = new URLSearchParams(reset[1]);
+        const token = params.get("token");
+        const email = params.get("email");
+        scrub();
+        if (token && email) setResetting({ token, email });
+        return;
+      }
+
+      if (hash.includes("verify=")) {
+        const ok = hash.includes("verify=ok");
+        scrub();
+        setAuthNotice(ok ? "Email address confirmed." : null);
+        setAuthError(ok ? null : "That confirmation link has expired or is no longer valid. Sign in and request a new one.");
+        return;
+      }
+
+      const { error } = consumeSocialRedirect();
+      if (error) {
+        setAuthError(
+          error === "email_unverified"
+            ? "That provider couldn't confirm your email address, and an account here already uses it. Sign in with your password instead."
+            : "Sign-in was cancelled or the provider refused. Nothing has changed.",
+        );
+      }
+    };
+
+    handleAuthHash();
+    window.addEventListener("hashchange", handleAuthHash);
+    return () => window.removeEventListener("hashchange", handleAuthHash);
+  }, []);
+
+  useEffect(() => {
     restoreSession();
   }, []);
 
@@ -135,10 +175,38 @@ export function AppShell() {
         )}
       </main>
 
+      {authNotice && (
+        <div
+          data-testid="auth-notice"
+          style={{
+            padding: "10px 16px",
+            background: "var(--cs-accent-soft)",
+            color: "var(--cs-accent)",
+            fontSize: 13,
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
+          <span style={{ flex: 1 }}>{authNotice}</span>
+          <button className="cs-icon-btn" onClick={() => setAuthNotice(null)} title="Dismiss">
+            ×
+          </button>
+        </div>
+      )}
+
       {authError && (
         <div
           data-testid="auth-error"
-          style={{ padding: "10px 16px", background: "var(--cs-danger-soft)", color: "var(--cs-danger)", fontSize: 13, display: "flex", gap: 8, alignItems: "center" }}
+          style={{
+            padding: "10px 16px",
+            background: "var(--cs-danger-soft)",
+            color: "var(--cs-danger)",
+            fontSize: 13,
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+          }}
         >
           <span style={{ flex: 1 }}>{authError}</span>
           <button className="cs-icon-btn" onClick={() => setAuthError(null)} title="Dismiss">
@@ -156,6 +224,18 @@ export function AppShell() {
             navigate({ tab: "profile" });
           }}
           onClose={() => setShowSignIn(false)}
+        />
+      )}
+
+      {resetting && (
+        <ResetPasswordModal
+          token={resetting.token}
+          email={resetting.email}
+          onDone={() => {
+            setResetting(null);
+            setShowSignIn(true);
+          }}
+          onClose={() => setResetting(null)}
         />
       )}
 

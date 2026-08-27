@@ -1,15 +1,14 @@
 // Phase 4 in a real browser: one like button across content types, points
 // and levels appearing on a profile, badges, and the featured shelf.
 import { chromium } from "playwright";
-import { reporter, openApp, go, signUp, fetchJson, me as whoami, addFrame, publishTemplate, API, SHOT_DIR } from "./helpers.mjs";
+import { reporter, openApp, go, signUp, fetchJson, me as whoami, addFrame, publishTemplate, toggleLike, API, SHOT_DIR } from "./helpers.mjs";
 
 const stamp = Date.now();
 const TEMPLATE = `Liked Layout ${stamp}`;
-const { check, finish } = reporter();
+const { check, fail, finish } = reporter();
 
 const browser = await chromium.launch();
 const author = await openApp(browser);
-
 
 try {
   await signUp(author, "Aut Hor", `aut${stamp}@example.com`);
@@ -22,18 +21,18 @@ try {
   check("shows zero points", true, (await author.getByTestId("profile-points").innerText()).startsWith("0 points"));
   check("no badges yet", 0, await author.getByTestId("profile-badge").count());
   await author.screenshot({ path: `${SHOT_DIR}/g1-new-profile.png` });
-  
+
   console.log("== publishing a template earns points and a badge ==");
   await addFrame(author);
   await publishTemplate(author, TEMPLATE);
-  
+
   await go(author, "profile");
   await author.getByTestId("profile-stats").waitFor();
   check("points went up on publishing", true, (await author.getByTestId("profile-points").innerText()).startsWith("10 points"));
   check("earned a badge for it", 1, await author.getByTestId("profile-badge").count());
   check("the badge is the template one", true, (await author.getByTestId("profile-badges").innerText()).includes("Template Author"));
   await author.screenshot({ path: `${SHOT_DIR}/g2-after-publish.png` });
-  
+
   console.log("== a fan likes it from the gallery ==");
   const fan = await openApp(browser);
   await go(fan, "templates");
@@ -46,8 +45,7 @@ try {
   await go(fan, "templates");
   await fan.getByTestId("template-search").fill(TEMPLATE);
   await row().waitFor();
-  await row().getByTestId("reaction-button").click();
-  await fan.waitForFunction(() => document.querySelector("[data-testid='reaction-button'][data-reacted='true']") !== null);
+  await toggleLike(row(), true);
   check("liking updates the count", "1", await row().getByTestId("reaction-count").innerText());
   check("and marks it reacted", "true", await row().getByTestId("reaction-button").getAttribute("data-reacted"));
   await fan.screenshot({ path: `${SHOT_DIR}/g3-liked.png` });
@@ -55,12 +53,10 @@ try {
   check("the author earned a point for it", 11, (await fetchJson(fan, `/api/users/${me.username}`)).stats.points);
 
   console.log("== unliking removes the like but not the point ==");
-  await row().getByTestId("reaction-button").click();
-  await fan.waitForFunction(() => document.querySelector("[data-testid='reaction-button'][data-reacted='false']") !== null);
+  await toggleLike(row(), false);
   check("count back to zero", "0", await row().getByTestId("reaction-count").innerText());
   check("the author keeps the point", 11, (await fetchJson(fan, `/api/users/${me.username}`)).stats.points);
-  await row().getByTestId("reaction-button").click();
-  await fan.waitForTimeout(400);
+  await toggleLike(row(), true);
   check("re-liking doesn't re-award", 11, (await fetchJson(fan, `/api/users/${me.username}`)).stats.points);
 
   console.log("== the like survives a reload (it's not just local state) ==");
@@ -85,7 +81,7 @@ try {
   // From 11 to 32: publish a design (+2), a collection (+5) and a second
   // template (+10), the fan uses the first template (+2) and likes the
   // design and the collection (+1 each). Level 2 starts at 25.
-    await go(author, "library");
+  await go(author, "library");
   await author.getByPlaceholder("Design name").fill(`Card ${stamp}`);
   await author.getByRole("button", { name: "Save" }).click();
   await author.locator("[data-testid='saved-design-row']").first().waitFor();
@@ -97,9 +93,9 @@ try {
   await author.getByTestId("collection-detail").waitFor();
   await author.getByTestId("collection-detail-visibility").selectOption("published");
   await author.waitForTimeout(500);
-  
+
   await publishTemplate(author, `Second Layout ${stamp}`);
-  
+
   await row().getByTestId("template-use").click();
   await fan.waitForTimeout(900);
   const owned = await fetchJson(fan, `/api/users/${me.username}`);
@@ -113,7 +109,7 @@ try {
           body: JSON.stringify({ type, id }),
         });
       },
-      { api: API, type, id }
+      { api: API, type, id },
     );
   for (const d of owned.designs) await react("design", d.id);
   for (const c of owned.collections) await react("collection", c.id);
@@ -136,11 +132,10 @@ try {
   console.log("== the featured shelf is public ==");
   check("a stranger sees the shelf", 1, (await fetchJson(fan, `/api/users/${me.username}`)).featured.length);
 } catch (e) {
-  console.log("  FAIL  threw:", e.message);
+  fail(`threw: ${e.message}`);
   await author.screenshot({ path: `${SHOT_DIR}/g99-failure.png` }).catch(() => {});
-  process.exitCode = 1;
 } finally {
   await browser.close();
 }
 
-process.exit(finish() === 0 && !process.exitCode ? 0 : 1);
+process.exit(finish() === 0 ? 0 : 1);

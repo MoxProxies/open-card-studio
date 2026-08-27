@@ -5,7 +5,7 @@ import { reporter, openApp, go, signUp, fetchJson, addFrame, publishTemplate, AP
 
 const stamp = Date.now();
 const TEMPLATE_NAME = `E2E Woodgrain ${stamp}`;
-const { check, finish } = reporter();
+const { check, fail, finish } = reporter();
 
 const browser = await chromium.launch();
 const page = await openApp(browser);
@@ -120,7 +120,11 @@ try {
   await mine.getByTestId("template-row-visibility").selectOption("private");
   await page.waitForTimeout(500);
   const afterUnpublish = await fetchJson(page, "/api/templates/browse");
-  check("unpublishing removes it from the public gallery", undefined, afterUnpublish.find((r) => r.name === TEMPLATE_NAME));
+  check(
+    "unpublishing removes it from the public gallery",
+    undefined,
+    afterUnpublish.find((r) => r.name === TEMPLATE_NAME),
+  );
   check("but it stays in My templates", 1, await page.locator("[data-testid='template-row']").count());
   await shot("09-unpublished");
 
@@ -130,11 +134,10 @@ try {
   await go(page, "design");
   check("the design made from it is untouched", 2, await layerRows().count());
 } catch (e) {
-  console.log("  FAIL  threw:", e.message);
+  fail(`threw: ${e.message}`);
   await shot("99-failure").catch(() => {});
-  process.exitCode = 1;
 } finally {
   await browser.close();
 }
 
-process.exit(finish() === 0 && !process.exitCode ? 0 : 1);
+process.exit(finish() === 0 ? 0 : 1);

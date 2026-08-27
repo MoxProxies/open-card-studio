@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Http\Request;
 use App\Support\SocialProviders;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
@@ -19,6 +20,11 @@ use Illuminate\Validation\ValidationException;
  */
 class AuthController extends Controller
 {
+    /** Failed sign-ins tolerated per email+IP before refusing outright. */
+    private const MAX_LOGIN_ATTEMPTS = 5;
+
+    private const LOGIN_DECAY_SECONDS = 60;
+
     public function register(Request $request)
     {
         $data = $request->validate([
@@ -44,6 +50,10 @@ class AuthController extends Controller
             'username' => $data['username'] ?? static::generateUsername($data['name']),
         ]);
 
+        // Best-effort — see EmailController::dispatchVerification for why
+        // a mail outage must not fail the registration.
+        EmailController::dispatchVerification($user);
+
         return response()->json([
             'user' => static::withEmail($user),
             'token' => $user->createToken('api')->plainTextToken,
@@ -56,6 +66,18 @@ class AuthController extends Controller
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ]);
+
+        // Rate limited here rather than by middleware so that only *failed*
+        // attempts count. Middleware counts every request, which punishes
+        // someone signing in on their third device as if they were guessing
+        // — and a successful password is not an attack signal. Keyed on
+        // email+IP: keying on IP alone lets one attacker behind a NAT lock
+        // out everyone sharing the address.
+        $throttleKey = mb_strtolower($data['email']).'|'.$request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_LOGIN_ATTEMPTS)) {
+            abort(429, 'Too many sign-in attempts. Try again in '.RateLimiter::availableIn($throttleKey).' seconds.');
+        }
 
         $user = User::where('email', $data['email'])->first();
 
@@ -71,10 +93,16 @@ class AuthController extends Controller
         }
 
         if (! $user || ! Hash::check($data['password'], $user->password)) {
+            RateLimiter::hit($throttleKey, self::LOGIN_DECAY_SECONDS);
+
             throw ValidationException::withMessages([
                 'email' => ['These credentials do not match our records.'],
             ]);
         }
+
+        // Cleared on success: a correct password ends the streak rather
+        // than leaving the account half-locked for the rest of the window.
+        RateLimiter::clear($throttleKey);
 
         abort_if($user->moderation_state === User::SUSPENDED, 403, 'This account is suspended.');
 

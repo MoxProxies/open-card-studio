@@ -1,6 +1,7 @@
 // Shared driving helpers for the e2e suites — the app is a shell with
 // tabs now, so "open the templates gallery" is a navigation, not a modal.
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 /** Where the two servers are. Overridable so CI (and anyone running these
@@ -14,8 +15,7 @@ export const API = process.env.E2E_API_URL ?? "http://127.0.0.1:8000";
  * failure, not artefacts to keep. */
 export const SHOT_DIR = process.env.SHOT_DIR ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../screenshots");
 
-export const ARTISAN =
-  process.env.E2E_ARTISAN ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../backend/artisan");
+export const ARTISAN = process.env.E2E_ARTISAN ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../backend/artisan");
 
 export function reporter() {
   const results = [];
@@ -25,6 +25,12 @@ export function reporter() {
       const ok = JSON.stringify(expected) === JSON.stringify(actual);
       results.push(ok);
       console.log(`  ${ok ? "PASS" : "FAIL"}  ${label}${ok ? "" : ` — expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`}`);
+    },
+    /** Records a failure without an expected/actual pair — for a suite
+     * that threw before it could assert anything. */
+    fail(label) {
+      results.push(false);
+      console.log(`  FAIL  ${label}`);
     },
     finish() {
       const failed = results.filter((r) => !r).length;
@@ -78,11 +84,14 @@ export const statusOf = (page, path) =>
 
 /** The status of a GET as the page's signed-in account, uncached. */
 export const statusAs = (page, path) =>
-  page.evaluate(async ({ api, path }) => {
-    const token = localStorage.getItem("card-studio:auth-token:v1");
-    const res = await fetch(`${api}${path}`, { cache: "no-store", headers: { Accept: "application/json", Authorization: `Bearer ${token}` } });
-    return res.status;
-  }, { api: API, path });
+  page.evaluate(
+    async ({ api, path }) => {
+      const token = localStorage.getItem("card-studio:auth-token:v1");
+      const res = await fetch(`${api}${path}`, { cache: "no-store", headers: { Accept: "application/json", Authorization: `Bearer ${token}` } });
+      return res.status;
+    },
+    { api: API, path },
+  );
 
 /** An authenticated fetch from inside the page, using its stored token. */
 export const fetchAs = (page, path, init = {}) =>
@@ -97,7 +106,7 @@ export const fetchAs = (page, path, init = {}) =>
       });
       return res.json();
     },
-    { api: API, path, init }
+    { api: API, path, init },
   );
 
 export const me = (page) => fetchAs(page, "/api/auth/me");
@@ -127,4 +136,43 @@ export async function publishTemplate(page, name, visibility = "published") {
   await page.getByTestId("template-visibility").selectOption(visibility);
   await page.getByTestId("template-save-submit").click();
   await page.locator(`[data-testid='template-row']:has-text("${name}")`).waitFor();
+}
+
+/**
+ * The reset link the email would carry, via the same support command an
+ * operator would use (`php artisan auth:reset-link`). Delivery is Brevo's
+ * job; the link itself is ours, so it's what gets tested.
+ *
+ * Deliberately not a `tinker --execute` one-liner: that returns a PHP
+ * error message on stdout when anything is off, which then travels
+ * downstream as a "token" and fails somewhere unrelated.
+ */
+export function resetLinkFor(email) {
+  const out = execFileSync("php", [ARTISAN, "auth:reset-link", email]).toString().trim();
+  const link = out
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.includes("#/reset-password?token="))
+    .pop();
+
+  if (!link) throw new Error(`auth:reset-link produced no link for ${email}: ${out}`);
+
+  return link;
+}
+
+/**
+ * Likes/unlikes within `scope` (a row locator or a page) and waits for the
+ * request to actually settle on `expected`.
+ *
+ * Not just a click: ReactionButton is optimistic, so `data-reacted` flips
+ * before the round trip — waiting on it alone lets a reload abort the
+ * in-flight request, and lets the *next* click land while the component's
+ * busy guard is still swallowing clicks. Waiting for data-busy="false"
+ * with the expected data-reacted means the server answered and the
+ * component took that answer.
+ */
+export async function toggleLike(scope, expected) {
+  await scope.locator("[data-testid='reaction-button'][data-busy='false']").waitFor();
+  await scope.getByTestId("reaction-button").click();
+  await scope.locator(`[data-testid='reaction-button'][data-busy='false'][data-reacted='${expected}']`).waitFor();
 }

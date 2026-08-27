@@ -6,7 +6,7 @@ import { reporter, openApp, go, signUp, fetchJson, fetchAs, me, SHOT_DIR } from 
 const EDITOR = "http://localhost:4173/";
 const API = "http://127.0.0.1:8000";
 const stamp = Date.now();
-const { check, finish } = reporter();
+const { check, fail, finish } = reporter();
 
 const browser = await chromium.launch();
 const page = await openApp(browser);
@@ -26,9 +26,12 @@ try {
   console.log("== signed out, collections explain themselves ==");
   await go(page, "library");
   await page.getByTestId("tab-collections").click();
-  check("signed-out collections tab prompts a sign-in", true, (await page.getByTestId("tab-collections").locator("xpath=ancestor::*[@data-testid='design-library' or self::div][1]").count()) >= 0);
+  check(
+    "signed-out collections tab prompts a sign-in",
+    true,
+    (await page.getByTestId("tab-collections").locator("xpath=ancestor::*[@data-testid='design-library' or self::div][1]").count()) >= 0,
+  );
   check("no collections list while signed out", 0, await page.getByTestId("collections-list").count());
-  
 
   console.log("== sign up and save two designs ==");
   await signUp(page, "Bin Der", `bin${stamp}@example.com`);
@@ -74,7 +77,6 @@ try {
   await page.getByTestId("collection-detail-visibility").selectOption("published");
   await page.waitForTimeout(500);
   await shot("c2-published-collection");
-  
 
   const account = await me(page);
   const profile = await fetchJson(page, `/api/users/${account.username}`);
@@ -105,11 +107,10 @@ try {
   await page.getByTestId("tab-designs").click();
   check("but not the designs that were in it", 2, await page.locator("[data-testid='saved-design-row']").count());
 } catch (e) {
-  console.log("  FAIL  threw:", e.message);
+  fail(`threw: ${e.message}`);
   await shot("c99-failure").catch(() => {});
-  process.exitCode = 1;
 } finally {
   await browser.close();
 }
 
-process.exit(finish() === 0 && !process.exitCode ? 0 : 1);
+process.exit(finish() === 0 ? 0 : 1);

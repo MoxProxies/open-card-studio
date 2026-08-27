@@ -1,19 +1,22 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BadgeController;
 use App\Http\Controllers\Api\CardDesignController;
 use App\Http\Controllers\Api\CollectionController;
-use App\Http\Controllers\Api\BadgeController;
-use App\Http\Controllers\Api\FeatureController;
 use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\EmailController;
+use App\Http\Controllers\Api\FeatureController;
 use App\Http\Controllers\Api\ModerationController;
 use App\Http\Controllers\Api\PluginController;
 use App\Http\Controllers\Api\PostController;
-use App\Http\Controllers\Api\ReactionController;
-use App\Http\Controllers\Api\SocialAuthController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ReactionController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SocialAuthController;
 use App\Http\Controllers\Api\TemplateController;
+use App\Http\Middleware\BlockSuspendedUsers;
+use App\Http\Middleware\EnsureStaff;
 use Illuminate\Support\Facades\Route;
 
 // Throttled: these are the endpoints worth brute-forcing, and the cost of
@@ -21,12 +24,28 @@ use Illuminate\Support\Facades\Route;
 // AppServiceProvider — login is keyed by email *and* IP so one attacker
 // can't lock out everyone behind the same NAT.
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:register');
-Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+// login has no throttle middleware on purpose — AuthController::login
+// rate-limits failures only, so signing in successfully on a third device
+// isn't treated like guessing.
+Route::post('/auth/login', [AuthController::class, 'login']);
 
 // Social sign-in. `providers` is public because the sign-in screen asks
 // which buttons to draw before anyone has signed in; `start` and
 // `callback` 404 for a provider this deployment hasn't configured.
 Route::get('/auth/providers', [SocialAuthController::class, 'providers']);
+
+// Password reset. Throttled hard: this endpoint sends mail to an address
+// the caller names, so an unthrottled one is a spam cannon pointed at
+// whoever they like. It always answers the same way — see
+// EmailController on not leaking whether an address is registered.
+Route::post('/auth/password/forgot', [EmailController::class, 'forgotPassword'])->middleware('throttle:password-forgot');
+Route::post('/auth/password/reset', [EmailController::class, 'resetPassword'])->middleware('throttle:password-reset');
+
+// The confirmation link's target. Signed by Laravel rather than carrying
+// a token of ours, so clicking it is the whole interaction.
+Route::get('/auth/email/verify/{id}/{hash}', [EmailController::class, 'verify'])
+    ->middleware('signed')
+    ->name('verification.verify');
 Route::middleware('throttle:social')->group(function () {
     Route::post('/auth/{provider}/start', [SocialAuthController::class, 'start']);
     Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback']);
@@ -69,9 +88,10 @@ Route::get('/posts/{slug}/comments', [CommentController::class, 'index']);
 
 // BlockSuspendedUsers on the whole authenticated group: a suspension has
 // to stop the account doing anything, not just hide its profile.
-Route::middleware(['auth:sanctum', \App\Http\Middleware\BlockSuspendedUsers::class])->group(function () {
+Route::middleware(['auth:sanctum', BlockSuspendedUsers::class])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::post('/auth/logout-everywhere', [AuthController::class, 'logoutEverywhere']);
+    Route::post('/auth/email/verify/send', [EmailController::class, 'sendVerification'])->middleware('throttle:5,1');
     Route::get('/auth/me', [AuthController::class, 'me']);
 
     // PUT, not POST+PATCH: the frontend always already has an id (a
@@ -119,7 +139,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BlockSuspendedUsers::cla
 
     // Staff only, and EnsureStaff 404s for everyone else so the surface
     // isn't discoverable — see that middleware.
-    Route::middleware(\App\Http\Middleware\EnsureStaff::class)->prefix('moderation')->group(function () {
+    Route::middleware(EnsureStaff::class)->prefix('moderation')->group(function () {
         Route::get('/reports', [ModerationController::class, 'reports']);
         Route::post('/reports/{id}', [ModerationController::class, 'resolveReport']);
         Route::post('/takedown', [ModerationController::class, 'takedown']);

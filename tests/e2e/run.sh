@@ -26,9 +26,19 @@ EDITOR_URL="${E2E_EDITOR_URL:-http://localhost:$WEB_PORT/}"
 OWN_API=0
 OWN_WEB=0
 
+# Kills the whole process group, not just the job we started: `pnpm dev`
+# spawns vite and `artisan serve` spawns php -S, so killing the wrapper
+# leaves the actual server holding the port — which the next run then
+# refuses to start against.
+stop_group() {
+  [ -n "${1:-}" ] || return 0
+  kill -- "-$1" 2>/dev/null || kill "$1" 2>/dev/null
+  return 0
+}
+
 cleanup() {
-  [ "$OWN_API" = "1" ] && [ -n "${API_PID:-}" ] && kill "$API_PID" 2>/dev/null
-  [ "$OWN_WEB" = "1" ] && [ -n "${WEB_PID:-}" ] && kill "$WEB_PID" 2>/dev/null
+  [ "$OWN_API" = "1" ] && stop_group "${API_PID:-}"
+  [ "$OWN_WEB" = "1" ] && stop_group "${WEB_PID:-}"
   return 0
 }
 trap cleanup EXIT
@@ -43,6 +53,24 @@ wait_for() { # wait_for <url> <label>
   return 1
 }
 
+# A server already on our port is not ours: it has a different database
+# and, more subtly, a different CORS origin — which surfaces as browser
+# suites failing on requests rather than as anything that names the real
+# cause. Refuse rather than reuse.
+port_busy() { curl -sf -o /dev/null --max-time 2 "$1" 2>/dev/null; }
+
+if [ -z "${E2E_API_URL:-}" ] && port_busy "http://127.0.0.1:$API_PORT/up"; then
+  echo "!! Something is already listening on :$API_PORT. It isn't this run's server," >&2
+  echo "   so it has the wrong database and CORS origin. Stop it, or set" >&2
+  echo "   E2E_API_URL to use it deliberately." >&2
+  exit 1
+fi
+
+if [ "$WHICH" != "api" ] && [ -z "${E2E_EDITOR_URL:-}" ] && port_busy "http://localhost:$WEB_PORT/"; then
+  echo "!! Something is already listening on :$WEB_PORT. Stop it, or set E2E_EDITOR_URL." >&2
+  exit 1
+fi
+
 if [ -z "${E2E_API_URL:-}" ]; then
   OWN_API=1
   echo "== backend on :$API_PORT (fresh database) =="
@@ -55,8 +83,13 @@ if [ -z "${E2E_API_URL:-}" ]; then
   # The editor's origin has to be allowed or every browser suite fails on
   # CORS instead of on anything real.
   export CORS_ALLOWED_ORIGINS="http://localhost:$WEB_PORT,http://127.0.0.1:$WEB_PORT"
+  # The links in password-reset emails, and the allowlist social sign-in
+  # returns tokens to, are both built from this — so it has to be the
+  # editor this run actually started, not the dev default.
+  export FRONTEND_URLS="http://localhost:$WEB_PORT"
   (cd "$ROOT/backend" && php artisan migrate --force --no-interaction) >"$LOGS/backend.log" 2>&1
-  (cd "$ROOT/backend" && php artisan serve --host=127.0.0.1 --port="$API_PORT") >>"$LOGS/backend.log" 2>&1 &
+  # setsid so the server gets its own process group for stop_group above.
+  setsid bash -c "cd '$ROOT/backend' && exec php artisan serve --host=127.0.0.1 --port=$API_PORT" >>"$LOGS/backend.log" 2>&1 &
   API_PID=$!
 fi
 
@@ -65,7 +98,7 @@ if [ "$WHICH" != "api" ] && [ -z "${E2E_EDITOR_URL:-}" ]; then
   echo "== editor on :$WEB_PORT =="
   # VITE_API_BASE_URL points the app at the backend above rather than the
   # dev default, so the two halves of a run always match.
-  (cd "$ROOT" && VITE_API_BASE_URL="$API_URL" pnpm --filter @card-studio/editor dev --port "$WEB_PORT" --strictPort) >"$LOGS/editor.log" 2>&1 &
+  setsid bash -c "cd '$ROOT' && VITE_API_BASE_URL='$API_URL' exec pnpm --filter @card-studio/editor dev --port $WEB_PORT --strictPort" >"$LOGS/editor.log" 2>&1 &
   WEB_PID=$!
 fi
 
@@ -80,7 +113,9 @@ run() { # run <label> <command...>
   local output summary
   output="$("${@:2}" 2>&1)"
   summary="$(echo "$output" | grep -E '^== [0-9]+ passed' | tail -1)"
-  if [ -z "$summary" ] || echo "$summary" | grep -qv ', 0 failed'; then
+  # "0 passed, 0 failed" means the suite threw before asserting anything —
+  # treat a suite that ran no checks as broken, not as passing.
+  if [ -z "$summary" ] || echo "$summary" | grep -qv ', 0 failed' || echo "$summary" | grep -q '^== 0 passed'; then
     echo "FAILED ${summary:-(no summary — suite crashed)}"
     echo "$output" | grep -E 'FAIL|Error|error:' | head -20 | sed 's/^/    /'
     failed=1

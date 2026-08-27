@@ -6,7 +6,7 @@ import { reporter, openApp, go, signUp, fetchJson, me, addFrame, publishTemplate
 const stamp = Date.now();
 const HANDLE = `nib-${stamp}`;
 const TEMPLATE_NAME = `Profile Template ${stamp}`;
-const { check, finish } = reporter();
+const { check, fail, finish } = reporter();
 
 const browser = await chromium.launch();
 const page = await openApp(browser);
@@ -108,11 +108,10 @@ try {
   await page.getByTestId("profile-templates").waitFor();
   check("no report button on your own profile", 0, await page.getByTestId("report-user").count());
 } catch (e) {
-  console.log("  FAIL  threw:", e.message);
+  fail(`threw: ${e.message}`);
   await shot("p99-failure").catch(() => {});
-  process.exitCode = 1;
 } finally {
   await browser.close();
 }
 
-process.exit(finish() === 0 && !process.exitCode ? 0 : 1);
+process.exit(finish() === 0 ? 0 : 1);

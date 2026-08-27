@@ -10,7 +10,12 @@ import { getCurrentUser } from "../api/auth";
  * one component, N content types.
  *
  * Optimistic: the count moves immediately and rolls back if the request
- * fails, because a like that waits on a round-trip feels broken.
+ * fails, because a like that waits on a round-trip feels broken. That
+ * makes `data-reacted` say nothing about what actually reached the
+ * server, and the `busy` guard below silently drops a second click while
+ * the first is in flight — so `data-busy` is on the element too, as the
+ * only outside signal that a toggle has settled (see helpers.mjs's
+ * toggleLike).
  */
 export function ReactionButton({
   type,
@@ -56,6 +61,7 @@ export function ReactionButton({
       disabled={!signedIn}
       data-testid="reaction-button"
       data-reacted={state.reacted}
+      data-busy={busy}
       title={signedIn ? (state.reacted ? "Remove your like" : "Like this") : "Sign in to like this"}
       style={{ gap: 4, width: "auto", padding: "0 6px" }}
     >

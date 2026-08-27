@@ -1,11 +1,11 @@
 // Phase 5 in a real browser: write a guide, publish it, read it as
 // someone else, comment, and check the markdown renders safely.
 import { chromium } from "playwright";
-import { reporter, openApp, go, signUp, fetchJson, me as whoami, SHOT_DIR } from "./helpers.mjs";
+import { reporter, openApp, go, signUp, fetchJson, me as whoami, toggleLike, SHOT_DIR } from "./helpers.mjs";
 
 const stamp = Date.now();
 const TITLE = `Cutting cards at home ${stamp}`;
-const { check, finish } = reporter();
+const { check, fail, finish } = reporter();
 
 const BODY = [
   "# What you'll need",
@@ -90,8 +90,7 @@ try {
   const row = reader.locator(`[data-testid='guide-row']:has-text("${TITLE}")`);
   await row.waitFor();
   check("the guide is in the public index", 1, await reader.locator("[data-testid='guide-row']").count());
-  await row.getByTestId("reaction-button").click();
-  await reader.waitForFunction(() => document.querySelector("[data-testid='reaction-button'][data-reacted='true']") !== null);
+  await toggleLike(row, true);
   check("liking a guide works from the index", "1", await row.getByTestId("reaction-count").innerText());
 
   await row.click();
@@ -118,7 +117,11 @@ try {
   const profile = await fetchJson(author, `/api/users/${account.username}`);
   check("published guides show on the profile", 1, profile.posts.filter((p) => p.title === TITLE).length);
   check("publishing a guide earned points", true, profile.stats.points >= 15);
-  check("and the knowledge badge", true, profile.badges.some((b) => b.id === "first-post"));
+  check(
+    "and the knowledge badge",
+    true,
+    profile.badges.some((b) => b.id === "first-post"),
+  );
 
   console.log("== a draft stays private ==");
   await go(author, "guides");
@@ -135,11 +138,10 @@ try {
   check("but shows in My guides", true, (await author.getByTestId("page-guides").innerText()).includes("Secret draft"));
   await shot("k5-my-guides");
 } catch (e) {
-  console.log("  FAIL  threw:", e.message);
+  fail(`threw: ${e.message}`);
   await shot("k99-failure").catch(() => {});
-  process.exitCode = 1;
 } finally {
   await browser.close();
 }
 
-process.exit(finish() === 0 && !process.exitCode ? 0 : 1);
+process.exit(finish() === 0 ? 0 : 1);

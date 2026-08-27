@@ -21,26 +21,30 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Named limits for the endpoints worth attacking.
+     * Named limits for the endpoints worth attacking. Login isn't here:
+     * it limits *failed* attempts only, which middleware can't express,
+     * so it does its own counting — see AuthController::login.
      *
-     * Login is keyed by **email and IP together**, not by IP alone. IP
-     * alone is worse in both directions: it lets one attacker behind a
-     * NAT lock out everyone else sharing that address, and it does
-     * nothing about a distributed attempt on one account. Keying on the
-     * pair limits the thing actually being guessed.
-     *
-     * Registration stays per-IP but loose — tight enough to stop mass
+     * Registration is per-IP but loose — tight enough to stop mass
      * signup, loose enough that an office, a mobile carrier's NAT, or a
      * test suite creating accounts isn't locked out.
      */
     private function configureRateLimiters(): void
     {
-        RateLimiter::for('login', fn (Request $request) => [
-            Limit::perMinute(5)->by(mb_strtolower((string) $request->input('email')).'|'.$request->ip()),
-        ]);
-
         RateLimiter::for('register', fn (Request $request) => Limit::perMinute(30)->by($request->ip()));
 
         RateLimiter::for('social', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
+
+        // Asking for a reset sends mail to an address the caller names, so
+        // it's tight — but keyed by email+IP, or one person requesting a
+        // couple of resets would block everyone behind the same address.
+        RateLimiter::for('password-forgot', fn (Request $request) => Limit::perMinute(3)
+            ->by(mb_strtolower((string) $request->input('email')).'|'.$request->ip()));
+
+        // *Completing* a reset needs a valid single-use token, so it isn't
+        // the same abuse surface — and sharing one bucket with the request
+        // above meant asking for a reset could use up your ability to
+        // finish one.
+        RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
     }
 }

@@ -10,6 +10,9 @@ export interface AuthUser {
   username: string;
   bio: string | null;
   avatar_url: string | null;
+  /** Null until the address is confirmed. Social accounts arrive verified
+   * — the provider already proved it. */
+  email_verified_at?: string | null;
   /** Staff see the moderation destination. Presentation only — the
    * moderation API 404s for everyone else regardless. */
   is_staff?: boolean;
@@ -130,6 +133,28 @@ export async function logoutEverywhere(): Promise<number> {
   setToken(null);
   setUser(null);
   return sessions_ended;
+}
+
+/** Starts a password reset. Always resolves — the backend answers
+ * identically whether or not the address has an account, and the UI must
+ * not imply otherwise. */
+export async function requestPasswordReset(email: string): Promise<string> {
+  const { message } = await api.post<{ message: string }>("/api/auth/password/forgot", { email });
+  return message;
+}
+
+export async function resetPassword(input: { token: string; email: string; password: string }): Promise<string> {
+  const { message } = await api.post<{ message: string }>("/api/auth/password/reset", {
+    ...input,
+    password_confirmation: input.password,
+  });
+  return message;
+}
+
+/** Re-sends the confirmation email to the signed-in account. */
+export async function resendVerification(): Promise<string> {
+  const { message } = await api.post<{ message: string }>("/api/auth/email/verify/send");
+  return message;
 }
 
 export async function register(name: string, email: string, password: string): Promise<AuthUser> {

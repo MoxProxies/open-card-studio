@@ -3,21 +3,15 @@
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
 import { ARTISAN, SHOT_DIR } from "./helpers.mjs";
-import { reporter, openApp, go, signUp, fetchJson, fetchAs, statusOf, statusAs, me as whoami, addFrame, publishTemplate } from "./helpers.mjs";
+import { reporter, openApp, go, signUp, fetchJson, fetchAs, statusOf, statusAs, me as whoami, addFrame, publishTemplate, toggleLike } from "./helpers.mjs";
 
 const stamp = Date.now();
 const TEMPLATE = `Dodgy Layout ${stamp}`;
-const { check, finish } = reporter();
+const { check, fail, finish } = reporter();
 
 /** Promote an account the way a founder would — is_staff is deliberately
  * not mass-assignable, so this assigns it directly. */
-const promote = (id) =>
-  execFileSync("php", [
-    ARTISAN,
-    "tinker",
-    "--execute",
-    `$u = App\\Models\\User::find(${id}); $u->is_staff = true; $u->save();`,
-  ]);
+const promote = (id) => execFileSync("php", [ARTISAN, "tinker", "--execute", `$u = App\\Models\\User::find(${id}); $u->is_staff = true; $u->save();`]);
 
 const browser = await chromium.launch();
 
@@ -35,8 +29,7 @@ try {
   await reader.getByTestId("template-search").fill(TEMPLATE);
   const row = reader.locator(`[data-testid='template-row']:has-text("${TEMPLATE}")`);
   await row.waitFor();
-  await row.getByTestId("reaction-button").click();
-  await reader.waitForTimeout(400);
+  await toggleLike(row, true);
   await row.getByTestId("template-report").click();
   await reader.getByTestId("report-reason").selectOption("infringement");
   await reader.getByTestId("report-details").fill("That's my artwork.");
@@ -100,7 +93,9 @@ try {
   console.log("== suspending an account ==");
   await go(reader, "profile");
   await reader.waitForTimeout(400);
-  const userReportId = (await fetchAs(reader, "/api/reports", { method: "POST", body: { type: "user", id: String(authorAccount.id), reason: "impersonation" } })).id;
+  const userReportId = (
+    await fetchAs(reader, "/api/reports", { method: "POST", body: { type: "user", id: String(authorAccount.id), reason: "impersonation" } })
+  ).id;
 
   await go(staff, "moderation");
   await staff.getByTestId("mod-state").selectOption("open");
@@ -140,10 +135,9 @@ try {
   const stillThere = await fetchJson(staff, "/api/templates/browse");
   check("but the template is untouched", 1, stillThere.filter((t) => t.name === template2).length);
 } catch (e) {
-  console.log("  FAIL  threw:", e.message);
-  process.exitCode = 1;
+  fail(`threw: ${e.message}`);
 } finally {
   await browser.close();
 }
 
-process.exit(finish() === 0 && !process.exitCode ? 0 : 1);
+process.exit(finish() === 0 ? 0 : 1);

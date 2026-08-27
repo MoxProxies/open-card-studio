@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Loader2, LogOut } from "lucide-react";
+import { Loader2, LogOut, MailWarning } from "lucide-react";
 import { apiErrorMessage } from "../api/client";
-import { logoutEverywhere, setCurrentUser, type AuthUser } from "../api/auth";
+import { logoutEverywhere, resendVerification, setCurrentUser, type AuthUser } from "../api/auth";
 import { updateProfile } from "../api/profiles";
 import { Modal } from "./Modal";
 
@@ -24,6 +24,7 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [verifyNotice, setVerifyNotice] = useState<string | null>(null);
 
   const submit = async () => {
     setSaving(true);
@@ -59,6 +60,32 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16 }}>
+        {/* Social accounts arrive verified — the provider already proved
+            the address — so this only appears for password signups. */}
+        {!user.email_verified_at && (
+          <div
+            data-testid="unverified-email"
+            style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 10px", borderRadius: 8, background: "var(--cs-accent-soft)", fontSize: 12 }}
+          >
+            <MailWarning size={16} style={{ flex: "none" }} />
+            <span style={{ flex: 1 }}>{verifyNotice ?? `${user.email} isn't confirmed yet.`}</span>
+            {!verifyNotice && (
+              <button
+                type="button"
+                className="cs-btn"
+                data-testid="resend-verification"
+                onClick={() =>
+                  void resendVerification()
+                    .then(setVerifyNotice)
+                    .catch(() => setVerifyNotice("Couldn't send that — try again shortly."))
+                }
+              >
+                Resend
+              </button>
+            )}
+          </div>
+        )}
+
         <label style={field}>
           Display name
           <input className="cs-input" value={name} onChange={(e) => setName(e.target.value)} data-testid="profile-name" />
