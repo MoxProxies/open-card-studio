@@ -10,13 +10,27 @@ use App\Http\Controllers\Api\ModerationController;
 use App\Http\Controllers\Api\PluginController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ReactionController;
+use App\Http\Controllers\Api\SocialAuthController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TemplateController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/auth/register', [AuthController::class, 'register']);
-Route::post('/auth/login', [AuthController::class, 'login']);
+// Throttled: these are the endpoints worth brute-forcing, and the cost of
+// a wrong guess should not be zero. The limits are defined in
+// AppServiceProvider — login is keyed by email *and* IP so one attacker
+// can't lock out everyone behind the same NAT.
+Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:register');
+Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+
+// Social sign-in. `providers` is public because the sign-in screen asks
+// which buttons to draw before anyone has signed in; `start` and
+// `callback` 404 for a provider this deployment hasn't configured.
+Route::get('/auth/providers', [SocialAuthController::class, 'providers']);
+Route::middleware('throttle:social')->group(function () {
+    Route::post('/auth/{provider}/start', [SocialAuthController::class, 'start']);
+    Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback']);
+});
 
 // The plugin registry is public — it's a discovery index, not user data;
 // an app should be able to show "available plugins" before login.
@@ -57,6 +71,7 @@ Route::get('/posts/{slug}/comments', [CommentController::class, 'index']);
 // to stop the account doing anything, not just hide its profile.
 Route::middleware(['auth:sanctum', \App\Http\Middleware\BlockSuspendedUsers::class])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::post('/auth/logout-everywhere', [AuthController::class, 'logoutEverywhere']);
     Route::get('/auth/me', [AuthController::class, 'me']);
 
     // PUT, not POST+PATCH: the frontend always already has an id (a

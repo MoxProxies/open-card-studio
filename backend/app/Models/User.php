@@ -76,6 +76,19 @@ class User extends Authenticatable
         return $this->hasMany(Post::class);
     }
 
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(SocialAccount::class);
+    }
+
+    /** False for an account created through a provider that has never set
+     * one — password sign-in is refused with a message that says so
+     * rather than a generic "wrong credentials". */
+    public function hasPassword(): bool
+    {
+        return $this->password !== null;
+    }
+
     public function pointEvents(): HasMany
     {
         return $this->hasMany(PointEvent::class);

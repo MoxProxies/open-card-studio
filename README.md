@@ -1347,6 +1347,46 @@ to your profile, above a configured level and up to a configured count.
 Profile responses carry `stats`, `badges` and `featured`; listings carry
 `reaction_count` and `reacted`.
 
+## Authentication
+
+Email + password, or **sign in with Google / GitHub**. A provider is
+enabled *by being configured* — no client id, no button and no working
+route (`config/services.php`, `App\Support\SocialProviders`), so a
+half-configured provider never appears as an option that dead-ends.
+
+The OAuth flow has to work for a bearer-token API with no session, and
+four things in it are load-bearing:
+
+- **The return URL is allowlisted** (`FRONTEND_URLS`). Unchecked, the
+  callback is an open redirect that hands a valid token to any host.
+- **The token comes back in the URL fragment**, not the query — a
+  fragment isn't sent to servers and doesn't reach access logs or a
+  `Referer`. The app claims it and scrubs it from history immediately.
+- **State is a single-use server-side nonce.** Socialite's own state
+  lives in a session this API doesn't have, so `stateless()` is required
+  — which means replacing the CSRF protection, not dropping it.
+- **An existing account is only linked by email when the provider
+  verified it.** Otherwise anyone who can set an unverified address at a
+  provider could sign in as that user. Google reports `email_verified`;
+  GitHub only returns a primary address it has verified. An unknown
+  provider counts as unverified.
+
+A social-only account has `password = null` — password sign-in then says
+*"this account signs in with Google"* rather than "wrong credentials",
+because otherwise you're guessing at a password that was never set.
+
+**Hardening.** Passwords need letters and numbers, not just 8 characters
+(`12345678` passes a bare length check and is among the first guesses
+anyone makes). Login is rate-limited **by email *and* IP** — by IP alone,
+one attacker behind a NAT locks out everyone sharing that address, and it
+does nothing about a distributed attempt on one account. "Sign out
+everywhere" revokes every token, which is the only way to end a session
+you aren't holding.
+
+The linking rules are covered by `backend/tests/Feature/SocialAuthTest.php`
+with a mocked provider — including the takeover case — since a live OAuth
+round-trip can't be part of every run.
+
 ## Accounts & profiles
 
 Every account has a **username** (the public handle a profile is

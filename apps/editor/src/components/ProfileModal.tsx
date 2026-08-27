@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, LogOut } from "lucide-react";
 import { apiErrorMessage } from "../api/client";
-import { setCurrentUser, type AuthUser } from "../api/auth";
+import { logoutEverywhere, setCurrentUser, type AuthUser } from "../api/auth";
 import { updateProfile } from "../api/profiles";
 import { Modal } from "./Modal";
 
@@ -94,6 +94,26 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
           <input className="cs-input" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://…" data-testid="profile-avatar" />
           <span style={{ fontSize: 11 }}>An https link to an image — there's no upload yet.</span>
         </label>
+
+        <hr style={{ border: "none", borderTop: "1px solid var(--cs-border)", margin: "4px 0" }} />
+
+        {/* The only way to end a session you aren't currently holding —
+            what you want after losing a device. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <button
+            type="button"
+            className="cs-btn"
+            style={{ alignSelf: "flex-start" }}
+            data-testid="sign-out-everywhere"
+            onClick={() => {
+              if (!window.confirm("Sign out of every device? You'll need to sign in again everywhere, including here.")) return;
+              void logoutEverywhere().then(onClose);
+            }}
+          >
+            <LogOut size={14} /> Sign out everywhere
+          </button>
+          <span style={{ fontSize: 11 }}>Ends every signed-in session on every device.</span>
+        </div>
 
         {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
         {saved && !error && (

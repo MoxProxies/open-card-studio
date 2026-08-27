@@ -68,6 +68,70 @@ export function subscribe(listener: Listener): () => void {
   return () => listeners.delete(listener);
 }
 
+export interface SocialProvider {
+  id: string;
+  label: string;
+}
+
+/** Which providers this deployment has configured. Empty is normal — an
+ * install with no OAuth credentials simply shows no buttons. */
+export async function loadSocialProviders(): Promise<SocialProvider[]> {
+  try {
+    return await api.get<SocialProvider[]>("/api/auth/providers");
+  } catch {
+    // A sign-in form that can still take an email and password is better
+    // than one that errors because an optional extra didn't load.
+    return [];
+  }
+}
+
+/**
+ * Hands the browser to the provider. `redirect_uri` is where the backend
+ * sends us back, and it has to be one of that deployment's allowlisted
+ * frontend URLs — origin only, no path, so a deep link doesn't have to be
+ * separately allowlisted.
+ */
+export async function startSocialSignIn(provider: string): Promise<void> {
+  const { url } = await api.post<{ url: string }>(`/api/auth/${provider}/start`, { redirect_uri: window.location.origin });
+  window.location.assign(url);
+}
+
+/**
+ * Picks a token out of the URL fragment after a provider round-trip, and
+ * scrubs it from the address bar and from history.
+ *
+ * The fragment is where the backend puts it precisely because fragments
+ * aren't sent to servers — but it would still sit in the URL bar and in
+ * the back stack, so it gets removed immediately. Returns an error code
+ * when the provider or the backend refused (a denied consent screen, an
+ * unverifiable email).
+ */
+export function consumeSocialRedirect(): { token?: string; error?: string } {
+  const hash = window.location.hash.replace(/^#/, "");
+  if (!hash) return {};
+
+  const params = new URLSearchParams(hash);
+  const token = params.get("token");
+  const error = params.get("error");
+  if (!token && !error) return {};
+
+  // replaceState, not pushState: the URL carrying a token should not be
+  // somewhere the back button can return to.
+  window.history.replaceState(null, "", window.location.pathname + window.location.search);
+
+  if (token) setToken(token);
+
+  return { token: token ?? undefined, error: error ?? undefined };
+}
+
+/** Ends every session this account has, not just this browser's. */
+export async function logoutEverywhere(): Promise<number> {
+  const { sessions_ended } = await api.post<{ sessions_ended: number }>("/api/auth/logout-everywhere");
+  setToken(null);
+  setUser(null);
+  return sessions_ended;
+}
+
 export async function register(name: string, email: string, password: string): Promise<AuthUser> {
   const { user, token } = await api.post<AuthResponse>("/api/auth/register", { name, email, password });
   setToken(token);

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { login, register } from "../api/auth";
+import { login, loadSocialProviders, register, startSocialSignIn, type SocialProvider } from "../api/auth";
 import { apiErrorMessage } from "../api/client";
 import { Modal } from "./Modal";
 
@@ -22,6 +22,13 @@ export function AccountModal({ onSignedIn, onClose }: AccountModalProps) {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [providers, setProviders] = useState<SocialProvider[]>([]);
+
+  // A deployment with no OAuth credentials configured gets no buttons —
+  // see the backend's SocialProviders::enabled.
+  useEffect(() => {
+    loadSocialProviders().then(setProviders);
+  }, []);
 
   const submit = async () => {
     setSubmitting(true);
@@ -43,6 +50,33 @@ export function AccountModal({ onSignedIn, onClose }: AccountModalProps) {
   return (
     <Modal title={mode === "login" ? "Sign in" : "Create account"} onClose={onClose} width="min(360px, 92vw)" onSubmit={() => void submit()}>
       <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+        {providers.length > 0 && (
+          <>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }} data-testid="social-providers">
+              {providers.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="cs-btn"
+                  style={{ justifyContent: "center" }}
+                  data-testid={`social-${p.id}`}
+                  onClick={() => {
+                    setError(null);
+                    startSocialSignIn(p.id).catch(() => setError(`Couldn't start sign-in with ${p.label}. Try again in a moment.`));
+                  }}
+                >
+                  Continue with {p.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--cs-text-muted)", fontSize: 11 }}>
+              <span style={{ flex: 1, height: 1, background: "var(--cs-border)" }} />
+              or
+              <span style={{ flex: 1, height: 1, background: "var(--cs-border)" }} />
+            </div>
+          </>
+        )}
+
         {mode === "register" && <input className="cs-input" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />}
         <input
           className="cs-input"

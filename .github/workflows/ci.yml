@@ -28,6 +28,34 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm --filter @card-studio/editor build
 
+  php:
+    name: PHP tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: sqlite3, pdo_sqlite, mbstring
+          coverage: none
+      - name: Cache composer packages
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-dev-${{ hashFiles('backend/composer.lock') }}
+      - name: Install backend dependencies
+        working-directory: backend
+        # With dev dependencies this time — phpunit is one of them.
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Prepare the backend
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Run the PHP tests
+        working-directory: backend
+        run: ./vendor/bin/phpunit --testdox
+
   e2e:
     name: End-to-end
     runs-on: ubuntu-latest

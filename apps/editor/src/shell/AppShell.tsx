@@ -3,7 +3,7 @@ import { LogIn, LogOut, User } from "lucide-react";
 import { App } from "../App";
 import { AccountModal } from "../components/AccountModal";
 import { ProfileModal } from "../components/ProfileModal";
-import { getCurrentUser, logout, restoreSession, subscribe } from "../api/auth";
+import { consumeSocialRedirect, getCurrentUser, logout, restoreSession, subscribe } from "../api/auth";
 import { apiDesignStorage } from "../api/apiDesignStorage";
 import { localStorageDesignStorage, setActiveDesignStorage } from "../designStorage";
 import { useIsNarrow } from "../hooks/useIsNarrow";
@@ -41,6 +41,7 @@ export function AppShell() {
   const user = useSyncExternalStore(subscribe, getCurrentUser);
   const [showSignIn, setShowSignIn] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     syncFromLocation();
@@ -52,7 +53,18 @@ export function AppShell() {
     };
   }, []);
 
+  // Coming back from a provider: the token rides in the URL fragment and
+  // is claimed (and scrubbed from the address bar) before anything else
+  // reads the session. See api/auth.ts's consumeSocialRedirect.
   useEffect(() => {
+    const { error } = consumeSocialRedirect();
+    if (error) {
+      setAuthError(
+        error === "email_unverified"
+          ? "That provider couldn't confirm your email address, and an account here already uses it. Sign in with your password instead."
+          : "Sign-in was cancelled or the provider refused. Nothing has changed."
+      );
+    }
     restoreSession();
   }, []);
 
@@ -122,6 +134,18 @@ export function AppShell() {
           </div>
         )}
       </main>
+
+      {authError && (
+        <div
+          data-testid="auth-error"
+          style={{ padding: "10px 16px", background: "var(--cs-danger-soft)", color: "var(--cs-danger)", fontSize: 13, display: "flex", gap: 8, alignItems: "center" }}
+        >
+          <span style={{ flex: 1 }}>{authError}</span>
+          <button className="cs-icon-btn" onClick={() => setAuthError(null)} title="Dismiss">
+            ×
+          </button>
+        </div>
+      )}
 
       {narrow && <BottomTabs />}
 

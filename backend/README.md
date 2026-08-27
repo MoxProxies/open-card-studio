@@ -18,7 +18,7 @@ php artisan serve          # dev server
 php artisan migrate:fresh  # drop + re-run all migrations
 php artisan route:list     # see every registered route
 ./vendor/bin/pint          # code style
-./vendor/bin/phpunit       # tests (none written yet — see root README)
+./vendor/bin/phpunit       # PHP tests (tests/Feature)
 ```
 
 ## Layout
@@ -38,6 +38,10 @@ php artisan route:list     # see every registered route
 - `config/knowledge_base.php` — knowledge-base categories.
 - `app/Http/Middleware/` — `EnsureStaff` (404s for non-staff),
   `BlockSuspendedUsers`.
+- `app/Support/SocialProviders.php` + `config/services.php` — which OAuth
+  providers this deployment offers.
+- `tests/Feature/` — PHP tests for logic a live provider can't be asked
+  to prove on every run (social account linking).
 - `config/plugins.php` — the plugin discovery registry `GET /api/plugins`
   serves.
 - `database/migrations/` — `users`/`sessions`/`cache`/`jobs` are
