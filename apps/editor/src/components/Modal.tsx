@@ -13,7 +13,11 @@ interface ModalProps {
   footer?: ReactNode;
   /** Panel width; anything valid for CSS `width`. */
   width?: string;
-  /** Renders the panel as a <form> — submit fires this instead of a click handler. */
+  /** Renders the panel as a <form> — submit fires this instead of a click
+   * handler. Don't pass it on a modal opened from *inside* another
+   * form-based modal: nested forms are invalid HTML, and the browser
+   * drops the inner one, so the button ends up submitting the dialog
+   * underneath. */
   onSubmit?: () => void;
   /** False blocks Escape, the backdrop click, and the X (AiArtModal mid-generation). */
   dismissable?: boolean;

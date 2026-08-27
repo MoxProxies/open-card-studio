@@ -81,6 +81,12 @@ class User extends Authenticatable
         return $this->hasMany(SocialAccount::class);
     }
 
+    /** Comments this account has written, on anyone's content. */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
+
     /** Appeals this account has filed against its own suspension. */
     public function appeals(): HasMany
     {

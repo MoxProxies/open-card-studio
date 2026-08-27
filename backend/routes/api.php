@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AppealController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BadgeController;
@@ -101,6 +102,12 @@ Route::middleware('auth:sanctum')->group(function () {
 // account doing anything, not just hide its profile.
 Route::middleware(['auth:sanctum', BlockSuspendedUsers::class])->group(function () {
     Route::post('/auth/logout-everywhere', [AuthController::class, 'logoutEverywhere']);
+
+    // Data rights (see AccountController). The export walks every table
+    // this account touches, so it's throttled; deleting re-authenticates
+    // in the controller rather than relying on the session alone.
+    Route::get('/account/export', [AccountController::class, 'export'])->middleware('throttle:5,60');
+    Route::delete('/account', [AccountController::class, 'destroy']);
     // The account's own live tokens, and revoking one of them. Scoped to
     // $request->user()'s tokens in the controller, so an id from another
     // account 404s rather than revoking someone else's session.

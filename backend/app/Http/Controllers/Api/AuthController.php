@@ -224,9 +224,14 @@ class AuthController extends Controller
      * profile (see User::toPublicProfile). These three endpoints are the
      * account talking to itself about itself, so it comes back here.
      */
-    private static function withEmail(User $user): User
+    private static function withEmail(User $user): array
     {
-        return $user->makeVisible('email');
+        // An array rather than the model: `has_password` is computed, and
+        // appending it to the model would follow it into every other
+        // place a User gets serialized — including relations loaded
+        // without the password column, where it would answer "no"
+        // incorrectly.
+        return $user->makeVisible('email')->toArray() + ['has_password' => $user->hasPassword()];
     }
 
     /** A free, URL-safe handle derived from the display name — `ada-lovelace`,

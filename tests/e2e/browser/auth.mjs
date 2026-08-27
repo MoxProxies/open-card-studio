@@ -1,7 +1,8 @@
 // Authentication in a real browser: the sign-in dialog's extras, the
 // unconfirmed-email prompt, and the password-reset link end to end.
 import { chromium } from "playwright";
-import { reporter, openApp, go, signUp, signIn, statusAs, me as whoami, resetLinkFor, SHOT_DIR, EDITOR } from "./helpers.mjs";
+import { readFile } from "node:fs/promises";
+import { reporter, openApp, go, signUp, signIn, statusAs, me as whoami, resetLinkFor, API, SHOT_DIR, EDITOR } from "./helpers.mjs";
 
 const stamp = Date.now();
 const EMAIL = `authui${stamp}@example.com`;
@@ -62,6 +63,28 @@ try {
   check("while this one still works", 200, await statusAs(page, "/api/auth/me"));
   await page.keyboard.press("Escape");
 
+  console.log("== data rights ==");
+  await page.getByTestId("account-button").click();
+  const download = page.waitForEvent("download");
+  await page.getByTestId("export-data").click();
+  const file = await download;
+  check("the export downloads as a file", true, file.suggestedFilename().startsWith("open-card-studio-export"));
+  const exported = JSON.parse(await readFile(await file.path(), "utf8"));
+  check("and contains this account", EMAIL, exported.account.email);
+  check("with every section present", true, ["designs", "templates", "collections", "posts", "comments", "appeals"].every((k) => k in exported));
+  await page.getByTestId("export-notice").waitFor();
+
+  await page.getByTestId("delete-account-open").click();
+  await page.getByTestId("delete-account").waitFor();
+  check("deleting asks for the password", 1, await page.getByTestId("delete-account-confirmation").count());
+  await page.getByTestId("delete-account-confirmation").fill("not-the-password");
+  await page.getByTestId("delete-account-confirm").click();
+  await page.waitForTimeout(600);
+  check("a wrong password is refused", true, (await page.getByTestId("delete-account").innerText()).includes("incorrect"));
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  check("and the account survives it", 200, await statusAs(page, "/api/auth/me"));
+
   console.log("== the reset link opens a form and changes the password ==");
   const link = resetLinkFor(EMAIL);
   const fresh = await openApp(browser);
@@ -88,6 +111,24 @@ try {
   await fresh.getByTestId("account-button").waitFor();
   check("the new password signs in", true, await fresh.getByTestId("account-button").isVisible());
   await fresh.screenshot({ path: `${SHOT_DIR}/a4-signed-in-again.png` });
+
+  console.log("== and the account can be closed for good ==");
+  await fresh.getByTestId("account-button").click();
+  await fresh.getByTestId("delete-account-open").click();
+  await fresh.getByTestId("delete-account-confirmation").fill("brandnew123");
+  await fresh.getByTestId("delete-account-confirm").click();
+  await fresh.getByTestId("sign-in").waitFor();
+  check("deleting signs you out", 1, await fresh.getByTestId("sign-in").count());
+  const signInStatus = await fresh.evaluate(
+    ({ api, email }) =>
+      fetch(`${api}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ email, password: "brandnew123" }),
+      }).then((r) => r.status),
+    { api: API, email: EMAIL }
+  );
+  check("and the address can't sign in any more", 422, signInStatus);
 } catch (e) {
   fail(`threw: ${e.message}`);
 } finally {

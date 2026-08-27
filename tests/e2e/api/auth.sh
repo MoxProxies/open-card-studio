@@ -88,6 +88,30 @@ check "hammering one address starts returning 429" "True" "$(echo "$codes" | gre
 check "a different account still signs in from the same IP" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/login "${J[@]}" -d "{\"email\":\"ok$S@example.com\",\"password\":\"brandnew123\"}")"
 check "and registration is unaffected" 201 "$(reg "after$S" "password123")"
 
+echo "== taking your data with you, and closing the account =="
+DA=$(curl -s -X POST $BASE/api/auth/register "${J[@]}" -d "{\"name\":\"Lea Ving\",\"email\":\"leave$S@example.com\",\"password\":\"password123\"}")
+TOKD=$(echo "$DA" | jqr "d['token']"); DUSER=$(echo "$DA" | jqr "d['user']['username']")
+AD=(-H "Authorization: Bearer $TOKD")
+DESIGN='{"schemaVersion":1,"id":"x","name":"n","size":{"widthMm":69,"heightMm":94,"cutWidthMm":63,"cutHeightMm":88,"safeWidthMm":57,"safeHeightMm":82},"layers":[],"groups":[],"backgroundColor":"#fff","sourceCardDesignId":null}'
+DID=$(python3 -c "import uuid;print(uuid.uuid4())")
+curl -s -o /dev/null -X PUT $BASE/api/card-designs/$DID "${AD[@]}" "${J[@]}" -d "{\"name\":\"Keepsake $S\",\"design\":$DESIGN}"
+curl -s -o /tmp/export.json -D /tmp/export.headers $BASE/api/account/export "${AD[@]}" -H 'Accept: application/json'
+check "the export includes the account" "leave$S@example.com" "$(cat /tmp/export.json | jqr "d['account']['email']")"
+check "and the designs it owns" "Keepsake $S" "$(cat /tmp/export.json | jqr "d['designs'][0]['name']")"
+check "with the design blob itself, not a summary" "True" "$(cat /tmp/export.json | jqr "str('layers' in d['designs'][0]['design'])")"
+check "every section is present" "True" "$(cat /tmp/export.json | jqr "str({'templates','collections','posts','comments','reactions','point_events','badges','reports_you_filed','appeals','moderation_actions_about_you'} <= set(d))")"
+check "it downloads as a file" "True" "$(grep -qi 'content-disposition: attachment' /tmp/export.headers && echo True || echo False)"
+check "and needs an account" 401 "$(curl -s -o /dev/null -w '%{http_code}' $BASE/api/account/export -H 'Accept: application/json')"
+check "deleting needs the password" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE $BASE/api/account "${AD[@]}" "${J[@]}" -d '{}')"
+check "and the right one" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE $BASE/api/account "${AD[@]}" "${J[@]}" -d '{"password":"notmypassword1"}')"
+check "the account still exists after a wrong guess" 200 "$(curl -s -o /dev/null -w '%{http_code}' $BASE/api/auth/me "${AD[@]}" -H 'Accept: application/json')"
+check "deleting works with it" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE $BASE/api/account "${AD[@]}" "${J[@]}" -d '{"password":"password123"}')"
+check "the token dies with the account" 401 "$(curl -s -o /dev/null -w '%{http_code}' $BASE/api/auth/me "${AD[@]}" -H 'Accept: application/json')"
+check "the profile is gone" 404 "$(curl -s -o /dev/null -w '%{http_code}' $BASE/api/users/$DUSER -H 'Accept: application/json')"
+check "signing in again is impossible" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/login "${J[@]}" -d "{\"email\":\"leave$S@example.com\",\"password\":\"password123\"}")"
+check "and their designs went with them" 0 "$("$ARTISAN" tinker --execute="echo App\Models\CardDesign::where('name','Keepsake $S')->count();" | tail -1)"
+check "the address can be reused" 201 "$(reg "leave$S" "password123")"
+
 echo
 echo "== $pass passed, $fail failed =="
 [ "$fail" -eq 0 ]

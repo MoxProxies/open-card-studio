@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Loader2, LogOut, MailWarning } from "lucide-react";
+import { Download, Loader2, LogOut, MailWarning, Trash2 } from "lucide-react";
 import { apiErrorMessage } from "../api/client";
 import { logoutEverywhere, resendVerification, setCurrentUser, type AuthUser } from "../api/auth";
 import { updateProfile } from "../api/profiles";
 import { AccountSessions } from "./AccountSessions";
+import { DeleteAccountModal } from "./DeleteAccountModal";
+import { downloadMyData } from "../api/account";
 import { Modal } from "./Modal";
 
 interface ProfileModalProps {
@@ -26,6 +28,8 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [verifyNotice, setVerifyNotice] = useState<string | null>(null);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const submit = async () => {
     setSaving(true);
@@ -147,6 +151,39 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
           </button>
           <span style={{ fontSize: 11 }}>Ends every signed-in session on every device.</span>
         </div>
+
+        <hr style={{ border: "none", borderTop: "1px solid var(--cs-border)", margin: "4px 0" }} />
+
+        {/* Your data, and the door out. Both are things a Terms of
+            Service will need to point at — see the vision doc's
+            constraints section. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span style={{ fontSize: 12, color: "var(--cs-text-muted)" }}>Your data</span>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="cs-btn"
+              data-testid="export-data"
+              onClick={() =>
+                void downloadMyData()
+                  .then((filename) => setExportNotice(`Saved ${filename}.`))
+                  .catch(() => setExportNotice("Couldn't build the export — try again shortly."))
+              }
+            >
+              <Download size={14} /> Download my data
+            </button>
+            <button type="button" className="cs-btn cs-danger" data-testid="delete-account-open" onClick={() => setConfirmingDelete(true)}>
+              <Trash2 size={14} /> Delete account
+            </button>
+          </div>
+          {exportNotice && (
+            <span style={{ fontSize: 11 }} data-testid="export-notice">
+              {exportNotice}
+            </span>
+          )}
+        </div>
+
+        {confirmingDelete && <DeleteAccountModal user={user} onClose={() => setConfirmingDelete(false)} />}
 
         {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
         {saved && !error && (

@@ -18,6 +18,9 @@ export interface AuthUser {
   is_staff?: boolean;
   /** "ok" or "suspended". Only ever on the account's own record. */
   moderation_state?: string;
+  /** False for an account created through a provider that never set a
+   * password — it confirms destructive actions by username instead. */
+  has_password?: boolean;
 }
 
 interface AuthResponse {

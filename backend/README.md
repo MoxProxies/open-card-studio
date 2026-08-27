@@ -32,7 +32,8 @@ php artisan auth:reset-link me@example.com   # a reset link, no mail sent
 - `app/Http/Controllers/Api/` — `AuthController`, `CardDesignController`,
   `TemplateController`, `CollectionController`, `ProfileController`,
   `ReportController`, `SocialAuthController`, `EmailController`,
-  `AppealController`, `PluginController`. The owned-content controllers share
+  `AppealController`, `AccountController` (export/delete),
+  `PluginController`. The owned-content controllers share
   `OwnedContentController` (publish/delete).
 - `routes/api.php` — the entire route list; there is no `web.php`, see
   `bootstrap/app.php`'s doc comment for why.

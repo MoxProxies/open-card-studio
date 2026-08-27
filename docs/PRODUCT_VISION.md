@@ -52,6 +52,9 @@ sharing things in it — they are not separate products bolted on the side.
   reasons, moderation states, audit trail, data export/deletion for
   account closure) in place so that when the legal text exists, there's
   somewhere for it to plug in — not to draft policy.
+  *(The hooks all exist now — report reasons, moderation states, the
+  audit trail, appeals, and account export/deletion. The legal text is
+  still the open item, and still a human's.)*
 
 ## The architectural centerpiece: templates reuse the existing lock model
 

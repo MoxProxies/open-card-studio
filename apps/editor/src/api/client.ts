@@ -74,5 +74,8 @@ export const api = {
   post: <T>(path: string, body?: unknown): Promise<T> => request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }),
   put: <T>(path: string, body: unknown): Promise<T> => request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown): Promise<T> => request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
-  delete: <T>(path: string): Promise<T> => request<T>(path, { method: "DELETE" }),
+  // DELETE takes an optional body: closing an account re-enters its
+  // password, and a password in a query string ends up in every access
+  // log between here and the server.
+  delete: <T>(path: string, body?: unknown): Promise<T> => request<T>(path, { method: "DELETE", body: body === undefined ? undefined : JSON.stringify(body) }),
 };

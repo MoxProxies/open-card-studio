@@ -1412,6 +1412,24 @@ The linking rules are covered by `backend/tests/Feature/SocialAuthTest.php`
 with a mocked provider — including the takeover case — since a live OAuth
 round-trip can't be part of every run.
 
+### Your data, and closing the account
+
+Two endpoints the vision doc asks for as hooks a Terms of Service can
+plug into later: `GET /api/account/export` returns everything the account
+owns as one JSON file (the raw rows, not the trimmed shapes served
+elsewhere — an export that quietly drops columns isn't an export), and
+`DELETE /api/account` closes it for good.
+
+Deleting **re-authenticates**: the password again, or, for a social-only
+account with none, typing your own username. A delete button that works
+from an unattended logged-in browser is a way to lose someone's work.
+Everything owned goes with it — published templates included, though
+designs already made from one keep working, since "new design from
+template" copies the layers at that moment. Anonymising instead of
+deleting is a product decision nobody has made. Staff accounts can't be
+deleted this way: their rows in `moderation_actions` would cascade and
+tear holes in the audit trail.
+
 ### Transactional email (Brevo)
 
 Two emails: **verify your address** and **reset your password**. Both go
@@ -2149,12 +2167,12 @@ on the `.sh`) — override either if your layout differs.
 
 ## Tests
 
-478 end-to-end checks in `tests/e2e/` — curl against a running backend,
+501 end-to-end checks in `tests/e2e/` — curl against a running backend,
 Playwright against the running editor. That's the default here: every bug
 that actually shipped was one reading the diff missed and running the app
 caught.
 
-The exception is `backend/tests/Feature/` (37 PHPUnit tests), for the
+The exception is `backend/tests/Feature/` (41 PHPUnit tests), for the
 handful of things a live run can't honestly prove — an OAuth provider
 lying about a verified email, an email actually being queued, or a token
 expiring thirty days from now.
