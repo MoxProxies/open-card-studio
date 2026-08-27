@@ -3,6 +3,8 @@ import { Save, FilePlus, FolderOpen, Trash2, Loader2 } from "lucide-react";
 import type { Design } from "@card-studio/scene-schema";
 import { designStorage, type DesignSummary } from "../designStorage";
 import { apiErrorMessage } from "../api/client";
+import { publishDesign } from "../api/apiDesignStorage";
+import { VISIBILITIES, VISIBILITY_LABELS, type Visibility } from "../visibility";
 import { Modal } from "./Modal";
 
 interface DesignLibraryModalProps {
@@ -91,6 +93,17 @@ export function DesignLibraryModal({ design, onRename, onSave, onNew, onLoad, on
     }
   };
 
+  const handleVisibility = async (id: string, visibility: Visibility, e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    setActionError(null);
+    try {
+      await publishDesign(id, visibility);
+      setSummaries((current) => current.map((s) => (s.id === id ? { ...s, visibility } : s)));
+    } catch (err) {
+      setActionError(apiErrorMessage(err, "Couldn't change that design's visibility."));
+    }
+  };
+
   const handleNew = () => {
     if (!window.confirm("Start a new blank design? Any unsaved changes to the current one will be lost.")) return;
     onNew();
@@ -155,6 +168,25 @@ export function DesignLibraryModal({ design, onRename, onSave, onNew, onLoad, on
                   </div>
                   <div style={{ fontSize: 11, color: "var(--cs-text-muted)" }}>{new Date(s.updatedAt).toLocaleString()}</div>
                 </div>
+                {/* Only when signed in: a localStorage design has nowhere
+                    to be published to (see DesignSummary.visibility). */}
+                {s.visibility && (
+                  <select
+                    className="cs-input"
+                    value={s.visibility}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => void handleVisibility(s.id, e.target.value as Visibility, e)}
+                    style={{ width: 110, flex: "none" }}
+                    title="Who can see this design"
+                    data-testid="design-visibility"
+                  >
+                    {VISIBILITIES.map((v) => (
+                      <option key={v} value={v}>
+                        {VISIBILITY_LABELS[v]}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <button className="cs-icon-btn" title="Delete" onClick={(e) => void handleDelete(s.id, s.name, e)}>
                   <Trash2 size={13} />
                 </button>

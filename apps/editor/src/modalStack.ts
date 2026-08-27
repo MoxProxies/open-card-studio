@@ -1,32 +1,53 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 /**
- * How many modals are currently open. `useKeyboardShortcuts` checks this
- * and stands down while any dialog is up: with a modal open, Escape means
- * "close it", Delete means "delete the character I just typed", and arrow
- * keys mean "move the caret" — none of them should be reaching the canvas
- * to clear a selection, delete a layer, or nudge one.
+ * The open-modal stack. Two consumers:
  *
- * That isn't only a niceness fix. Escape used to be swallowed entirely the
- * first time it was pressed on a freshly-opened dialog: the shortcut
- * hook's clearSelection() ran first, the store update re-rendered the
- * toolbar synchronously, and the modal's own window listener got torn down
- * and re-added *during* the same event dispatch — and a listener removed
- * mid-dispatch never gets called. Not competing for the key at all is the
- * fix that can't come back.
+ * - `useKeyboardShortcuts` stands down entirely while anything is open:
+ *   with a dialog up, Escape means "close it", Delete means "delete the
+ *   character I just typed", and the arrow keys mean "move the caret" —
+ *   none of them should reach the canvas.
+ * - Each modal's own Escape handler checks it's the *topmost* before
+ *   closing, so one press on a dialog stacked over another (the report
+ *   dialog over a profile, save-as-template over the gallery) closes one
+ *   layer rather than both.
+ *
+ * The stack is read at event time rather than through React state on
+ * purpose. A modal re-subscribing its window listener on every render is
+ * what caused the original bug here: the shortcut hook's clearSelection()
+ * re-rendered the toolbar synchronously *during* the keydown dispatch,
+ * the listener was removed and re-added mid-dispatch, and a listener
+ * removed mid-dispatch is never called — so the first Escape on a freshly
+ * opened dialog did nothing at all.
  */
-let openCount = 0;
+const stack: number[] = [];
+let nextId = 1;
 
 export function isModalOpen(): boolean {
-  return openCount > 0;
+  return stack.length > 0;
 }
 
-/** Counts this modal as open for as long as it's mounted. */
-export function useRegisterModal(): void {
+function isTopmost(id: number): boolean {
+  return stack[stack.length - 1] === id;
+}
+
+/**
+ * Counts this modal as open while it's mounted, and returns a predicate
+ * for "am I the one on top right now" — stable across renders, so a
+ * listener can register once and still get a live answer.
+ */
+export function useRegisterModal(): () => boolean {
+  const idRef = useRef(0);
+  if (idRef.current === 0) idRef.current = nextId++;
+
   useEffect(() => {
-    openCount += 1;
+    const id = idRef.current;
+    stack.push(id);
     return () => {
-      openCount -= 1;
+      const at = stack.indexOf(id);
+      if (at !== -1) stack.splice(at, 1);
     };
   }, []);
+
+  return useRef(() => isTopmost(idRef.current)).current;
 }

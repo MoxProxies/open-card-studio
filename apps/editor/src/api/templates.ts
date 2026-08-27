@@ -1,14 +1,15 @@
 import { Design } from "@card-studio/scene-schema";
 import { api } from "./client";
+import type { Visibility } from "../visibility";
 
-/** private: only its author. unlisted: fetchable by id (a shared link) but
- * never listed. published: appears in the public gallery. Mirrors the
- * backend's `visibility` column exactly — see backend/'s
- * create_templates_table migration. */
-export type TemplateVisibility = "private" | "unlisted" | "published";
+/** Kept as a name for readability at call sites; the vocabulary itself is
+ * shared with designs — see ../visibility.ts. */
+export type TemplateVisibility = Visibility;
 
 export interface TemplateAuthor {
   id: number;
+  /** The public handle their profile is addressed by. */
+  username: string | null;
   /** Null only when the backend returned a row without its author eagerly
    * loaded — every endpoint here loads it, since attributing a community
    * template to the member who made it isn't optional (see
@@ -44,7 +45,7 @@ interface TemplateRow {
   usage_count: number;
   version: number;
   updated_at: string;
-  author: { id: number; name: string | null };
+  author: { id: number; name: string | null; username: string | null };
   design?: unknown;
 }
 

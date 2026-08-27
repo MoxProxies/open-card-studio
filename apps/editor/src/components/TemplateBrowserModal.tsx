@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useSyncExternalStore, type MouseEvent } from "react";
-import { Search, Loader2, Trash2, LayoutTemplate, Upload, Users } from "lucide-react";
+import { Search, Loader2, Trash2, LayoutTemplate, Upload, Users, Flag } from "lucide-react";
 import type { Design } from "@card-studio/scene-schema";
 import { apiErrorMessage } from "../api/client";
 import { Modal } from "./Modal";
@@ -15,7 +15,9 @@ import {
   type TemplateVisibility,
 } from "../api/templates";
 import { designFromTemplate } from "../cardTemplates";
+import { VISIBILITIES, VISIBILITY_LABELS } from "../visibility";
 import { SaveAsTemplateModal } from "./SaveAsTemplateModal";
+import { ReportModal } from "./ReportModal";
 
 interface TemplateBrowserModalProps {
   /** The design currently open in the editor — what "Save current design as template" publishes. */
@@ -23,16 +25,13 @@ interface TemplateBrowserModalProps {
   /** Hands back a brand-new Design cloned from the chosen template; the
    * caller loads it into the store (same contract as DesignLibraryModal's onLoad). */
   onUseTemplate: (design: Design) => void;
+  /** Opens an author's public profile — community templates are credited,
+   * and the credit has to lead somewhere. */
+  onViewProfile: (username: string) => void;
   onClose: () => void;
 }
 
 type Tab = "browse" | "mine";
-
-const VISIBILITY_LABEL: Record<TemplateVisibility, string> = {
-  private: "Private",
-  unlisted: "Unlisted",
-  published: "Published",
-};
 
 /**
  * The browse/pick half of Phase 1 (see docs/PRODUCT_VISION.md): the
@@ -48,7 +47,7 @@ const VISIBILITY_LABEL: Record<TemplateVisibility, string> = {
  * templates must never read as first-party or official (PRODUCT_VISION's
  * liability section).
  */
-export function TemplateBrowserModal({ design, onUseTemplate, onClose }: TemplateBrowserModalProps) {
+export function TemplateBrowserModal({ design, onUseTemplate, onViewProfile, onClose }: TemplateBrowserModalProps) {
   const user = useSyncExternalStore(subscribe, getCurrentUser);
   const [tab, setTab] = useState<Tab>("browse");
   const [search, setSearch] = useState("");
@@ -64,6 +63,7 @@ export function TemplateBrowserModal({ design, onUseTemplate, onClose }: Templat
   // the query inputs (tab/search/sort) changed — saving a second template
   // while already on the "My templates" tab still has to show up.
   const [reloadToken, setReloadToken] = useState(0);
+  const [reportingTemplate, setReportingTemplate] = useState<TemplateSummary | null>(null);
 
   const refresh = useCallback(() => {
     setListLoading(true);
@@ -299,7 +299,20 @@ export function TemplateBrowserModal({ design, onUseTemplate, onClose }: Templat
                     {/* Attribution is deliberately always shown, never
                       conditional on a hover or a detail view — see this
                       component's doc comment. */}
-                    by {t.author.name ?? "a community member"} · used {t.usageCount}×{t.version > 1 ? ` · v${t.version}` : ""}
+                    by{" "}
+                    {t.author.username ? (
+                      <button
+                        onClick={() => onViewProfile(t.author.username!)}
+                        data-testid="template-author"
+                        style={{ background: "none", border: "none", padding: 0, font: "inherit", color: "var(--cs-accent)", cursor: "pointer" }}
+                        title={`See everything ${t.author.name ?? "this author"} has published`}
+                      >
+                        {t.author.name ?? t.author.username}
+                      </button>
+                    ) : (
+                      (t.author.name ?? "a community member")
+                    )}{" "}
+                    · used {t.usageCount}×{t.version > 1 ? ` · v${t.version}` : ""}
                     {t.tags.length > 0 && ` · ${t.tags.join(", ")}`}
                   </div>
                 </div>
@@ -314,9 +327,9 @@ export function TemplateBrowserModal({ design, onUseTemplate, onClose }: Templat
                       title="Who can see this template"
                       data-testid="template-row-visibility"
                     >
-                      {(Object.keys(VISIBILITY_LABEL) as TemplateVisibility[]).map((v) => (
+                      {VISIBILITIES.map((v) => (
                         <option key={v} value={v}>
-                          {VISIBILITY_LABEL[v]}
+                          {VISIBILITY_LABELS[v]}
                         </option>
                       ))}
                     </select>
@@ -333,6 +346,12 @@ export function TemplateBrowserModal({ design, onUseTemplate, onClose }: Templat
                   </>
                 )}
 
+                {tab === "browse" && user && t.author.id !== user.id && (
+                  <button className="cs-icon-btn" title="Report this template" data-testid="template-report" onClick={() => setReportingTemplate(t)}>
+                    <Flag size={13} />
+                  </button>
+                )}
+
                 <button className="cs-btn" onClick={() => void handleUse(t)} disabled={busyId === t.id} data-testid="template-use">
                   {busyId === t.id ? <Loader2 size={14} className="cs-spin" /> : <LayoutTemplate size={14} />} Use
                 </button>
@@ -347,6 +366,10 @@ export function TemplateBrowserModal({ design, onUseTemplate, onClose }: Templat
           )}
         </div>
       </Modal>
+
+      {reportingTemplate && (
+        <ReportModal type="template" id={reportingTemplate.id} label={`“${reportingTemplate.name}”`} onClose={() => setReportingTemplate(null)} />
+      )}
 
       {showSaveModal && (
         <SaveAsTemplateModal

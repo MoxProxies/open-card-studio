@@ -1,9 +1,13 @@
 import { Design } from "@card-studio/scene-schema";
+import type { Visibility } from "./visibility";
 
 export interface DesignSummary {
   id: string;
   name: string;
   updatedAt: string;
+  /** Set only by the account-backed implementation — a localStorage design
+   * lives in one browser and has nothing to be visible *to*. */
+  visibility?: Visibility;
 }
 
 /**

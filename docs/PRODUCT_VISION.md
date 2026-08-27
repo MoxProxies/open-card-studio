@@ -162,6 +162,12 @@ requirement wearing two hats. Scope:
 
 ### Phase 2 — Accounts & public profiles
 
+> **Shipped** — see the root README's [Accounts &
+> profiles](../README.md#accounts--profiles). Usernames, bios, avatar
+> URLs, public profiles, one shared visibility vocabulary across designs
+> and templates, and the polymorphic report table. Avatars are a URL
+> field, not an upload — this backend has no file storage yet.
+
 Extends the Sanctum auth already built (`backend/app/Http/Controllers/
 Api/AuthController.php`) rather than replacing it: username, avatar,
 bio, a public profile page listing a user's published designs/templates/

@@ -3,7 +3,13 @@ import { api } from "./client";
 export interface AuthUser {
   id: number;
   name: string;
+  /** Only ever present on the signed-in account's own record — a public
+   * profile never carries one (see backend User::$hidden). */
   email: string;
+  /** The public handle a profile URL is built from, distinct from `name`. */
+  username: string;
+  bio: string | null;
+  avatar_url: string | null;
 }
 
 interface AuthResponse {
@@ -46,6 +52,12 @@ function setUser(user: AuthUser | null): void {
 /** Read-only snapshot for a `useSyncExternalStore` selector (see AccountButton.tsx). */
 export function getCurrentUser(): AuthUser | null {
   return currentUser;
+}
+
+/** Replaces the cached account after a profile edit, so every
+ * useSyncExternalStore subscriber re-renders with the new handle/bio. */
+export function setCurrentUser(user: AuthUser): void {
+  setUser(user);
 }
 
 export function subscribe(listener: Listener): () => void {

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -22,16 +23,21 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
+            // Optional at signup: an account is usable immediately with a
+            // generated handle, and the profile editor is where most people
+            // will pick a real one.
+            'username' => ['sometimes', 'string', ...ProfileController::USERNAME_RULES],
         ]);
 
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+            'username' => $data['username'] ?? static::generateUsername($data['name']),
         ]);
 
         return response()->json([
-            'user' => $user,
+            'user' => static::withEmail($user),
             'token' => $user->createToken('api')->plainTextToken,
         ], 201);
     }
@@ -52,7 +58,7 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'user' => $user,
+            'user' => static::withEmail($user),
             'token' => $user->createToken('api')->plainTextToken,
         ]);
     }
@@ -66,6 +72,30 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return response()->json($request->user());
+        return response()->json(static::withEmail($request->user()));
+    }
+
+    /**
+     * User::$hidden drops `email` so it can never leak through a public
+     * profile (see User::toPublicProfile). These three endpoints are the
+     * account talking to itself about itself, so it comes back here.
+     */
+    private static function withEmail(User $user): User
+    {
+        return $user->makeVisible('email');
+    }
+
+    /** A free, URL-safe handle derived from the display name — `ada-lovelace`,
+     * `ada-lovelace-2`, ... Only used when the client didn't pick one. */
+    private static function generateUsername(string $name): string
+    {
+        $base = Str::limit(Str::slug($name, '-'), 24, '') ?: 'user';
+        $candidate = $base;
+
+        for ($suffix = 2; User::where('username', $candidate)->exists(); $suffix++) {
+            $candidate = $base.'-'.$suffix;
+        }
+
+        return $candidate;
     }
 }

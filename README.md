@@ -1177,6 +1177,45 @@ blocked; and the properties panel's X/Y/Width/Height/Rotation inputs had
 no `disabled` gating on `locked` at all, so retyping coordinates by hand
 always worked regardless of the lock.
 
+## Accounts & profiles
+
+Every account has a **username** (the public handle a profile is
+addressed by, auto-generated from the display name at signup and
+editable after), plus an optional bio and avatar URL. `name` stays
+free-text and non-unique; `username` is the unique one.
+
+`GET /api/users/{username}` is public and returns the profile plus
+everything that account has published — templates and designs both.
+`email` can never appear there: `User::$hidden` drops it, and the three
+auth endpoints that legitimately need it add it back explicitly.
+
+**Visibility is one vocabulary** across every content type
+(`App\Models\Concerns\Publishable` on the backend, `visibility.ts` on
+the frontend): `private` / `unlisted` / `published`, with
+`moderation_state` overriding all three. Only `published` is listed;
+`unlisted` is fetchable by id. Designs get the same per-row visibility
+dropdown templates have, and the same `POST .../publish` endpoint (both
+inherit it from `OwnedContentController`).
+
+**Reports** are one polymorphic table and one endpoint (`POST
+/api/reports`, auth'd, rate-limited) covering templates, designs and
+accounts — collections and posts later. Filing a report stores a row and
+nothing else: no auto-hiding, no notification. The queue that acts on
+them is Phase 4/6; the point of having it now is that nothing became
+public without somewhere for a complaint to go.
+
+| route | auth | notes |
+| --- | --- | --- |
+| `GET /api/users/{username}` | — | profile + published templates/designs |
+| `PATCH /api/profile` | ✓ | name, username, bio, avatar_url |
+| `POST /api/reports` | ✓ | `{type, id, reason, details}`; re-reporting updates |
+| `POST /api/card-designs/{id}/publish` | ✓ | visibility only |
+
+**UI.** The toolbar account button opens the profile editor; the author
+credit on any gallery row opens that person's public profile, where
+their templates can be used directly. Report buttons sit on other
+people's templates and profiles, never your own.
+
 ## Community templates
 
 A **template is a `Design` plus publishing metadata** — no second scene

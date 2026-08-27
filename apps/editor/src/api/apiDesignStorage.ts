@@ -6,6 +6,7 @@ interface CardDesignSummaryRow {
   id: string;
   name: string;
   updated_at: string;
+  visibility: string;
 }
 
 interface CardDesignRow extends CardDesignSummaryRow {
@@ -24,11 +25,19 @@ interface CardDesignRow extends CardDesignSummaryRow {
  * token attachment); an unauthenticated call 401s same as any other
  * protected endpoint would.
  */
+/** Visibility on its own — the same endpoint shape templates use, so
+ * publishing a design from a list row doesn't re-upload its whole blob.
+ * Not part of the DesignStorage interface: localStorage-backed designs
+ * have nowhere to be published *to*. */
+export async function publishDesign(id: string, visibility: NonNullable<DesignSummary["visibility"]>): Promise<void> {
+  await api.post(`/api/card-designs/${id}/publish`, { visibility });
+}
+
 export const apiDesignStorage: DesignStorage = {
   async list(): Promise<DesignSummary[]> {
     const rows = await api.get<CardDesignSummaryRow[]>("/api/card-designs");
 
-    return rows.map((row) => ({ id: row.id, name: row.name, updatedAt: row.updated_at }));
+    return rows.map((row) => ({ id: row.id, name: row.name, updatedAt: row.updated_at, visibility: row.visibility as DesignSummary["visibility"] }));
   },
 
   async load(id: string): Promise<Design | undefined> {
@@ -47,7 +56,7 @@ export const apiDesignStorage: DesignStorage = {
       design,
     });
 
-    return { id: row.id, name: row.name, updatedAt: row.updated_at };
+    return { id: row.id, name: row.name, updatedAt: row.updated_at, visibility: row.visibility as DesignSummary["visibility"] };
   },
 
   async remove(id: string): Promise<void> {

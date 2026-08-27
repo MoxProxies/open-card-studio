@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\Template;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * CRUD + publishing for community-authored card templates.
@@ -28,17 +29,26 @@ use Illuminate\Http\Request;
  * Everything that writes is auth-scoped; nothing here can read, overwrite,
  * or delete another account's private row.
  */
-class TemplateController extends Controller
+class TemplateController extends OwnedContentController
 {
     /** Hard ceiling on a browse page, whatever `limit` asks for. */
     private const MAX_BROWSE_LIMIT = 100;
 
+    protected function owned(Request $request): HasMany
+    {
+        return $request->user()->templates();
+    }
+
+    protected static function model(): string
+    {
+        return Template::class;
+    }
+
     public function index(Request $request)
     {
-        $templates = $request->user()
-            ->templates()
+        $templates = $this->owned($request)
             ->visibleToPublic()
-            ->with('user:id,name')
+            ->with('user:id,name,username')
             ->latest('updated_at')
             ->get();
 
@@ -60,10 +70,7 @@ class TemplateController extends Controller
             'limit' => ['sometimes', 'integer', 'min:1', 'max:'.self::MAX_BROWSE_LIMIT],
         ]);
 
-        $query = Template::query()
-            ->where('visibility', 'published')
-            ->visibleToPublic()
-            ->with('user:id,name');
+        $query = Template::query()->published()->with('user:id,name,username');
 
         if ($search = trim((string) ($params['q'] ?? ''))) {
             // escape LIKE wildcards so a literal % or _ in a search box
@@ -99,7 +106,7 @@ class TemplateController extends Controller
      */
     public function show(Request $request, string $id)
     {
-        $template = Template::visibleToPublic()->with('user:id,name')->find($id);
+        $template = Template::visibleToPublic()->with('user:id,name,username')->find($id);
 
         // ->user('sanctum') rather than ->user(): this route sits outside
         // the auth:sanctum group (published templates are public), so
@@ -108,7 +115,7 @@ class TemplateController extends Controller
         $viewer = $request->user('sanctum');
         $isOwner = $viewer && $template && $template->user_id === $viewer->id;
 
-        abort_if(! $template || (! $isOwner && ! in_array($template->visibility, ['published', 'unlisted'], true)), 404);
+        abort_if(! $template || (! $isOwner && ! $template->isPubliclyReadable()), 404);
 
         return response()->json($template->toDetail());
     }
@@ -126,7 +133,7 @@ class TemplateController extends Controller
             'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'tags' => ['sometimes', 'array', 'max:8'],
             'tags.*' => ['string', 'max:32'],
-            'visibility' => ['sometimes', 'string', 'in:private,unlisted,published'],
+            'visibility' => ['sometimes', Rule::in(Template::VISIBILITIES)],
             'design' => ['required', 'array'],
         ]);
 
@@ -155,31 +162,7 @@ class TemplateController extends Controller
         // rather than the nulls an in-memory model has for them — a create
         // response should describe the row that now exists, not just the
         // fields the request happened to send.
-        return response()->json($template->refresh()->load('user:id,name')->toDetail(), $existing ? 200 : 201);
-    }
-
-    /**
-     * Visibility on its own, so flipping a template between private and
-     * published from a list row doesn't mean re-uploading its whole design
-     * blob just to change one string.
-     */
-    public function publish(Request $request, string $id)
-    {
-        $data = $request->validate([
-            'visibility' => ['required', 'string', 'in:private,unlisted,published'],
-        ]);
-
-        $template = $request->user()->templates()->visibleToPublic()->findOrFail($id);
-        $template->update($data);
-
-        return response()->json($template->load('user:id,name')->toSummary());
-    }
-
-    public function destroy(Request $request, string $id)
-    {
-        $request->user()->templates()->where('id', $id)->delete();
-
-        return response()->noContent();
+        return response()->json($template->refresh()->load('user:id,name,username')->toDetail(), $existing ? 200 : 201);
     }
 
     /**
@@ -195,7 +178,7 @@ class TemplateController extends Controller
     public function use(Request $request, string $id)
     {
         $template = Template::visibleToPublic()
-            ->whereIn('visibility', ['published', 'unlisted'])
+            ->whereIn('visibility', [Template::PUBLISHED, Template::UNLISTED])
             ->findOrFail($id);
 
         $template->increment('usage_count');

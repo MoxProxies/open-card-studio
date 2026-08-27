@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\OwnedByUser;
-use Illuminate\Database\Eloquent\Builder;
+use App\Models\Concerns\Publishable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Template extends Model
 {
-    use HasFactory, OwnedByUser;
+    use HasFactory, OwnedByUser, Publishable;
 
     /** `usage_count` and `moderation_state` are deliberately absent: a
      * request can't claim a usage count for its own template, and
@@ -51,13 +51,6 @@ class Template extends Model
         return $this->belongsTo(User::class);
     }
 
-    /** Rows a moderator has taken down are invisible everywhere, including
-     * to their own author — see the migration's moderation_state comment. */
-    public function scopeVisibleToPublic(Builder $query): Builder
-    {
-        return $query->where('moderation_state', '!=', 'removed');
-    }
-
     /**
      * The shape every endpoint returns for a template *without* its design
      * blob — a listing row. Includes the author's display name because
@@ -79,6 +72,7 @@ class Template extends Model
             'author' => [
                 'id' => $this->user_id,
                 'name' => $this->relationLoaded('user') ? $this->user?->name : null,
+                'username' => $this->relationLoaded('user') ? $this->user?->username : null,
             ],
         ];
     }

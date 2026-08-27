@@ -5,6 +5,7 @@ import { apiErrorMessage } from "../api/client";
 import { Modal } from "./Modal";
 import { saveTemplate, type TemplateSummary, type TemplateVisibility } from "../api/templates";
 import { summarizeTemplateLayers } from "../cardTemplates";
+import { VISIBILITIES, VISIBILITY_HELP, VISIBILITY_LABELS } from "../visibility";
 
 interface SaveAsTemplateModalProps {
   design: Design;
@@ -14,12 +15,6 @@ interface SaveAsTemplateModalProps {
   onSaved: (template: TemplateSummary) => void;
   onClose: () => void;
 }
-
-const VISIBILITY_HELP: Record<TemplateVisibility, string> = {
-  private: "Only you can see or use it.",
-  unlisted: "Anyone with the link can use it, but it won't show up in the gallery.",
-  published: "Listed in the community gallery for anyone to use, credited to you.",
-};
 
 /**
  * "Save as template" — the authoring half of Phase 1 (see

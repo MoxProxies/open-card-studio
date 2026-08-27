@@ -11,6 +11,7 @@ import { TextTemplateMenu } from "./TextTemplateMenu";
 import { AiArtModal } from "./AiArtModal";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 import { TemplateBrowserModal } from "./TemplateBrowserModal";
+import { PublicProfileModal } from "./PublicProfileModal";
 import { AccountButton } from "./AccountButton";
 import { getTextTemplates, type TextFieldTemplate } from "../textTemplates";
 import { RARITY_ASSETS, getRarityAssetUrl } from "../rarityAssets";
@@ -71,6 +72,9 @@ export function Toolbar({
   const [showAiArtModal, setShowAiArtModal] = useState(false);
   const [showDesignLibrary, setShowDesignLibrary] = useState(false);
   const [showTemplateBrowser, setShowTemplateBrowser] = useState(false);
+  // Whose public profile is open, if any — set from an author's name in the
+  // template gallery or from your own profile editor.
+  const [viewingProfile, setViewingProfile] = useState<string | null>(null);
   // Whichever ImportSourcePlugin the host app registered as active (see
   // src/plugins.ts) — undefined when none is installed, in which case the
   // Import button below doesn't render at all rather than doing nothing.
@@ -740,7 +744,7 @@ export function Toolbar({
           <LayoutTemplate size={16} /> Templates
         </button>
       )}
-      {!hideLocalDesignLibrary && <AccountButton />}
+      {!hideLocalDesignLibrary && <AccountButton onViewProfile={setViewingProfile} />}
       <button className="cs-btn" onClick={handleExport} title={`Export PNG at ${PRINT_DPI} DPI`}>
         <Download size={16} /> Export ({PRINT_DPI} DPI)
       </button>
@@ -773,7 +777,20 @@ export function Toolbar({
             loadDesign(fromTemplate);
             setShowTemplateBrowser(false);
           }}
+          onViewProfile={setViewingProfile}
           onClose={() => setShowTemplateBrowser(false)}
+        />
+      )}
+
+      {viewingProfile && (
+        <PublicProfileModal
+          username={viewingProfile}
+          onUseTemplate={(fromTemplate) => {
+            loadDesign(fromTemplate);
+            setViewingProfile(null);
+            setShowTemplateBrowser(false);
+          }}
+          onClose={() => setViewingProfile(null)}
         />
       )}
 

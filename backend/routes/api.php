@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CardDesignController;
 use App\Http\Controllers\Api\PluginController;
+use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TemplateController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +28,11 @@ Route::get('/templates/{id}', [TemplateController::class, 'show']);
 // doc comment for why a signed-out use still has to count.
 Route::post('/templates/{id}/use', [TemplateController::class, 'use'])->middleware('throttle:30,1');
 
+// A public profile is the page a shared template is meant to lead back to,
+// so it can't require an account either. `email` never appears in one —
+// see User::$hidden.
+Route::get('/users/{username}', [ProfileController::class, 'show']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
@@ -34,9 +41,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // client-generated UUID — see CardDesignController::upsert()'s doc
     // comment), so every save is the same upsert call regardless of
     // whether this is the design's first save or its fiftieth.
+    Route::patch('/profile', [ProfileController::class, 'update']);
+
+    // One report endpoint for every content type — see ReportController.
+    // Auth'd: an anonymous report queue is a spam queue.
+    Route::post('/reports', [ReportController::class, 'store'])->middleware('throttle:20,1');
+
     Route::get('/card-designs', [CardDesignController::class, 'index']);
     Route::get('/card-designs/{id}', [CardDesignController::class, 'show']);
     Route::put('/card-designs/{id}', [CardDesignController::class, 'upsert']);
+    Route::post('/card-designs/{id}/publish', [CardDesignController::class, 'publish']);
     Route::delete('/card-designs/{id}', [CardDesignController::class, 'destroy']);
 
     // PUT-upsert-by-id for the same reason card-designs uses it — the

@@ -54,7 +54,7 @@ export function Modal({
   testId,
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement & HTMLFormElement>(null);
-  useRegisterModal();
+  const isTopmost = useRegisterModal();
 
   useEffect(() => {
     panelRef.current?.focus();
@@ -70,11 +70,13 @@ export function Modal({
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && latest.current.dismissable) latest.current.onClose();
+      // Only the topmost dialog reacts, so Escape peels one layer off a
+      // stack instead of collapsing the whole thing.
+      if (e.key === "Escape" && latest.current.dismissable && isTopmost()) latest.current.onClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [isTopmost]);
 
   const Panel = (onSubmit ? "form" : "div") as "div";
 
