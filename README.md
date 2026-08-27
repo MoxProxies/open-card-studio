@@ -11,11 +11,12 @@ API backend (`backend/`, token-auth via Sanctum — the same auth a future
 iOS/Android client would use), decoupled entirely from MoxProxies. The two
 things that changed on top of everything card-studio already did:
 
-1. **A backend now exists.** The original had none — pure `localStorage`.
-   `backend/` is a from-scratch Laravel API (auth, card-design CRUD, a
-   plugin registry endpoint). See [Backend (API)](#backend-api) below —
-   and note it's a fresh API skeleton the frontend doesn't call yet; see
-   that section for exactly what's wired vs. still to connect.
+1. **A backend now exists, and the editor calls it.** The original had
+   none — pure `localStorage`. `backend/` is a from-scratch Laravel API
+   (auth, card-design CRUD, a plugin registry endpoint), and `apps/editor`
+   authenticates against it and swaps its save/load storage over once a
+   shopper signs in. See [Backend (API)](#backend-api) below for exactly
+   how the wiring works.
 2. **Hardcoded Scryfall integration became an optional plugin.** See
    [Plugin system](#plugin-system) — the goal is that nothing IP-specific
    (a particular card game's database, a particular visual style) is
@@ -26,13 +27,24 @@ Everything else below (layers, frames, text fitting, undo/redo, the embed
 build, etc.) is inherited from the original fork point largely unchanged
 — this README documents the whole app, not just what's new.
 
+**This README documents how the code works today.** For what this app is
+being built *toward* as a product (accounts, collections, a community
+knowledge base, gamification, a generic template engine) and the order
+to build it in, see [`docs/PRODUCT_VISION.md`](docs/PRODUCT_VISION.md) —
+read that before starting a new product phase in a fresh session.
+
 ## Status
 
-Early scaffold. The pieces below are wired together and verified working
-end-to-end (typecheck, build, real render smoke tests, and browser-driven
-UX checks — including the embedded shadow-DOM path, not just the
-standalone dev server), but there's still no auth, and persistence is
-`localStorage`-only (no backend/database/account yet) — see [Not built
+Early scaffold, but no longer a `localStorage`-only one. The pieces below
+are wired together and verified working end-to-end (typecheck, build,
+real render smoke tests, browser-driven UX checks including the embedded
+shadow-DOM path, and — for the backend and its wiring into the editor —
+real curl-level API tests plus a full Playwright register/sign-in/save/
+reload run against a live server). Auth and account-scoped persistence
+exist now (see [Backend (API)](#backend-api) and
+[Save/load](#saveload)); everything past that — collections, a knowledge
+base, gamification — is still ahead, see
+[`docs/PRODUCT_VISION.md`](docs/PRODUCT_VISION.md) and [Not built
 yet](#not-built-yet).
 
 ## Plugin system
