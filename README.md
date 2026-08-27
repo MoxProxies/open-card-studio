@@ -1177,6 +1177,46 @@ blocked; and the properties panel's X/Y/Width/Height/Rotation inputs had
 no `disabled` gating on `locked` at all, so retyping coordinates by hand
 always worked regardless of the lock.
 
+## App shell (standalone app)
+
+`pnpm dev:editor` serves an **app**, not a canvas with dialogs stacked on
+it: five destinations you navigate between, deep-linked in the URL hash.
+
+| | |
+| --- | --- |
+| **Design** | the editor |
+| **Library** | saved designs + collections |
+| **Templates** | the community gallery |
+| **Guides** | the knowledge base |
+| **Profile** | yours, or whoever you tapped through to |
+
+Below 768px navigation is a **bottom tab bar** (thumbs reach the bottom
+of a phone); above it, a **website-style top nav**. One breakpoint,
+`shell/useIsNarrow.ts`.
+
+Routes live in `shell/navStore.ts` and mirror to the hash — `#/templates`,
+`#/u/:username`, `#/guides/:slug` — so a profile or guide can be linked
+to and survives a reload. A hash rather than paths: the bundle is static
+and can sit at any base path without a server rewrite.
+
+Dialogs still exist for things that genuinely are one — signing in,
+saving a template, filing a report. The rule: a **destination** is
+somewhere you browse; a **dialog** is a task you finish and dismiss.
+
+**The editor stays mounted** across navigation (hidden, not unmounted) —
+glancing at the gallery must not throw away the design in progress or
+its undo history.
+
+**The embed doesn't use any of this.** `<card-studio-editor>` renders the
+editor alone with its own toolbar buttons and its own dialogs — a host
+page has its own navigation. That's why the big surfaces are chrome-free
+panels (`TemplatesPanel`, `LibraryPanel`, `ProfilePanel`) that take a
+render prop: one implementation, rendered as a page by the shell and as a
+dialog by the embed.
+
+**Not done here:** the editor's own three-pane layout on a phone — the
+shell is responsive, the canvas view isn't yet. That's Phase 6.
+
 ## Points, levels & badges
 
 One generic system, not four. **All the numbers live in

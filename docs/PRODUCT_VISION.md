@@ -234,6 +234,14 @@ versions of either.
 
 ### Phase 6 — Mobile-first UI pass & trust/safety hardening
 
+> **Partly done early.** The app is now an app: five destinations with a
+> bottom tab bar on phones and a top nav on wider screens, deep-linked in
+> the URL — see the root README's [App
+> shell](../README.md#app-shell-standalone-app). What's left of this
+> phase for the UI is the *editor's* own layout on a phone (the
+> three-pane canvas/layers/properties split), plus the moderation tooling
+> below.
+
 A dedicated pass rather than something assumed to have happened
 incidentally: touch-target sizing, the editor's pan/zoom/toolbar layout
 on small screens, and a real device/viewport testing pass. Pair it with

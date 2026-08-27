@@ -18,12 +18,12 @@ import type { Entitlements } from "../entitlements";
 const DesignStoreContext = createContext<DesignStore | null>(null);
 
 type DesignProviderProps = { children: ReactNode } & (
-  | { store: DesignStore; initialDesign?: undefined; initialEntitlements?: undefined }
-  | { initialDesign: Design; initialEntitlements?: Entitlements; store?: undefined }
+  | { store: DesignStore; initialDesign?: undefined; initialEntitlements?: undefined; hideLocalDesignLibrary?: undefined }
+  | { initialDesign: Design; initialEntitlements?: Entitlements; hideLocalDesignLibrary?: boolean; store?: undefined }
 );
 
-export function DesignProvider({ store, initialDesign, initialEntitlements, children }: DesignProviderProps) {
-  const [ownStore] = useState(() => store ?? createDesignStore(initialDesign!, initialEntitlements));
+export function DesignProvider({ store, initialDesign, initialEntitlements, hideLocalDesignLibrary, children }: DesignProviderProps) {
+  const [ownStore] = useState(() => store ?? createDesignStore(initialDesign!, initialEntitlements, hideLocalDesignLibrary));
   return <DesignStoreContext.Provider value={ownStore}>{children}</DesignStoreContext.Provider>;
 }
 
