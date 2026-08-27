@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, ShieldAlert, EyeOff, Eye, UserX, ScrollText, Check, X } from "lucide-react";
+import { Loader2, ShieldAlert, EyeOff, Eye, UserX, UserCheck, ScrollText, Check, X, MessageSquareWarning } from "lucide-react";
 import { apiErrorMessage } from "../../api/client";
-import { loadAuditTrail, loadReportQueue, resolveReport, suspendUser, takedown, type AuditEntry, type QueuedReport, type ReportState } from "../../api/moderation";
+import {
+  loadAppealQueue,
+  loadAuditTrail,
+  loadReportQueue,
+  resolveAppeal,
+  resolveReport,
+  suspendUser,
+  takedown,
+  type AuditEntry,
+  type QueuedAppeal,
+  type QueuedReport,
+  type ReportState,
+} from "../../api/moderation";
 import { ListRow } from "../../components/ListRow";
 import { navigate } from "../navStore";
 import { Page } from "../Page";
@@ -19,10 +31,11 @@ import { Page } from "../Page";
  * boundary.
  */
 export function ModerationView() {
-  const [tab, setTab] = useState<"queue" | "audit">("queue");
+  const [tab, setTab] = useState<"queue" | "appeals" | "audit">("queue");
   const [state, setState] = useState<ReportState | "all">("open");
   const [reports, setReports] = useState<QueuedReport[]>([]);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
+  const [appeals, setAppeals] = useState<QueuedAppeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,7 +43,7 @@ export function ModerationView() {
   const refresh = useCallback(() => {
     setLoading(true);
     setError(null);
-    (tab === "audit" ? loadAuditTrail().then(setAudit) : loadReportQueue(state).then(setReports))
+    (tab === "audit" ? loadAuditTrail().then(setAudit) : tab === "appeals" ? loadAppealQueue().then(setAppeals) : loadReportQueue(state).then(setReports))
       .catch((e: unknown) => setError(apiErrorMessage(e, "Couldn't load the moderation queue.")))
       .finally(() => setLoading(false));
   }, [tab, state]);
@@ -68,6 +81,16 @@ export function ModerationView() {
     }, "Couldn't suspend that account.");
   };
 
+  const decide = (appeal: QueuedAppeal, granted: boolean) => {
+    // Required either way: "no" with no reason is what makes someone file
+    // the same appeal five more times. The backend enforces it too.
+    const response = window.prompt(
+      granted ? "What are you telling them? Granting also lifts the suspension." : "Why is this being declined? They see this text.",
+    );
+    if (!response) return;
+    void act(() => resolveAppeal(appeal.id, granted ? "granted" : "denied", response), "Couldn't record that decision.");
+  };
+
   return (
     <Page
       testId="page-moderation"
@@ -78,11 +101,20 @@ export function ModerationView() {
           <button className={`cs-btn${tab === "queue" ? " cs-active" : ""}`} onClick={() => setTab("queue")} data-testid="mod-tab-queue">
             <ShieldAlert size={14} /> Queue
           </button>
+          <button className={`cs-btn${tab === "appeals" ? " cs-active" : ""}`} onClick={() => setTab("appeals")} data-testid="mod-tab-appeals">
+            <MessageSquareWarning size={14} /> Appeals
+          </button>
           <button className={`cs-btn${tab === "audit" ? " cs-active" : ""}`} onClick={() => setTab("audit")} data-testid="mod-tab-audit">
             <ScrollText size={14} /> Audit trail
           </button>
           {tab === "queue" && (
-            <select className="cs-input" value={state} onChange={(e) => setState(e.target.value as ReportState | "all")} style={{ width: 150 }} data-testid="mod-state">
+            <select
+              className="cs-input"
+              value={state}
+              onChange={(e) => setState(e.target.value as ReportState | "all")}
+              style={{ width: 150 }}
+              data-testid="mod-state"
+            >
               <option value="open">Open</option>
               <option value="reviewed">Reviewed</option>
               <option value="actioned">Actioned</option>
@@ -99,6 +131,34 @@ export function ModerationView() {
         <p style={{ padding: "6px 8px", fontSize: 13, color: "var(--cs-text-muted)", display: "flex", gap: 6, alignItems: "center" }}>
           <Loader2 size={14} className="cs-spin" /> Loading…
         </p>
+      ) : tab === "appeals" ? (
+        appeals.length === 0 ? (
+          <p style={{ padding: "6px 8px", fontSize: 13, color: "var(--cs-text-muted)" }} data-testid="appeals-empty">
+            No open appeals.
+          </p>
+        ) : (
+          appeals.map((a) => (
+            <ListRow
+              key={a.id}
+              testId="appeal-row"
+              attrs={{ "data-appeal-id": a.id }}
+              title={`${a.user.name ?? "someone"} — “${a.message}”`}
+              subtitle={`appealed ${new Date(a.submitted_at).toLocaleDateString()}${a.user.suspended ? "" : " · already reinstated"}`}
+            >
+              <button className="cs-btn" disabled={busy} onClick={() => decide(a, true)} data-testid="appeal-grant" title="Grant and reinstate">
+                <UserCheck size={14} /> Grant
+              </button>
+              <button className="cs-btn" disabled={busy} onClick={() => decide(a, false)} data-testid="appeal-deny" title="Decline this appeal">
+                <X size={14} /> Decline
+              </button>
+              {a.user.username && (
+                <button className="cs-btn" onClick={() => navigate({ tab: "profile", username: a.user.username as string })} title="See the account">
+                  Profile
+                </button>
+              )}
+            </ListRow>
+          ))
+        )
       ) : tab === "audit" ? (
         audit.length === 0 ? (
           <p style={{ padding: "6px 8px", fontSize: 13, color: "var(--cs-text-muted)" }}>Nothing has been actioned yet.</p>
@@ -140,7 +200,9 @@ export function ModerationView() {
                 <button
                   className="cs-btn"
                   disabled={busy}
-                  onClick={() => (r.target.moderation_state === "removed" ? void act(() => takedown(r.target.type, r.target.id, false), "Couldn't restore that.") : remove(r))}
+                  onClick={() =>
+                    r.target.moderation_state === "removed" ? void act(() => takedown(r.target.type, r.target.id, false), "Couldn't restore that.") : remove(r)
+                  }
                   data-testid="mod-takedown"
                 >
                   {r.target.moderation_state === "removed" ? <Eye size={14} /> : <EyeOff size={14} />}
@@ -148,10 +210,22 @@ export function ModerationView() {
                 </button>
               )
             )}
-            <button className="cs-icon-btn" title="Dismiss — no action needed" disabled={busy} onClick={() => void act(() => resolveReport(r.id, "dismissed"), "Couldn't dismiss.")} data-testid="mod-dismiss">
+            <button
+              className="cs-icon-btn"
+              title="Dismiss — no action needed"
+              disabled={busy}
+              onClick={() => void act(() => resolveReport(r.id, "dismissed"), "Couldn't dismiss.")}
+              data-testid="mod-dismiss"
+            >
               <X size={14} />
             </button>
-            <button className="cs-icon-btn" title="Mark reviewed" disabled={busy} onClick={() => void act(() => resolveReport(r.id, "reviewed"), "Couldn't update.")} data-testid="mod-reviewed">
+            <button
+              className="cs-icon-btn"
+              title="Mark reviewed"
+              disabled={busy}
+              onClick={() => void act(() => resolveReport(r.id, "reviewed"), "Couldn't update.")}
+              data-testid="mod-reviewed"
+            >
               <Check size={14} />
             </button>
             {typeof r.target.owner === "string" && (

@@ -1,22 +1,65 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\AppealController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BadgeController;
 use App\Http\Controllers\Api\CardDesignController;
 use App\Http\Controllers\Api\CollectionController;
-use App\Http\Controllers\Api\BadgeController;
-use App\Http\Controllers\Api\FeatureController;
 use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\EmailController;
+use App\Http\Controllers\Api\FeatureController;
 use App\Http\Controllers\Api\ModerationController;
 use App\Http\Controllers\Api\PluginController;
 use App\Http\Controllers\Api\PostController;
-use App\Http\Controllers\Api\ReactionController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ReactionController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SocialAuthController;
 use App\Http\Controllers\Api\TemplateController;
+use App\Http\Controllers\Api\TwoFactorController;
+use App\Http\Middleware\BlockSuspendedUsers;
+use App\Http\Middleware\EnsureStaff;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/auth/register', [AuthController::class, 'register']);
+// Throttled: these are the endpoints worth brute-forcing, and the cost of
+// a wrong guess should not be zero. The limits are defined in
+// AppServiceProvider — login is keyed by email *and* IP so one attacker
+// can't lock out everyone behind the same NAT.
+Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:register');
+// login has no throttle middleware on purpose — AuthController::login
+// rate-limits failures only, so signing in successfully on a third device
+// isn't treated like guessing.
 Route::post('/auth/login', [AuthController::class, 'login']);
+
+// Social sign-in. `providers` is public because the sign-in screen asks
+// which buttons to draw before anyone has signed in; `start` and
+// `callback` 404 for a provider this deployment hasn't configured.
+Route::get('/auth/providers', [SocialAuthController::class, 'providers']);
+
+// Password reset. Throttled hard: this endpoint sends mail to an address
+// the caller names, so an unthrottled one is a spam cannon pointed at
+// whoever they like. It always answers the same way — see
+// EmailController on not leaking whether an address is registered.
+Route::post('/auth/password/forgot', [EmailController::class, 'forgotPassword'])->middleware('throttle:password-forgot');
+Route::post('/auth/password/reset', [EmailController::class, 'resetPassword'])->middleware('throttle:password-reset');
+
+// The second half of a sign-in when 2FA is on: a challenge id (from
+// login, or from a provider redirect's #challenge=) plus a code, in
+// exchange for a token. Unauthenticated by definition — the caller has
+// no token yet. Throttled on top of the challenge's own attempt budget,
+// so a script can't work through challenges in bulk.
+Route::post('/auth/2fa/challenge', [TwoFactorController::class, 'challenge'])->middleware('throttle:two-factor');
+
+// The confirmation link's target. Signed by Laravel rather than carrying
+// a token of ours, so clicking it is the whole interaction.
+Route::get('/auth/email/verify/{id}/{hash}', [EmailController::class, 'verify'])
+    ->middleware('signed')
+    ->name('verification.verify');
+Route::middleware('throttle:social')->group(function () {
+    Route::post('/auth/{provider}/start', [SocialAuthController::class, 'start']);
+    Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback']);
+});
 
 // The plugin registry is public — it's a discovery index, not user data;
 // an app should be able to show "available plugins" before login.
@@ -53,10 +96,40 @@ Route::get('/posts', [PostController::class, 'browse']);
 Route::get('/posts/{slug}', [PostController::class, 'show']);
 Route::get('/posts/{slug}/comments', [CommentController::class, 'index']);
 
-// BlockSuspendedUsers on the whole authenticated group: a suspension has
-// to stop the account doing anything, not just hide its profile.
-Route::middleware(['auth:sanctum', \App\Http\Middleware\BlockSuspendedUsers::class])->group(function () {
+// Authenticated, but *not* behind BlockSuspendedUsers — the three things
+// a suspended account still has to be able to do. Signing out must always
+// work, and an appeal route a suspended user can't reach could only ever
+// be used by people with nothing to appeal.
+Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::get('/auth/appeal', [AppealController::class, 'show']);
+    Route::post('/auth/appeal', [AppealController::class, 'store'])->middleware('throttle:5,60');
+});
+
+// BlockSuspendedUsers on everything else: a suspension has to stop the
+// account doing anything, not just hide its profile.
+Route::middleware(['auth:sanctum', BlockSuspendedUsers::class])->group(function () {
+    Route::post('/auth/logout-everywhere', [AuthController::class, 'logoutEverywhere']);
+
+    // Data rights (see AccountController). The export walks every table
+    // this account touches, so it's throttled; deleting re-authenticates
+    // in the controller rather than relying on the session alone.
+    Route::get('/account/export', [AccountController::class, 'export'])->middleware('throttle:5,60');
+    Route::delete('/account', [AccountController::class, 'destroy']);
+    // The account's own live tokens, and revoking one of them. Scoped to
+    // $request->user()'s tokens in the controller, so an id from another
+    // account 404s rather than revoking someone else's session.
+    // Managing the second factor. Setup mints a secret, confirm proves
+    // the app works before anything starts depending on it, and both
+    // disable and regenerate re-authenticate first.
+    Route::post('/auth/2fa/setup', [TwoFactorController::class, 'setup']);
+    Route::post('/auth/2fa/confirm', [TwoFactorController::class, 'confirm']);
+    Route::post('/auth/2fa/recovery-codes', [TwoFactorController::class, 'regenerate']);
+    Route::delete('/auth/2fa', [TwoFactorController::class, 'disable']);
+
+    Route::get('/auth/sessions', [AuthController::class, 'sessions']);
+    Route::delete('/auth/sessions/{id}', [AuthController::class, 'revokeSession']);
+    Route::post('/auth/email/verify/send', [EmailController::class, 'sendVerification'])->middleware('throttle:5,1');
     Route::get('/auth/me', [AuthController::class, 'me']);
 
     // PUT, not POST+PATCH: the frontend always already has an id (a
@@ -104,11 +177,15 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BlockSuspendedUsers::cla
 
     // Staff only, and EnsureStaff 404s for everyone else so the surface
     // isn't discoverable — see that middleware.
-    Route::middleware(\App\Http\Middleware\EnsureStaff::class)->prefix('moderation')->group(function () {
+    Route::middleware(EnsureStaff::class)->prefix('moderation')->group(function () {
         Route::get('/reports', [ModerationController::class, 'reports']);
         Route::post('/reports/{id}', [ModerationController::class, 'resolveReport']);
         Route::post('/takedown', [ModerationController::class, 'takedown']);
         Route::post('/users/{id}/suspend', [ModerationController::class, 'suspend']);
+        // The other side of AppealController: reading what suspended
+        // accounts wrote back, and deciding. Granting reinstates.
+        Route::get('/appeals', [ModerationController::class, 'appeals']);
+        Route::post('/appeals/{id}', [ModerationController::class, 'resolveAppeal']);
         Route::post('/users/{id}/badges', [ModerationController::class, 'badge']);
         Route::get('/actions', [ModerationController::class, 'actions']);
     });

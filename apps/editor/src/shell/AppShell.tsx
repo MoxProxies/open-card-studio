@@ -3,7 +3,10 @@ import { LogIn, LogOut, User } from "lucide-react";
 import { App } from "../App";
 import { AccountModal } from "../components/AccountModal";
 import { ProfileModal } from "../components/ProfileModal";
-import { getCurrentUser, logout, restoreSession, subscribe } from "../api/auth";
+import { ResetPasswordModal } from "../components/ResetPasswordModal";
+import { SuspendedNotice } from "../components/SuspendedNotice";
+import { TwoFactorPrompt } from "../components/TwoFactorPrompt";
+import { consumeSocialRedirect, getCurrentUser, getSuspended, logout, restoreSession, subscribe } from "../api/auth";
 import { apiDesignStorage } from "../api/apiDesignStorage";
 import { localStorageDesignStorage, setActiveDesignStorage } from "../designStorage";
 import { useIsNarrow } from "../hooks/useIsNarrow";
@@ -41,6 +44,12 @@ export function AppShell() {
   const user = useSyncExternalStore(subscribe, getCurrentUser);
   const [showSignIn, setShowSignIn] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [resetting, setResetting] = useState<{ token: string; email: string } | null>(null);
+  // Set when a password (or a provider round-trip) came back with a
+  // second-factor challenge instead of a session.
+  const [challenge, setChallenge] = useState<string | null>(null);
 
   useEffect(() => {
     syncFromLocation();
@@ -52,9 +61,67 @@ export function AppShell() {
     };
   }, []);
 
+  // Coming back from a provider: the token rides in the URL fragment and
+  // is claimed (and scrubbed from the address bar) before anything else
+  // reads the session. See api/auth.ts's consumeSocialRedirect.
+  // A reset link lands as #/reset-password?token=…&email=…, an email
+  // confirmation bounces back as #verify=ok|invalid, and a provider
+  // sign-in as #token=…. All three are read here.
+  //
+  // On mount *and* on hashchange: clicking one of those links with the
+  // app already open in that tab is a same-document navigation, so a
+  // mount-only listener would let the hash change and nothing happen.
+  useEffect(() => {
+    const handleAuthHash = () => {
+      const hash = window.location.hash;
+      const scrub = () => window.history.replaceState(null, "", window.location.pathname + window.location.search);
+
+      const reset = /^#\/reset-password\?(.*)$/.exec(hash);
+      if (reset) {
+        const params = new URLSearchParams(reset[1]);
+        const token = params.get("token");
+        const email = params.get("email");
+        scrub();
+        if (token && email) setResetting({ token, email });
+        return;
+      }
+
+      if (hash.includes("verify=")) {
+        const ok = hash.includes("verify=ok");
+        scrub();
+        setAuthNotice(ok ? "Email address confirmed." : null);
+        setAuthError(ok ? null : "That confirmation link has expired or is no longer valid. Sign in and request a new one.");
+        return;
+      }
+
+      const { challenge: socialChallenge, error } = consumeSocialRedirect();
+
+      // A provider sign-in on an account with 2FA comes back with a
+      // challenge rather than a token — same prompt as the password path.
+      if (socialChallenge) setChallenge(socialChallenge);
+
+      if (error) {
+        setAuthError(
+          error === "email_unverified"
+            ? "That provider couldn't confirm your email address, and an account here already uses it. Sign in with your password instead."
+            : "Sign-in was cancelled or the provider refused. Nothing has changed.",
+        );
+      }
+    };
+
+    handleAuthHash();
+    window.addEventListener("hashchange", handleAuthHash);
+    return () => window.removeEventListener("hashchange", handleAuthHash);
+  }, []);
+
   useEffect(() => {
     restoreSession();
   }, []);
+
+  // A suspended account is signed in as far as the API is concerned, but
+  // every feature 403s — so the shell says so and offers the appeal
+  // instead of leaving a working-looking app that refuses everything.
+  const suspended = useSyncExternalStore(subscribe, getSuspended);
 
   // Same swap AccountButton does in the embed: signing in moves storage
   // from this browser to the account.
@@ -62,7 +129,9 @@ export function AppShell() {
     setActiveDesignStorage(user ? apiDesignStorage : localStorageDesignStorage);
   }, [user]);
 
-  const account = user ? (
+  // Nothing in the account slot while suspended: they aren't signed out,
+  // so "Sign in" would be a lie, and the notice below is the whole story.
+  const account = suspended ? null : user ? (
     <div style={{ display: "flex", gap: 4 }}>
       <button className="cs-btn" onClick={() => setShowProfileEditor(true)} data-testid="account-button" title={`Signed in as ${user.email}`}>
         <User size={16} /> {user.name}
@@ -123,6 +192,48 @@ export function AppShell() {
         )}
       </main>
 
+      {authNotice && (
+        <div
+          data-testid="auth-notice"
+          style={{
+            padding: "10px 16px",
+            background: "var(--cs-accent-soft)",
+            color: "var(--cs-accent)",
+            fontSize: 13,
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
+          <span style={{ flex: 1 }}>{authNotice}</span>
+          <button className="cs-icon-btn" onClick={() => setAuthNotice(null)} title="Dismiss">
+            ×
+          </button>
+        </div>
+      )}
+
+      {authError && (
+        <div
+          data-testid="auth-error"
+          style={{
+            padding: "10px 16px",
+            background: "var(--cs-danger-soft)",
+            color: "var(--cs-danger)",
+            fontSize: 13,
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
+          <span style={{ flex: 1 }}>{authError}</span>
+          <button className="cs-icon-btn" onClick={() => setAuthError(null)} title="Dismiss">
+            ×
+          </button>
+        </div>
+      )}
+
+      {suspended && <SuspendedNotice />}
+
       {narrow && <BottomTabs />}
 
       {showSignIn && (
@@ -131,7 +242,34 @@ export function AppShell() {
             setShowSignIn(false);
             navigate({ tab: "profile" });
           }}
+          onChallenge={(id) => {
+            setShowSignIn(false);
+            setChallenge(id);
+          }}
           onClose={() => setShowSignIn(false)}
+        />
+      )}
+
+      {challenge && (
+        <TwoFactorPrompt
+          challenge={challenge}
+          onSignedIn={() => {
+            setChallenge(null);
+            navigate({ tab: "profile" });
+          }}
+          onCancel={() => setChallenge(null)}
+        />
+      )}
+
+      {resetting && (
+        <ResetPasswordModal
+          token={resetting.token}
+          email={resetting.email}
+          onDone={() => {
+            setResetting(null);
+            setShowSignIn(true);
+          }}
+          onClose={() => setResetting(null)}
         />
       )}
 

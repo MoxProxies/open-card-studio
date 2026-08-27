@@ -1,8 +1,14 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Download, Loader2, LogOut, MailWarning, ShieldCheck, Trash2 } from "lucide-react";
 import { apiErrorMessage } from "../api/client";
-import { setCurrentUser, type AuthUser } from "../api/auth";
+import { logoutEverywhere, resendVerification, setCurrentUser, type AuthUser } from "../api/auth";
 import { updateProfile } from "../api/profiles";
+import { AccountSessions } from "./AccountSessions";
+import { DeleteAccountModal } from "./DeleteAccountModal";
+import { TwoFactorSetupModal } from "./TwoFactorSetupModal";
+import { ReauthModal } from "./ReauthModal";
+import { disableTwoFactor, regenerateRecoveryCodes } from "../api/twoFactor";
+import { downloadMyData } from "../api/account";
 import { Modal } from "./Modal";
 
 interface ProfileModalProps {
@@ -24,6 +30,14 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [verifyNotice, setVerifyNotice] = useState<string | null>(null);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [settingUpTwoFactor, setSettingUpTwoFactor] = useState(false);
+  const [twoFactorNotice, setTwoFactorNotice] = useState<string | null>(null);
+  // Which protected 2FA change is waiting on a password/code, if any.
+  const [reauthFor, setReauthFor] = useState<"disable" | "recovery-codes" | null>(null);
+  const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
 
   const submit = async () => {
     setSaving(true);
@@ -59,6 +73,32 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16 }}>
+        {/* Social accounts arrive verified — the provider already proved
+            the address — so this only appears for password signups. */}
+        {!user.email_verified_at && (
+          <div
+            data-testid="unverified-email"
+            style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 10px", borderRadius: 8, background: "var(--cs-accent-soft)", fontSize: 12 }}
+          >
+            <MailWarning size={16} style={{ flex: "none" }} />
+            <span style={{ flex: 1 }}>{verifyNotice ?? `${user.email} isn't confirmed yet.`}</span>
+            {!verifyNotice && (
+              <button
+                type="button"
+                className="cs-btn"
+                data-testid="resend-verification"
+                onClick={() =>
+                  void resendVerification()
+                    .then(setVerifyNotice)
+                    .catch(() => setVerifyNotice("Couldn't send that — try again shortly."))
+                }
+              >
+                Resend
+              </button>
+            )}
+          </div>
+        )}
+
         <label style={field}>
           Display name
           <input className="cs-input" value={name} onChange={(e) => setName(e.target.value)} data-testid="profile-name" />
@@ -94,6 +134,148 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
           <input className="cs-input" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://…" data-testid="profile-avatar" />
           <span style={{ fontSize: 11 }}>An https link to an image — there's no upload yet.</span>
         </label>
+
+        <hr style={{ border: "none", borderTop: "1px solid var(--cs-border)", margin: "4px 0" }} />
+
+        {/* The second factor. Off is one button; on is a state worth
+            stating plainly, because someone who can't remember whether
+            they enabled it will assume they didn't. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span style={{ fontSize: 12, color: "var(--cs-text-muted)" }}>Two-factor authentication</span>
+          {user.has_two_factor ? (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }} data-testid="two-factor-on">
+              <ShieldCheck size={16} style={{ color: "var(--cs-accent)" }} />
+              <span style={{ flex: 1, fontSize: 12 }}>On — a code from your app is needed to sign in.</span>
+              <button type="button" className="cs-btn" data-testid="two-factor-codes" onClick={() => setReauthFor("recovery-codes")}>
+                New recovery codes
+              </button>
+              <button type="button" className="cs-btn" data-testid="two-factor-disable" onClick={() => setReauthFor("disable")}>
+                Turn off
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ flex: 1, fontSize: 12 }}>Off. A stolen password is enough to get in.</span>
+              <button type="button" className="cs-btn" data-testid="two-factor-enable" onClick={() => setSettingUpTwoFactor(true)}>
+                <ShieldCheck size={14} /> Turn on
+              </button>
+            </div>
+          )}
+          {twoFactorNotice && (
+            <span style={{ fontSize: 11 }} data-testid="two-factor-notice">
+              {twoFactorNotice}
+            </span>
+          )}
+        </div>
+
+        {settingUpTwoFactor && <TwoFactorSetupModal user={user} onClose={() => setSettingUpTwoFactor(false)} />}
+
+        {reauthFor && (
+          <ReauthModal
+            user={user}
+            title={reauthFor === "disable" ? "Turn off two-factor" : "New recovery codes"}
+            description={
+              reauthFor === "disable"
+                ? "Your password alone will be enough to sign in again."
+                : "The codes you have now stop working, and the new set is shown once."
+            }
+            confirmLabel={reauthFor === "disable" ? "Turn it off" : "Generate"}
+            onConfirm={async (confirmation) => {
+              if (reauthFor === "disable") {
+                await disableTwoFactor(confirmation);
+                setCurrentUser({ ...user, has_two_factor: false });
+                setTwoFactorNotice("Two-factor authentication is off.");
+                return;
+              }
+              const { recovery_codes } = await regenerateRecoveryCodes(confirmation);
+              setNewRecoveryCodes(recovery_codes);
+            }}
+            onClose={() => setReauthFor(null)}
+          />
+        )}
+
+        {newRecoveryCodes && (
+          <Modal
+            title="Save your recovery codes"
+            onClose={() => setNewRecoveryCodes(null)}
+            width="min(420px, 92vw)"
+            testId="recovery-codes"
+            stacked
+            footer={
+              <button type="button" className="cs-btn cs-active" onClick={() => setNewRecoveryCodes(null)} data-testid="recovery-codes-done">
+                I've saved them
+              </button>
+            }
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, fontSize: 13 }}>
+              <p style={{ margin: 0 }}>
+                Your old codes no longer work. Each of these works once, and <strong>this is the only time they're shown.</strong>
+              </p>
+              <pre
+                style={{ margin: 0, padding: 12, borderRadius: 8, background: "var(--cs-surface-soft)", fontSize: 13, lineHeight: 1.7, userSelect: "all" }}
+                data-testid="recovery-code-list"
+              >
+                {newRecoveryCodes.join("\n")}
+              </pre>
+            </div>
+          </Modal>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 12, color: "var(--cs-text-muted)" }}>Signed-in devices</span>
+          <AccountSessions onSignedOut={onClose} />
+        </div>
+
+        {/* The blunt version of the list above — for when you'd rather not
+            work out which row is the problem. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <button
+            type="button"
+            className="cs-btn"
+            style={{ alignSelf: "flex-start" }}
+            data-testid="sign-out-everywhere"
+            onClick={() => {
+              if (!window.confirm("Sign out of every device? You'll need to sign in again everywhere, including here.")) return;
+              void logoutEverywhere().then(onClose);
+            }}
+          >
+            <LogOut size={14} /> Sign out everywhere
+          </button>
+          <span style={{ fontSize: 11 }}>Ends every signed-in session on every device.</span>
+        </div>
+
+        <hr style={{ border: "none", borderTop: "1px solid var(--cs-border)", margin: "4px 0" }} />
+
+        {/* Your data, and the door out. Both are things a Terms of
+            Service will need to point at — see the vision doc's
+            constraints section. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span style={{ fontSize: 12, color: "var(--cs-text-muted)" }}>Your data</span>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="cs-btn"
+              data-testid="export-data"
+              onClick={() =>
+                void downloadMyData()
+                  .then((filename) => setExportNotice(`Saved ${filename}.`))
+                  .catch(() => setExportNotice("Couldn't build the export — try again shortly."))
+              }
+            >
+              <Download size={14} /> Download my data
+            </button>
+            <button type="button" className="cs-btn cs-danger" data-testid="delete-account-open" onClick={() => setConfirmingDelete(true)}>
+              <Trash2 size={14} /> Delete account
+            </button>
+          </div>
+          {exportNotice && (
+            <span style={{ fontSize: 11 }} data-testid="export-notice">
+              {exportNotice}
+            </span>
+          )}
+        </div>
+
+        {confirmingDelete && <DeleteAccountModal user={user} onClose={() => setConfirmingDelete(false)} />}
 
         {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
         {saved && !error && (

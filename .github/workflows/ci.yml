@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch makes the older run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The workspace packages have to be built before anything can
+      # typecheck against them — see apps/editor's own `prebuild`.
+      - run: pnpm --filter @card-studio/scene-schema --filter @card-studio/plugin-sdk --filter @card-studio/plugin-scryfall-import --filter @card-studio/plugin-asset-pack-default build
+      - run: pnpm typecheck
+      - run: pnpm --filter @card-studio/editor build
+
+  php:
+    name: PHP tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: sqlite3, pdo_sqlite, mbstring
+          coverage: none
+      - name: Cache composer packages
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-dev-${{ hashFiles('backend/composer.lock') }}
+      - name: Install backend dependencies
+        working-directory: backend
+        # With dev dependencies this time — phpunit is one of them.
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Prepare the backend
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Run the PHP tests
+        working-directory: backend
+        run: ./vendor/bin/phpunit --testdox
+      # A dependency with a published advisory is a bug you already have
+      # and haven't been told about — this is what would have caught the
+      # Laravel 11 ones without someone thinking to look. Blocking on
+      # purpose; when an advisory has no fix yet, record the decision in
+      # composer.json's `audit.ignore` rather than deleting this step.
+      - name: Check dependencies for advisories
+        working-directory: backend
+        run: composer audit
+
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: sqlite3, pdo_sqlite, mbstring
+          coverage: none
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Cache composer packages
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+
+      - name: Install backend dependencies
+        working-directory: backend
+        # --no-dev: the suites drive the app over HTTP and need nothing
+        # from phpunit/pint, and skipping them roughly halves install time.
+        run: composer install --no-dev --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare the backend
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build the workspace packages
+        run: pnpm --filter @card-studio/scene-schema --filter @card-studio/plugin-sdk --filter @card-studio/plugin-scryfall-import --filter @card-studio/plugin-asset-pack-default build
+
+      - name: Install Chromium
+        # Only the one browser the suites use; --with-deps pulls the system
+        # libraries a headless Chromium needs on a bare runner.
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run the suites
+        # run.sh boots its own backend and editor on their own ports with a
+        # throwaway database — see tests/e2e/README.md.
+        run: pnpm test:e2e

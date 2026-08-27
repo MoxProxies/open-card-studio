@@ -86,6 +86,14 @@
   border-color: var(--cs-accent);
   color: var(--cs-accent);
 }
+/* Destructive confirmation — deleting an account, and whatever else
+   earns it later. Same shape as .cs-active so it reads as a real button
+   rather than a warning label. */
+.cs-btn.cs-danger {
+  background: var(--cs-danger-soft);
+  border-color: var(--cs-danger);
+  color: var(--cs-danger);
+}
 
 .cs-icon-btn {
   display: inline-flex;

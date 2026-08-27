@@ -106,7 +106,7 @@ from the actual plugin code, similar to how a package manager's
 
 ## Backend (API)
 
-`backend/` is a fresh Laravel 11 API — separate from, and much smaller
+`backend/` is a fresh Laravel 12 API — separate from, and much smaller
 than, moxproxies-website's Laravel app; this fork's editor was never
 meant to depend on that codebase. **What it has:**
 
@@ -1201,6 +1201,7 @@ moderation surface exists. Hiding the tab in the UI is presentation; the
 | --- | --- |
 | **Takedown** | hides content from everyone *including its owner*, and reverses the points it earned. Requires a stated reason. |
 | **Suspend** | blocks every authenticated request (`BlockSuspendedUsers`) and hides the profile. Deletes nothing, so it's reversible and an appeal has something to look at. The token isn't revoked, so reinstating doesn't force a re-login. |
+| **Appeal** | granted (which reinstates) or declined, with a response the appellant reads. See below. |
 | **Resolve** | marks a report reviewed/actioned/dismissed. Never touches content — a takedown is a separate, explicit call. |
 | **Badges** | grants or revokes the manual badges. Rule-based ones are refused: hand-granting one would be a lie the next evaluation disagrees with. |
 
@@ -1210,6 +1211,23 @@ an audit trail. Undoing is a new row.
 
 Staff can't suspend staff or themselves: two people arguing with the
 suspend button is not a moderation process.
+
+### Appeals
+
+A suspended account can contest the decision, which is what stops a
+suspension being a black box. It works because sign-in still *succeeds*
+while suspended — authentication passes, authorisation fails — so the
+account keeps a token, and three routes sit outside `BlockSuspendedUsers`:
+signing out, reading your appeal, and filing one. Everything else 403s
+with `suspended: true` in the body, which is what tells the app to show
+the suspension screen rather than a generic error.
+
+One open appeal at a time (a queue where one person can file fifty is a
+queue nobody reads), re-appealing after a denial is allowed, and a
+decision needs a written response either way — "no" with no reason is
+what makes someone file the same appeal five more times. **Granting
+reinstates the account in the same call**: as two calls, the way it fails
+is a granted appeal nobody remembered to act on.
 
 ## Knowledge base
 
@@ -1346,6 +1364,133 @@ to your profile, above a configured level and up to a configured count.
 
 Profile responses carry `stats`, `badges` and `featured`; listings carry
 `reaction_count` and `reacted`.
+
+## Authentication
+
+Email + password, or **sign in with Google / GitHub**. A provider is
+enabled *by being configured* — no client id, no button and no working
+route (`config/services.php`, `App\Support\SocialProviders`), so a
+half-configured provider never appears as an option that dead-ends.
+
+The OAuth flow has to work for a bearer-token API with no session, and
+four things in it are load-bearing:
+
+- **The return URL is allowlisted** (`FRONTEND_URLS`). Unchecked, the
+  callback is an open redirect that hands a valid token to any host.
+- **The token comes back in the URL fragment**, not the query — a
+  fragment isn't sent to servers and doesn't reach access logs or a
+  `Referer`. The app claims it and scrubs it from history immediately.
+- **State is a single-use server-side nonce.** Socialite's own state
+  lives in a session this API doesn't have, so `stateless()` is required
+  — which means replacing the CSRF protection, not dropping it.
+- **An existing account is only linked by email when the provider
+  verified it.** Otherwise anyone who can set an unverified address at a
+  provider could sign in as that user. Google reports `email_verified`;
+  GitHub only returns a primary address it has verified. An unknown
+  provider counts as unverified.
+
+A social-only account has `password = null` — password sign-in then says
+*"this account signs in with Google"* rather than "wrong credentials",
+because otherwise you're guessing at a password that was never set.
+
+**Hardening.** Passwords need letters and numbers, not just 8 characters
+(`12345678` passes a bare length check and is among the first guesses
+anyone makes). Login is rate-limited **by email *and* IP** — by IP alone,
+one attacker behind a NAT locks out everyone sharing that address, and it
+does nothing about a distributed attempt on one account.
+
+### Two-factor authentication
+
+TOTP, the ordinary kind any authenticator app speaks. Setup is
+deliberately **two steps**: `/auth/2fa/setup` mints a secret to scan, and
+it only counts as on once `/auth/2fa/confirm` has checked a code
+generated from it — enabling in one step locks out anyone whose scan
+silently failed or whose phone clock is wrong. Confirming hands back
+eight single-use recovery codes, shown exactly once.
+
+With it on, a correct password buys a **challenge**, not a token: a
+server-side, single-use, five-minute ticket redeemed at
+`/auth/2fa/challenge` with a code (or a recovery code — same field, so
+the error message can't say which one was closer). A provider sign-in
+goes through the same challenge; skipping it there would make "link a
+provider" a documented way around the thing the account turned on.
+
+Three details that aren't the library's job:
+
+- **The secret and recovery codes are encrypted at rest** and never
+  served back, to the account included. A dump that leaks TOTP secrets
+  hands over the second factor for every account in it.
+- **A used code can't be replayed.** A code is valid for a whole
+  timestep, so without remembering the accepted one, an observed code
+  works again for up to 90 seconds.
+- **A challenge gives up after five wrong codes**, and fresh challenges
+  are rate-limited. Six digits is a million combinations; that's what
+  keeps it a million.
+
+Turning it off, or printing new recovery codes, re-authenticates first —
+password, or a current code for an account that signs in through a
+provider and has none.
+
+**Sessions.** Tokens expire (30 days, `SANCTUM_TOKEN_TTL_MINUTES`) — a
+bearer token that never does is a permanent credential sitting in a
+browser's `localStorage`. Each one is named for the device that asked for
+it, so the account's own **signed-in devices** list reads "Chrome on
+macOS" rather than four rows of "api", and any one of them can be revoked
+on its own. "Sign out everywhere" is still there for when you'd rather
+not work out which row is the problem. Expiring doesn't delete the row,
+so `sanctum:prune-expired` runs daily (`routes/console.php`).
+
+The linking rules are covered by `backend/tests/Feature/SocialAuthTest.php`
+with a mocked provider — including the takeover case — since a live OAuth
+round-trip can't be part of every run.
+
+### Your data, and closing the account
+
+Two endpoints the vision doc asks for as hooks a Terms of Service can
+plug into later: `GET /api/account/export` returns everything the account
+owns as one JSON file (the raw rows, not the trimmed shapes served
+elsewhere — an export that quietly drops columns isn't an export), and
+`DELETE /api/account` closes it for good.
+
+Deleting **re-authenticates**: the password again, or, for a social-only
+account with none, typing your own username. A delete button that works
+from an unattended logged-in browser is a way to lose someone's work.
+Everything owned goes with it — published templates included, though
+designs already made from one keep working, since "new design from
+template" copies the layers at that moment. Anonymising instead of
+deleting is a product decision nobody has made. Staff accounts can't be
+deleted this way: their rows in `moderation_actions` would cascade and
+tear holes in the audit trail.
+
+### Transactional email (Brevo)
+
+Two emails: **verify your address** and **reset your password**. Both go
+out over Brevo's SMTP relay, configured entirely through `.env` (see
+`backend/.env.example`) — Laravel's own mail stack, no SDK. `MAIL_MAILER`
+defaults to `log`, so a dev box writes the email to `storage/logs`
+instead of mailing a real person.
+
+- Links are **signed and expiring** (`URL::temporarySignedRoute`, 60
+  minutes) — verification carries a hash of the address it was issued
+  for, so it stops working if the address changes.
+- **Forgot-password answers identically whether or not the account
+  exists.** A different response is a membership oracle.
+- Completing a reset **revokes every token**, since the likeliest reason
+  to reset is that someone else has one.
+- Sending is **best-effort at registration**: a Brevo outage must not
+  fail a signup. The account exists unverified and can ask again.
+- The two routes have **separate rate limits** — requesting a reset is
+  mail sent to an address the caller names (3/min per email+IP), while
+  completing one needs a valid single-use token (10/min per IP). Sharing
+  a bucket meant asking for a reset could use up your ability to finish
+  one.
+
+Verification is not yet enforced anywhere: an unverified account is
+prompted on its profile but nothing is gated on it. Gate what should be
+gated when there's a reason to.
+
+`php artisan auth:reset-link <email>` prints the link an operator (or a
+test) needs without going through mail at all.
 
 ## Accounts & profiles
 
@@ -2051,6 +2196,32 @@ pnpm run deploy:moxproxies -- -Push    # also pushes
 Both scripts default to the paths/distro this was first set up against
 (`WebsiteDir`/`WslDistro` params on the `.ps1`, first three positional args
 on the `.sh`) — override either if your layout differs.
+
+## Tests
+
+536 end-to-end checks in `tests/e2e/` — curl against a running backend,
+Playwright against the running editor. That's the default here: every bug
+that actually shipped was one reading the diff missed and running the app
+caught.
+
+The exception is `backend/tests/Feature/` (48 PHPUnit tests), for the
+handful of things a live run can't honestly prove — an OAuth provider
+lying about a verified email, an email actually being queued, a token
+expiring thirty days from now, or a column being ciphertext on disk.
+
+```sh
+pnpm test:e2e            # boots its own backend + editor, runs everything
+pnpm test:e2e:api        # curl suites only
+pnpm test:e2e:browser    # Playwright suites only
+```
+
+The runner uses its own ports and a throwaway database rather than
+whatever `pnpm dev:editor` left running — see
+[`tests/e2e/README.md`](tests/e2e/README.md) for why, and for the two
+assertion rules worth knowing before adding more.
+
+CI (`.github/workflows/ci.yml`) runs typecheck + build, PHPUnit, and the
+full e2e suite as three jobs on every PR.
 
 ## Not built yet
 

@@ -18,26 +18,40 @@ php artisan serve          # dev server
 php artisan migrate:fresh  # drop + re-run all migrations
 php artisan route:list     # see every registered route
 ./vendor/bin/pint          # code style
-./vendor/bin/phpunit       # tests (none written yet — see root README)
+./vendor/bin/phpunit       # PHP tests (tests/Feature)
+
+php artisan auth:reset-link me@example.com   # a reset link, no mail sent
 ```
 
 ## Layout
 
 - `app/Models/` — `User`, `CardDesign`, `Template`, `Collection`, `Report`,
-  `Reaction`, `PointEvent`, `Badge`, `Post`, `PostRevision`, `Comment`, `ModerationAction`;
+  `Reaction`, `PointEvent`, `Badge`, `Post`, `PostRevision`, `Comment`,
+  `ModerationAction`, `Appeal`;
   `Concerns/` holds what they share (`OwnedByUser`, `Publishable`).
 - `app/Http/Controllers/Api/` — `AuthController`, `CardDesignController`,
   `TemplateController`, `CollectionController`, `ProfileController`,
-  `ReportController`,
-  `PluginController`. The owned-content controllers share
+  `ReportController`, `SocialAuthController`, `EmailController`,
+  `AppealController`, `AccountController` (export/delete),
+  `TwoFactorController`, `PluginController`. The owned-content controllers share
   `OwnedContentController` (publish/delete).
 - `routes/api.php` — the entire route list; there is no `web.php`, see
   `bootstrap/app.php`'s doc comment for why.
-- `app/Support/` — `PointsLedger`, `Levels`, `BadgeRules`, `Reactable`.
+- `app/Support/` — `PointsLedger`, `Levels`, `BadgeRules`, `Reactable`,
+  `TwoFactor` (TOTP, recovery codes, sign-in challenges), `DeviceName`.
 - `config/gamification.php` — every points/levels/badges number.
+- `config/security.php` — rate limits that differ between a deployment
+  and a test run; `app/Support/DeviceName.php` labels a session's device.
 - `config/knowledge_base.php` — knowledge-base categories.
 - `app/Http/Middleware/` — `EnsureStaff` (404s for non-staff),
   `BlockSuspendedUsers`.
+- `app/Support/SocialProviders.php` + `config/services.php` — which OAuth
+  providers this deployment offers.
+- `app/Notifications/` + `config/mail.php` — the two transactional emails
+  (verify address, reset password) over Brevo's SMTP relay; see the root
+  README's [Transactional email](../README.md#transactional-email-brevo).
+- `tests/Feature/` — PHP tests for logic a live run can't be asked to
+  prove (social account linking, mail actually being sent).
 - `config/plugins.php` — the plugin discovery registry `GET /api/plugins`
   serves.
 - `database/migrations/` — `users`/`sessions`/`cache`/`jobs` are

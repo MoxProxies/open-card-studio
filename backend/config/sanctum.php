@@ -1,5 +1,9 @@
 <?php
 
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Laravel\Sanctum\Http\Middleware\AuthenticateSession;
+
 return [
     // Left empty on purpose: this API has no first-party SPA cookie
     // client and never will (see bootstrap/app.php) — every client
@@ -11,13 +15,20 @@ return [
 
     'guard' => ['web'],
 
-    'expiration' => null,
+    // Tokens expire. A bearer token that never does is a permanent
+    // credential sitting in a browser's localStorage — one stolen laptop
+    // and there is no clock running against the attacker. 30 days by
+    // default, tunable per deployment; Sanctum enforces this against
+    // `created_at` *and* honours each token's own `expires_at`, whichever
+    // is stricter, so raising it later can't retroactively resurrect
+    // tokens that were already issued with a shorter one.
+    'expiration' => (int) env('SANCTUM_TOKEN_TTL_MINUTES', 60 * 24 * 30),
 
     'token_prefix' => env('SANCTUM_TOKEN_PREFIX', ''),
 
     'middleware' => [
-        'authenticate_session' => Laravel\Sanctum\Http\Middleware\AuthenticateSession::class,
-        'encrypt_cookies' => Illuminate\Cookie\Middleware\EncryptCookies::class,
-        'validate_csrf_token' => Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+        'authenticate_session' => AuthenticateSession::class,
+        'encrypt_cookies' => EncryptCookies::class,
+        'validate_csrf_token' => ValidateCsrfToken::class,
     ],
 ];

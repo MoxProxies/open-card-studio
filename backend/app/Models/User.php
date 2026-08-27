@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -41,6 +41,16 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        // Never serialized anywhere, under any circumstances: the secret
+        // *is* the second factor, and a recovery code is a password that
+        // skips it. The account's own endpoints expose
+        // `two_factor_confirmed_at` (whether it's on), never these.
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+        // Hidden too, though it's only a date: whether an account has a
+        // second factor is a signal worth not publishing, and the
+        // account's own endpoints report it as `has_two_factor` instead.
+        'two_factor_confirmed_at',
         // Never in an API response: `email` is on a public profile's model
         // too, and a profile is readable by anyone. The account's own
         // /api/auth/me adds it back explicitly (AuthController::me).
@@ -53,6 +63,11 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_staff' => 'boolean',
+            'two_factor_confirmed_at' => 'datetime',
+            // Encrypted at rest: a leaked database dump otherwise hands
+            // over the second factor for every account in it.
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
         ];
     }
 
@@ -74,6 +89,44 @@ class User extends Authenticatable
     public function posts(): HasMany
     {
         return $this->hasMany(Post::class);
+    }
+
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(SocialAccount::class);
+    }
+
+    /** Comments this account has written, on anyone's content. */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
+
+    /** Appeals this account has filed against its own suspension. */
+    public function appeals(): HasMany
+    {
+        return $this->hasMany(Appeal::class);
+    }
+
+    /** True only once a code from the app has been checked — an
+     * unconfirmed secret is someone who opened the setup screen and
+     * wandered off, and must never gate a sign-in. */
+    public function hasTwoFactor(): bool
+    {
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
+    }
+
+    public function isSuspended(): bool
+    {
+        return $this->moderation_state === self::SUSPENDED;
+    }
+
+    /** False for an account created through a provider that has never set
+     * one — password sign-in is refused with a message that says so
+     * rather than a generic "wrong credentials". */
+    public function hasPassword(): bool
+    {
+        return $this->password !== null;
     }
 
     public function pointEvents(): HasMany
