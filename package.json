@@ -16,9 +16,13 @@
     "sync-rarity": "node scripts/sync-rarity-library.mjs",
     "sync-symbols": "node scripts/sync-symbol-library.mjs",
     "sync-text-templates": "node scripts/sync-text-templates.mjs",
-    "watch-text-templates": "node scripts/watch-text-templates.mjs"
+    "watch-text-templates": "node scripts/watch-text-templates.mjs",
+    "test:e2e": "bash tests/e2e/run.sh",
+    "test:e2e:api": "bash tests/e2e/run.sh api",
+    "test:e2e:browser": "bash tests/e2e/run.sh browser"
   },
   "devDependencies": {
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "playwright": "1.56.1"
   }
 }

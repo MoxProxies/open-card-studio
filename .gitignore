@@ -8,3 +8,7 @@ build/
 .DS_Store
 coverage/
 .vite/
+
+# End-to-end test artefacts (tests/e2e)
+tests/e2e/screenshots/
+backend/database/e2e.sqlite

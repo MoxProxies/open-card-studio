@@ -1,0 +1,130 @@
+// Shared driving helpers for the e2e suites — the app is a shell with
+// tabs now, so "open the templates gallery" is a navigation, not a modal.
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+/** Where the two servers are. Overridable so CI (and anyone running these
+ * against a staging box) doesn't have to match the dev ports. */
+export const EDITOR = process.env.E2E_EDITOR_URL ?? "http://localhost:4173/";
+export const API = process.env.E2E_API_URL ?? "http://127.0.0.1:8000";
+
+/** The backend's artisan, for the few things only a founder can do (see
+ * moderation.mjs's staff promotion). */
+/** Where suites drop screenshots. Gitignored — they're for eyeballing a
+ * failure, not artefacts to keep. */
+export const SHOT_DIR = process.env.SHOT_DIR ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../screenshots");
+
+export const ARTISAN =
+  process.env.E2E_ARTISAN ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../backend/artisan");
+
+export function reporter() {
+  const results = [];
+  return {
+    results,
+    check(label, expected, actual) {
+      const ok = JSON.stringify(expected) === JSON.stringify(actual);
+      results.push(ok);
+      console.log(`  ${ok ? "PASS" : "FAIL"}  ${label}${ok ? "" : ` — expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`}`);
+    },
+    finish() {
+      const failed = results.filter((r) => !r).length;
+      console.log(`\n== ${results.length - failed} passed, ${failed} failed ==`);
+      return failed;
+    },
+  };
+}
+
+export async function openApp(browser, { width = 1500, height = 900, autoDialog = true } = {}) {
+  const page = await browser.newPage({ viewport: { width, height } });
+  page.on("pageerror", (e) => console.log("  [pageerror]", e.message));
+  page.on("console", (m) => m.type() === "error" && !m.text().includes("ERR_TUNNEL") && console.log("  [console.error]", m.text()));
+  // autoDialog:false for a page that needs to answer a prompt with real
+  // text — a blanket accept() returns "" for a prompt, which reads as a
+  // cancelled prompt to the code under test.
+  if (autoDialog) page.on("dialog", (d) => d.accept());
+  await page.goto(EDITOR);
+  await page.getByTestId("app-shell").waitFor();
+  return page;
+}
+
+export const go = async (page, tab) => {
+  await page.getByTestId(`tab-${tab}`).click();
+  // The editor stays mounted and is hidden rather than unmounted (see
+  // AppShell), so wait for it to become visible rather than attached.
+  await page.getByTestId(`page-${tab}`).waitFor({ state: "visible" });
+};
+
+export async function signUp(page, name, email) {
+  await page.getByTestId("sign-in").click();
+  await page.getByRole("button", { name: /Need an account/ }).click();
+  // exact: the collections panel underneath has a "New collection name"
+  // field, and getByPlaceholder matches substrings by default.
+  await page.getByPlaceholder("Name", { exact: true }).fill(name);
+  await page.getByPlaceholder("Email", { exact: true }).fill(email);
+  await page.getByPlaceholder("Password", { exact: true }).fill("password123");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByTestId("account-button").waitFor();
+}
+
+// cache: "no-store" throughout — a suite re-reads the same URL after
+// changing it server-side, and a cached 200 makes a passing assertion out
+// of a stale response.
+export const fetchJson = (page, path) =>
+  page.evaluate((u) => fetch(u, { cache: "no-store", headers: { Accept: "application/json" } }).then((r) => r.json()), `${API}${path}`);
+
+/** The status of an unauthenticated GET, uncached. */
+export const statusOf = (page, path) =>
+  page.evaluate((u) => fetch(u, { cache: "no-store", headers: { Accept: "application/json" } }).then((r) => r.status), `${API}${path}`);
+
+/** The status of a GET as the page's signed-in account, uncached. */
+export const statusAs = (page, path) =>
+  page.evaluate(async ({ api, path }) => {
+    const token = localStorage.getItem("card-studio:auth-token:v1");
+    const res = await fetch(`${api}${path}`, { cache: "no-store", headers: { Accept: "application/json", Authorization: `Bearer ${token}` } });
+    return res.status;
+  }, { api: API, path });
+
+/** An authenticated fetch from inside the page, using its stored token. */
+export const fetchAs = (page, path, init = {}) =>
+  page.evaluate(
+    async ({ api, path, init }) => {
+      const token = localStorage.getItem("card-studio:auth-token:v1");
+      const res = await fetch(`${api}${path}`, {
+        ...init,
+        cache: "no-store",
+        headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: init.body ? JSON.stringify(init.body) : undefined,
+      });
+      return res.json();
+    },
+    { api: API, path, init }
+  );
+
+export const me = (page) => fetchAs(page, "/api/auth/me");
+
+/** Saves the current design under a name, from the Library tab. */
+export async function saveDesignAs(page, name) {
+  await go(page, "library");
+  await page.getByTestId("tab-designs").click();
+  await page.getByPlaceholder("Design name").fill(name);
+  await page.getByRole("button", { name: "Save" }).click();
+  await page.locator(`[data-testid='saved-design-row']:has-text("${name}")`).waitFor();
+}
+
+/** Adds a frame layer so the canvas isn't empty. */
+export async function addFrame(page) {
+  await go(page, "design");
+  await page.getByRole("button", { name: "Frame", exact: true }).click();
+  await page.locator("button.cs-swatch").first().click();
+  await page.waitForFunction(() => document.querySelectorAll("[data-testid='layer-row']").length > 0);
+}
+
+/** Publishes the current design as a template via the Templates tab. */
+export async function publishTemplate(page, name, visibility = "published") {
+  await go(page, "templates");
+  await page.getByTestId("template-save-current").click();
+  await page.getByTestId("template-name").fill(name);
+  await page.getByTestId("template-visibility").selectOption(visibility);
+  await page.getByTestId("template-save-submit").click();
+  await page.locator(`[data-testid='template-row']:has-text("${name}")`).waitFor();
+}

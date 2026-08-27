@@ -2052,6 +2052,27 @@ Both scripts default to the paths/distro this was first set up against
 (`WebsiteDir`/`WslDistro` params on the `.ps1`, first three positional args
 on the `.sh`) — override either if your layout differs.
 
+## Tests
+
+396 end-to-end checks in `tests/e2e/` — curl against a running backend,
+Playwright against the running editor. No unit tests: every bug that
+actually shipped here was one reading the diff missed and running the app
+caught.
+
+```sh
+pnpm test:e2e            # boots its own backend + editor, runs everything
+pnpm test:e2e:api        # curl suites only
+pnpm test:e2e:browser    # Playwright suites only
+```
+
+The runner uses its own ports and a throwaway database rather than
+whatever `pnpm dev:editor` left running — see
+[`tests/e2e/README.md`](tests/e2e/README.md) for why, and for the two
+assertion rules worth knowing before adding more.
+
+CI (`.github/workflows/ci.yml`) runs typecheck + build in one job and the
+full suite in another, on every PR.
+
 ## Not built yet
 
 - In-app frame/font/rarity-symbol/text-template upload (adding any of
