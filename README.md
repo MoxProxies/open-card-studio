@@ -106,7 +106,7 @@ from the actual plugin code, similar to how a package manager's
 
 ## Backend (API)
 
-`backend/` is a fresh Laravel 11 API — separate from, and much smaller
+`backend/` is a fresh Laravel 12 API — separate from, and much smaller
 than, moxproxies-website's Laravel app; this fork's editor was never
 meant to depend on that codebase. **What it has:**
 

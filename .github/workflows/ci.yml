@@ -55,6 +55,14 @@ jobs:
       - name: Run the PHP tests
         working-directory: backend
         run: ./vendor/bin/phpunit --testdox
+      # A dependency with a published advisory is a bug you already have
+      # and haven't been told about — this is what would have caught the
+      # Laravel 11 ones without someone thinking to look. Blocking on
+      # purpose; when an advisory has no fix yet, record the decision in
+      # composer.json's `audit.ignore` rather than deleting this step.
+      - name: Check dependencies for advisories
+        working-directory: backend
+        run: composer audit
 
   e2e:
     name: End-to-end
