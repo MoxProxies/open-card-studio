@@ -18,6 +18,7 @@ import { designFromTemplate } from "../cardTemplates";
 import { VISIBILITIES, VISIBILITY_LABELS } from "../visibility";
 import { SaveAsTemplateModal } from "./SaveAsTemplateModal";
 import { ReportModal } from "./ReportModal";
+import { ReactionButton } from "./ReactionButton";
 
 interface TemplateBrowserModalProps {
   /** The design currently open in the editor — what "Save current design as template" publishes. */
@@ -345,6 +346,14 @@ export function TemplateBrowserModal({ design, onUseTemplate, onViewProfile, onC
                     </button>
                   </>
                 )}
+
+                <ReactionButton
+                  type="template"
+                  id={t.id}
+                  count={t.reactionCount}
+                  reacted={t.reacted}
+                  onChange={(r) => setTemplates((list) => list.map((x) => (x.id === t.id ? { ...x, reactionCount: r.reaction_count, reacted: r.reacted } : x)))}
+                />
 
                 {tab === "browse" && user && t.author.id !== user.id && (
                   <button className="cs-icon-btn" title="Report this template" data-testid="template-report" onClick={() => setReportingTemplate(t)}>

@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\Levels;
+use App\Support\PointsLedger;
+use App\Support\Reactable;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -31,24 +34,52 @@ class ProfileController extends Controller
      * A public profile plus everything that account has published. No auth:
      * this is the page a shared template link is meant to lead to.
      */
-    public function show(string $username)
+    public function show(Request $request, string $username)
     {
         $user = User::publiclyVisible()->where('username', $username)->firstOrFail();
+        $viewer = $request->user('sanctum');
 
         return response()->json([
             'profile' => $user->toPublicProfile(),
-            'templates' => $user->templates()->published()->latest('updated_at')->limit(self::LISTING_LIMIT)->get()
-                ->map(fn ($template) => $template->setRelation('user', $user)->toSummary()),
-            'designs' => $user->cardDesigns()->published()->latest('updated_at')->limit(self::LISTING_LIMIT)->get()
-                ->map->toSummary(),
+            // Points/level/badges are public: they're the visible part of
+            // the point of having them.
+            'stats' => Levels::progress(PointsLedger::total($user)) + ['reactions_received' => \App\Support\BadgeRules::reactionsReceived($user)],
+            'badges' => $user->badges->map->toArray(),
+            'featured' => $this->featured($user, $viewer),
+            'templates' => $user->templates()->published()->withCount('reactions')->latest('updated_at')->limit(self::LISTING_LIMIT)->get()
+                ->map(fn ($template) => $template->setRelation('user', $user)->toSummary() + $template->reactionState($viewer)),
+            'designs' => $user->cardDesigns()->published()->withCount('reactions')->latest('updated_at')->limit(self::LISTING_LIMIT)->get()
+                ->map(fn ($design) => $design->toSummary() + $design->reactionState($viewer)),
             // Counting only what a visitor could actually open: an
             // unfiltered count would tell them how many private designs
             // the collection holds.
             'collections' => $user->collections()->published()
                 ->withCount(['cardDesigns as design_count' => fn ($query) => $query->publiclyReadable()])
-                ->latest('updated_at')->limit(self::LISTING_LIMIT)->get()
-                ->map(fn ($collection) => $collection->setRelation('user', $user)->toSummary()),
+                ->withCount('reactions')->latest('updated_at')->limit(self::LISTING_LIMIT)->get()
+                ->map(fn ($collection) => $collection->setRelation('user', $user)->toSummary() + $collection->reactionState($viewer)),
         ]);
+    }
+
+    /**
+     * The owner's featured shelf: published items they've picked out,
+     * newest-featured first, across every type. Only published ones — an
+     * item featured and then made private shouldn't reappear here.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function featured(User $user, ?User $viewer): array
+    {
+        $items = [];
+
+        foreach (Reactable::TYPES as $type => $model) {
+            foreach ($model::where('user_id', $user->id)->published()->featured()->withCount('reactions')->get() as $item) {
+                $items[] = ['type' => $type] + $item->toSummary() + $item->reactionState($viewer);
+            }
+        }
+
+        usort($items, fn ($a, $b) => strcmp((string) $b['updated_at'], (string) $a['updated_at']));
+
+        return $items;
     }
 
     /** Edit your own profile. Everything is optional — this is a PATCH. */

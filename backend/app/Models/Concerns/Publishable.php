@@ -2,6 +2,8 @@
 
 namespace App\Models\Concerns;
 
+use App\Support\BadgeRules;
+use App\Support\PointsLedger;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -13,6 +15,35 @@ use Illuminate\Database\Eloquent\Builder;
  */
 trait Publishable
 {
+    /**
+     * Awards the owner the first time this row becomes PUBLISHED, however
+     * it got there — the publish endpoint, an upsert carrying
+     * visibility, or anything added later. A model hook rather than a
+     * line in each controller, so a new publish path can't silently skip
+     * it. Exactly-once via the ledger's dedupe key, so unpublishing and
+     * republishing doesn't farm points.
+     */
+    public static function bootPublishable(): void
+    {
+        static::saved(function ($model) {
+            if ($model->visibility !== self::PUBLISHED || ! $model->user) {
+                return;
+            }
+
+            PointsLedger::award(
+                $model->user,
+                $model->publishPointReason(),
+                $model,
+                "published:{$model->getMorphClass()}:{$model->getKey()}",
+            );
+
+            BadgeRules::evaluate($model->user);
+        });
+    }
+
+    /** The config('gamification.points') key this type earns on publishing. */
+    abstract public function publishPointReason(): string;
+
     /** Only its owner. */
     public const PRIVATE = 'private';
 

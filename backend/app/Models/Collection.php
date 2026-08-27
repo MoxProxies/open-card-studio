@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\OwnedByUser;
 use App\Models\Concerns\Publishable;
+use App\Models\Concerns\Reactable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  */
 class Collection extends Model
 {
-    use HasFactory, OwnedByUser, Publishable;
+    use HasFactory, OwnedByUser, Publishable, Reactable;
 
     protected $fillable = [
         'id',
@@ -29,9 +30,19 @@ class Collection extends Model
         'visibility',
     ];
 
+    protected function casts(): array
+    {
+        return ['featured_at' => 'datetime'];
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function publishPointReason(): string
+    {
+        return 'collection_published';
     }
 
     /** Ordered by the owner's chosen position — see the pivot migration. */

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Models\Template;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
+use App\Support\BadgeRules;
+use App\Support\PointsLedger;
 use Illuminate\Validation\Rule;
 
 /**
@@ -49,10 +51,13 @@ class TemplateController extends OwnedContentController
         $templates = $this->owned($request)
             ->visibleToPublic()
             ->with('user:id,name,username')
+            ->withCount('reactions')
             ->latest('updated_at')
             ->get();
 
-        return response()->json($templates->map->toSummary());
+        $viewer = $request->user();
+
+        return response()->json($templates->map(fn ($template) => $template->toSummary() + $template->reactionState($viewer)));
     }
 
     /**
@@ -90,12 +95,15 @@ class TemplateController extends OwnedContentController
         }
 
         $query = ($params['sort'] ?? 'recent') === 'popular'
-            ? $query->orderByDesc('usage_count')->orderByDesc('updated_at')
+            // "Most used" ranks by uses first, then by reactions — a
+            // template people both use and like outranks one they only use.
+            ? $query->orderByDesc('usage_count')->orderByDesc('reactions_count')->orderByDesc('updated_at')
             : $query->latest('updated_at');
 
-        $templates = $query->limit($params['limit'] ?? 50)->get();
+        $templates = $query->withCount('reactions')->limit($params['limit'] ?? 50)->get();
+        $viewer = $request->user('sanctum');
 
-        return response()->json($templates->map->toSummary());
+        return response()->json($templates->map(fn ($template) => $template->toSummary() + $template->reactionState($viewer)));
     }
 
     /**
@@ -117,7 +125,7 @@ class TemplateController extends OwnedContentController
 
         abort_if(! $template || (! $isOwner && ! $template->isPubliclyReadable()), 404);
 
-        return response()->json($template->toDetail());
+        return response()->json($template->toDetail() + $template->reactionState($viewer));
     }
 
     /**
@@ -180,6 +188,15 @@ class TemplateController extends OwnedContentController
         $template = Template::publiclyReadable()->findOrFail($id);
 
         $template->increment('usage_count');
+
+        // Points only for a signed-in use, deduped per (template, user):
+        // this endpoint is deliberately open (see its doc comment above),
+        // and an anonymous award would be farmable by anyone with a loop.
+        // The usage *count* still moves either way.
+        if (($user = $request->user('sanctum')) && $template->user && $template->user_id !== $user->id) {
+            PointsLedger::award($template->user, 'template_used', $template, "used:{$template->id}:{$user->id}");
+            BadgeRules::evaluate($template->user);
+        }
 
         return response()->json(['id' => $template->id, 'usage_count' => $template->usage_count]);
     }

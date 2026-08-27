@@ -1177,6 +1177,52 @@ blocked; and the properties panel's X/Y/Width/Height/Rotation inputs had
 no `disabled` gating on `locked` at all, so retyping coordinates by hand
 always worked regardless of the lock.
 
+## Points, levels & badges
+
+One generic system, not four. **All the numbers live in
+`backend/config/gamification.php`** — points per action, the level
+thresholds, the featuring gate — because they're a product decision, not
+a code one. Nothing reads a hardcoded value anywhere else.
+
+**Reactions** are one polymorphic table, one endpoint (`POST
+/api/reactions`, toggles and returns the resulting state) and one
+component (`ReactionButton.tsx`) across designs, templates and
+collections. Posts join in Phase 5 by adding `use Reactable` to a model.
+
+**Points are an append-only ledger** (`point_events`), never an integer
+column — so "why am I level 3" is answerable by reading rows. Two rules
+worth knowing:
+
+- Every award carries a `dedupe_key`, so awards are exactly-once.
+  Unliking and re-liking can't farm points; nor can unpublishing and
+  republishing.
+- **Awards are never taken back.** Un-reacting doesn't subtract, because
+  "your total dropped because a stranger changed their mind" is a worse
+  property than "an early like still counts". The `amount` column is
+  signed so moderation *can* reverse, by appending a negative row.
+
+Reacting to your own work is worth nothing, and `template_used` only
+awards for a signed-in use (the endpoint is deliberately open, so an
+anonymous award would be farmable in a loop).
+
+**Levels** are a pure function of the total against the thresholds
+table. **Badges** are their own entity, awarded either by a rule in
+`App\Support\BadgeRules` or by hand — both modelled from the start,
+since "Pillar" is never going to be automatable. The catalog is seeded
+in the migration, so `php artisan migrate` remains the whole setup step.
+
+**Featuring** is the one perk levels unlock: pin your own published work
+to your profile, above a configured level and up to a configured count.
+
+| route | auth | notes |
+| --- | --- | --- |
+| `POST /api/reactions` | ✓ | `{type, id}`; toggles |
+| `POST /api/featured` | ✓ | `{type, id, featured}`; level-gated |
+| `GET /api/badges` | — | the catalog |
+
+Profile responses carry `stats`, `badges` and `featured`; listings carry
+`reaction_count` and `reacted`.
+
 ## Accounts & profiles
 
 Every account has a **username** (the public handle a profile is

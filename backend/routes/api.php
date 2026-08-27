@@ -3,7 +3,10 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CardDesignController;
 use App\Http\Controllers\Api\CollectionController;
+use App\Http\Controllers\Api\BadgeController;
+use App\Http\Controllers\Api\FeatureController;
 use App\Http\Controllers\Api\PluginController;
+use App\Http\Controllers\Api\ReactionController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TemplateController;
@@ -15,6 +18,10 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 // The plugin registry is public — it's a discovery index, not user data;
 // an app should be able to show "available plugins" before login.
 Route::get('/plugins', [PluginController::class, 'index']);
+
+// The badge catalog is public: "what can I earn" should be answerable
+// before you've earned anything.
+Route::get('/badges', [BadgeController::class, 'index']);
 
 // Browsing published community templates, and starting a design from one,
 // deliberately need no account — same reasoning as the plugin registry
@@ -45,6 +52,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // comment), so every save is the same upsert call regardless of
     // whether this is the design's first save or its fiftieth.
     Route::patch('/profile', [ProfileController::class, 'update']);
+
+    // One reaction endpoint for every content type — see the reactions
+    // migration. POST toggles and returns the resulting state.
+    Route::post('/reactions', [ReactionController::class, 'toggle'])->middleware('throttle:120,1');
+    // Featuring your own work on your profile; level-gated in config.
+    Route::post('/featured', [FeatureController::class, 'update']);
 
     // One report endpoint for every content type — see ReportController.
     // Auth'd: an anonymous report queue is a spam queue.

@@ -23,7 +23,8 @@ php artisan route:list     # see every registered route
 
 ## Layout
 
-- `app/Models/` — `User`, `CardDesign`, `Template`, `Collection`, `Report`;
+- `app/Models/` — `User`, `CardDesign`, `Template`, `Collection`, `Report`,
+  `Reaction`, `PointEvent`, `Badge`;
   `Concerns/` holds what they share (`OwnedByUser`, `Publishable`).
 - `app/Http/Controllers/Api/` — `AuthController`, `CardDesignController`,
   `TemplateController`, `CollectionController`, `ProfileController`,
@@ -32,6 +33,8 @@ php artisan route:list     # see every registered route
   `OwnedContentController` (publish/delete).
 - `routes/api.php` — the entire route list; there is no `web.php`, see
   `bootstrap/app.php`'s doc comment for why.
+- `app/Support/` — `PointsLedger`, `Levels`, `BadgeRules`, `Reactable`.
+- `config/gamification.php` — every points/levels/badges number.
 - `config/plugins.php` — the plugin discovery registry `GET /api/plugins`
   serves.
 - `database/migrations/` — `users`/`sessions`/`cache`/`jobs` are

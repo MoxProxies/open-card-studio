@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -12,6 +13,18 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
+
+    /**
+     * The content types a user owns that can be reacted to — relation name
+     * => model class. One list, so "everything this account has that
+     * someone could like" is defined once instead of being re-enumerated
+     * by every counter, profile and badge rule.
+     */
+    public const REACTABLE_OWNED = [
+        'cardDesigns' => CardDesign::class,
+        'templates' => Template::class,
+        'collections' => Collection::class,
+    ];
 
     protected $fillable = [
         'name',
@@ -52,6 +65,21 @@ class User extends Authenticatable
     public function collections(): HasMany
     {
         return $this->hasMany(Collection::class);
+    }
+
+    public function pointEvents(): HasMany
+    {
+        return $this->hasMany(PointEvent::class);
+    }
+
+    public function badges(): BelongsToMany
+    {
+        return $this->belongsToMany(Badge::class)->withPivot('awarded_by')->withTimestamps();
+    }
+
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(Reaction::class);
     }
 
     /** Reports this user filed — not reports *about* them (those are

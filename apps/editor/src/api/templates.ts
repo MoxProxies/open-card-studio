@@ -1,6 +1,7 @@
 import { Design } from "@card-studio/scene-schema";
 import { api } from "./client";
 import type { Visibility } from "../visibility";
+import type { ReactionState } from "./gamification";
 
 /** Kept as a name for readability at call sites; the vocabulary itself is
  * shared with designs — see ../visibility.ts. */
@@ -27,6 +28,10 @@ export interface TemplateSummary {
   version: number;
   updatedAt: string;
   author: TemplateAuthor;
+  /** How many likes, and whether the current viewer is one of them. */
+  reactionCount: number;
+  reacted: boolean;
+  featured: boolean;
 }
 
 export interface TemplateDetail extends TemplateSummary {
@@ -49,7 +54,9 @@ interface TemplateRow {
   design?: unknown;
 }
 
-const toSummary = (row: TemplateRow): TemplateSummary => ({
+type ReactionRow = Partial<ReactionState>;
+
+const toSummary = (row: TemplateRow & ReactionRow): TemplateSummary => ({
   id: row.id,
   name: row.name,
   description: row.description,
@@ -59,6 +66,9 @@ const toSummary = (row: TemplateRow): TemplateSummary => ({
   version: row.version,
   updatedAt: row.updated_at,
   author: row.author,
+  reactionCount: row.reaction_count ?? 0,
+  reacted: row.reacted ?? false,
+  featured: row.featured ?? false,
 });
 
 export interface BrowseParams {

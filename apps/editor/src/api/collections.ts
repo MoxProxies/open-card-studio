@@ -17,6 +17,9 @@ export interface CollectionSummary {
   designCount: number | null;
   updatedAt: string;
   author: CollectionAuthor;
+  reactionCount?: number;
+  reacted?: boolean;
+  featured?: boolean;
 }
 
 export interface CollectionDetail extends CollectionSummary {
@@ -34,6 +37,9 @@ interface CollectionRow {
   design_count: number | null;
   updated_at: string;
   author: CollectionAuthor;
+  reaction_count?: number;
+  reacted?: boolean;
+  featured?: boolean;
   designs?: Array<{ id: string; name: string; visibility: Visibility; updated_at: string }>;
 }
 
@@ -45,6 +51,9 @@ const toSummary = (row: CollectionRow): CollectionSummary => ({
   designCount: row.design_count,
   updatedAt: row.updated_at,
   author: row.author,
+  reactionCount: row.reaction_count,
+  reacted: row.reacted,
+  featured: row.featured,
 });
 
 const toDetail = (row: CollectionRow): CollectionDetail => ({

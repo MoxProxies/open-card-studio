@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, LayoutTemplate, Flag, FileImage, Library } from "lucide-react";
+import { Loader2, LayoutTemplate, Flag, FileImage, Library, Star } from "lucide-react";
 import type { Design } from "@card-studio/scene-schema";
 import { apiErrorMessage } from "../api/client";
 import { getCurrentUser } from "../api/auth";
@@ -9,6 +9,9 @@ import { designFromTemplate } from "../cardTemplates";
 import { Modal } from "./Modal";
 import { ListRow } from "./ListRow";
 import { ReportModal } from "./ReportModal";
+import { ReactionButton } from "./ReactionButton";
+import { ProfileStats } from "./ProfileStats";
+import { setFeatured } from "../api/gamification";
 
 interface PublicProfileModalProps {
   username: string;
@@ -61,6 +64,18 @@ export function PublicProfileModal({ username, onUseTemplate, onClose }: PublicP
 
   const isSelf = viewer?.username === username;
 
+  /** Featuring is level-gated server-side; a refusal comes back as a
+   * message worth showing rather than a silent no-op. */
+  const toggleFeatured = async (type: "template" | "design" | "collection", id: string, featured: boolean) => {
+    setError(null);
+    try {
+      await setFeatured(type, id, featured);
+      setPage(await loadProfile(username));
+    } catch (e) {
+      setError(apiErrorMessage(e, "Couldn't change that."));
+    }
+  };
+
   return (
     <>
       <Modal title={page ? `${page.profile.name} (@${page.profile.username})` : "Profile"} onClose={onClose} width="min(600px, 92vw)" testId="public-profile">
@@ -104,9 +119,32 @@ export function PublicProfileModal({ username, onUseTemplate, onClose }: PublicP
               )}
             </div>
 
+            <ProfileStats stats={page.stats} badges={page.badges} />
+
+            {page.featured.length > 0 && (
+              <Section icon={<Star size={13} />} title="Featured" count={page.featured.length} testId="profile-featured">
+                {page.featured.map((f) => (
+                  <ListRow key={`${f.type}-${f.id}`} testId="featured-row" title={f.name} subtitle={f.type}>
+                    <ReactionButton type={f.type} id={f.id} count={f.reaction_count ?? 0} reacted={f.reacted ?? false} />
+                  </ListRow>
+                ))}
+              </Section>
+            )}
+
             <Section icon={<LayoutTemplate size={13} />} title="Published templates" count={page.templates.length} testId="profile-templates">
               {page.templates.map((t) => (
                 <ListRow key={t.id} testId="profile-row" title={t.name} subtitle={`used ${t.usageCount}× ${t.tags.length ? `· ${t.tags.join(", ")}` : ""}`}>
+                  <ReactionButton type="template" id={t.id} count={t.reactionCount} reacted={t.reacted} />
+                  {isSelf && (
+                    <button
+                      className={`cs-icon-btn${t.featured ? " cs-active" : ""}`}
+                      title={t.featured ? "Remove from your featured shelf" : "Feature this on your profile"}
+                      data-testid="feature-toggle"
+                      onClick={() => void toggleFeatured("template", t.id, !t.featured)}
+                    >
+                      <Star size={13} fill={t.featured ? "currentColor" : "none"} />
+                    </button>
+                  )}
                   <button className="cs-btn" onClick={() => void useTemplate(t.id, t.name)} disabled={busyId === t.id} data-testid="profile-use-template">
                     {busyId === t.id ? <Loader2 size={14} className="cs-spin" /> : <LayoutTemplate size={14} />} Use
                   </button>

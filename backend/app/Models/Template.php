@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\OwnedByUser;
 use App\Models\Concerns\Publishable;
+use App\Models\Concerns\Reactable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Template extends Model
 {
-    use HasFactory, OwnedByUser, Publishable;
+    use HasFactory, OwnedByUser, Publishable, Reactable;
 
     /** `usage_count` and `moderation_state` are deliberately absent: a
      * request can't claim a usage count for its own template, and
@@ -41,6 +42,7 @@ class Template extends Model
     protected function casts(): array
     {
         return [
+            'featured_at' => 'datetime',
             'design' => 'array',
             'tags' => 'array',
         ];
@@ -49,6 +51,11 @@ class Template extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function publishPointReason(): string
+    {
+        return 'template_published';
     }
 
     /**

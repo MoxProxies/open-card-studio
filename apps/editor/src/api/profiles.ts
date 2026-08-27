@@ -2,6 +2,7 @@ import { api } from "./client";
 import type { AuthUser } from "./auth";
 import type { TemplateSummary } from "./templates";
 import type { CollectionSummary } from "./collections";
+import type { BadgeInfo, LevelProgress, ReactableType } from "./gamification";
 
 export interface PublicProfile {
   id: number;
@@ -17,10 +18,22 @@ export interface ProfileDesign {
   name: string;
   visibility: string;
   updated_at: string;
+  reaction_count?: number;
+  reacted?: boolean;
+  featured?: boolean;
+}
+
+/** A row on the profile's featured shelf — any content type, tagged. */
+export interface FeaturedItem extends ProfileDesign {
+  type: ReactableType;
+  description?: string | null;
 }
 
 export interface ProfilePage {
   profile: PublicProfile;
+  stats: LevelProgress;
+  badges: BadgeInfo[];
+  featured: FeaturedItem[];
   templates: TemplateSummary[];
   designs: ProfileDesign[];
   collections: CollectionSummary[];
@@ -28,6 +41,9 @@ export interface ProfilePage {
 
 interface ProfileRow {
   profile: PublicProfile;
+  stats: LevelProgress;
+  badges: BadgeInfo[];
+  featured: FeaturedItem[];
   templates: Array<Record<string, unknown>>;
   designs: ProfileDesign[];
   collections: Array<Record<string, unknown>>;
@@ -40,6 +56,9 @@ export async function loadProfile(username: string): Promise<ProfilePage> {
 
   return {
     profile: row.profile,
+    stats: row.stats,
+    badges: row.badges ?? [],
+    featured: row.featured ?? [],
     designs: row.designs,
     collections: (row.collections ?? []).map((c) => ({
       id: c.id as string,
@@ -60,6 +79,9 @@ export async function loadProfile(username: string): Promise<ProfilePage> {
       version: t.version as number,
       updatedAt: t.updated_at as string,
       author: t.author as TemplateSummary["author"],
+      reactionCount: (t.reaction_count ?? 0) as number,
+      reacted: (t.reacted ?? false) as boolean,
+      featured: (t.featured ?? false) as boolean,
     })),
   };
 }

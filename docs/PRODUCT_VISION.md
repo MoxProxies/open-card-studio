@@ -193,6 +193,17 @@ generalize twice more (posts, gamification).
 
 ### Phase 4 — Gamification core
 
+> **Shipped** — see the root README's [Points, levels &
+> badges](../README.md#points-levels--badges). All five pieces exist:
+> polymorphic reactions, the append-only ledger, a thresholds table,
+> rule-based *and* manual badges, and level-gated featuring. **The
+> numbers in `backend/config/gamification.php` are placeholders** — they
+> are still the open decision this document lists for a human, and
+> nothing else hardcodes them. Two behaviours worth a decision if you
+> disagree: awards are never reversed when someone un-reacts, and manual
+> badge granting has no endpoint (no staff role exists yet to authorise
+> one — a founder grants from tinker).
+
 Build this as one generic system, not four bespoke ones:
 
 - A **polymorphic reaction/like** table (reactable type + id) usable
