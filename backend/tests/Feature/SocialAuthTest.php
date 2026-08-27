@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Socialite\Contracts\Provider;
 use Laravel\Socialite\Facades\Socialite;
@@ -41,7 +42,7 @@ class SocialAuthTest extends TestCase
     /** Stands in for the provider handing back a profile. */
     private function fakeProviderUser(array $raw = [], ?string $email = 'someone@example.com', string $id = 'provider-123'): void
     {
-        $user = (new SocialiteUser())->setRaw($raw + ['email_verified' => true]);
+        $user = (new SocialiteUser)->setRaw($raw + ['email_verified' => true]);
         $user->id = $id;
         $user->name = 'Provider Person';
         $user->email = $email;
@@ -53,7 +54,7 @@ class SocialAuthTest extends TestCase
         $provider->shouldReceive('stateless')->andReturnSelf();
         $provider->shouldReceive('with')->andReturnSelf();
         $provider->shouldReceive('redirect')->andReturn(
-            new \Illuminate\Http\RedirectResponse('https://accounts.google.com/o/oauth2/auth?client_id=test-client-id&state=nonce')
+            new RedirectResponse('https://accounts.google.com/o/oauth2/auth?client_id=test-client-id&state=nonce')
         );
         $provider->shouldReceive('user')->andReturn($user);
 
@@ -213,7 +214,13 @@ class SocialAuthTest extends TestCase
         $this->assertSame(0, SocialAccount::where('user_id', $existing->id)->count());
     }
 
-    public function test_a_suspended_account_cannot_sign_in_through_a_provider(): void
+    /**
+     * Signing in while suspended is allowed on purpose — an account that
+     * can't sign in can't appeal either — so what has to hold is that the
+     * token it gets opens nothing. See BlockSuspendedUsers and
+     * AppealController.
+     */
+    public function test_a_suspended_account_signs_in_through_a_provider_but_gets_a_token_that_opens_nothing(): void
     {
         $user = User::create([
             'name' => 'Banned',
@@ -227,7 +234,32 @@ class SocialAuthTest extends TestCase
         $this->fakeProviderUser(email: 'banned@example.com');
         $state = $this->startAndGetState();
 
-        $this->get("/api/auth/google/callback?state={$state}")->assertStatus(403);
+        $location = $this->get("/api/auth/google/callback?state={$state}")->headers->get('Location');
+
+        $this->assertStringContainsString('#token=', $location);
+
+        $token = urldecode(str($location)->after('#token=')->toString());
+
+        $this->withToken($token)->getJson('/api/auth/me')
+            ->assertForbidden()
+            ->assertJson(['suspended' => true]);
+    }
+
+    public function test_a_suspended_account_can_still_file_an_appeal(): void
+    {
+        $user = User::create([
+            'name' => 'Banned',
+            'email' => 'banned2@example.com',
+            'username' => 'banned2',
+            'password' => bcrypt('password123'),
+        ]);
+        $user->moderation_state = User::SUSPENDED;
+        $user->save();
+
+        $this->actingAs($user)
+            ->postJson('/api/auth/appeal', ['message' => 'This was a misunderstanding and here is why.'])
+            ->assertCreated()
+            ->assertJson(['state' => 'open']);
     }
 
     public function test_a_denied_consent_screen_comes_back_as_an_error_not_a_crash(): void

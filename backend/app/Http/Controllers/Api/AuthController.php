@@ -106,8 +106,13 @@ class AuthController extends Controller
         // than leaving the account half-locked for the rest of the window.
         RateLimiter::clear($throttleKey);
 
-        abort_if($user->moderation_state === User::SUSPENDED, 403, 'This account is suspended.');
-
+        // Deliberately *not* refused here. A suspended account that
+        // can't sign in can't appeal either, and every endpoint that
+        // matters still 403s (BlockSuspendedUsers) — this is
+        // authentication succeeding and authorisation failing, which is
+        // the honest shape of it. The account's moderation_state rides
+        // along in the response so the client shows the suspension
+        // screen instead of a working app.
         return response()->json([
             'user' => static::withEmail($user),
             'token' => static::issueToken($user, $request),

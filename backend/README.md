@@ -26,12 +26,13 @@ php artisan auth:reset-link me@example.com   # a reset link, no mail sent
 ## Layout
 
 - `app/Models/` — `User`, `CardDesign`, `Template`, `Collection`, `Report`,
-  `Reaction`, `PointEvent`, `Badge`, `Post`, `PostRevision`, `Comment`, `ModerationAction`;
+  `Reaction`, `PointEvent`, `Badge`, `Post`, `PostRevision`, `Comment`,
+  `ModerationAction`, `Appeal`;
   `Concerns/` holds what they share (`OwnedByUser`, `Publishable`).
 - `app/Http/Controllers/Api/` — `AuthController`, `CardDesignController`,
   `TemplateController`, `CollectionController`, `ProfileController`,
   `ReportController`, `SocialAuthController`, `EmailController`,
-  `PluginController`. The owned-content controllers share
+  `AppealController`, `PluginController`. The owned-content controllers share
   `OwnedContentController` (publish/delete).
 - `routes/api.php` — the entire route list; there is no `web.php`, see
   `bootstrap/app.php`'s doc comment for why.

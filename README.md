@@ -1201,6 +1201,7 @@ moderation surface exists. Hiding the tab in the UI is presentation; the
 | --- | --- |
 | **Takedown** | hides content from everyone *including its owner*, and reverses the points it earned. Requires a stated reason. |
 | **Suspend** | blocks every authenticated request (`BlockSuspendedUsers`) and hides the profile. Deletes nothing, so it's reversible and an appeal has something to look at. The token isn't revoked, so reinstating doesn't force a re-login. |
+| **Appeal** | granted (which reinstates) or declined, with a response the appellant reads. See below. |
 | **Resolve** | marks a report reviewed/actioned/dismissed. Never touches content — a takedown is a separate, explicit call. |
 | **Badges** | grants or revokes the manual badges. Rule-based ones are refused: hand-granting one would be a lie the next evaluation disagrees with. |
 
@@ -1210,6 +1211,23 @@ an audit trail. Undoing is a new row.
 
 Staff can't suspend staff or themselves: two people arguing with the
 suspend button is not a moderation process.
+
+### Appeals
+
+A suspended account can contest the decision, which is what stops a
+suspension being a black box. It works because sign-in still *succeeds*
+while suspended — authentication passes, authorisation fails — so the
+account keeps a token, and three routes sit outside `BlockSuspendedUsers`:
+signing out, reading your appeal, and filing one. Everything else 403s
+with `suspended: true` in the body, which is what tells the app to show
+the suspension screen rather than a generic error.
+
+One open appeal at a time (a queue where one person can file fifty is a
+queue nobody reads), re-appealing after a denial is allowed, and a
+decision needs a written response either way — "no" with no reason is
+what makes someone file the same appeal five more times. **Granting
+reinstates the account in the same call**: as two calls, the way it fails
+is a granted appeal nobody remembered to act on.
 
 ## Knowledge base
 
@@ -2131,12 +2149,12 @@ on the `.sh`) — override either if your layout differs.
 
 ## Tests
 
-452 end-to-end checks in `tests/e2e/` — curl against a running backend,
+478 end-to-end checks in `tests/e2e/` — curl against a running backend,
 Playwright against the running editor. That's the default here: every bug
 that actually shipped was one reading the diff missed and running the app
 caught.
 
-The exception is `backend/tests/Feature/` (36 PHPUnit tests), for the
+The exception is `backend/tests/Feature/` (37 PHPUnit tests), for the
 handful of things a live run can't honestly prove — an OAuth provider
 lying about a verified email, an email actually being queued, or a token
 expiring thirty days from now.

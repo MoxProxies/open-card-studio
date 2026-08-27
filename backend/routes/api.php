@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AppealController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BadgeController;
 use App\Http\Controllers\Api\CardDesignController;
@@ -86,10 +87,19 @@ Route::get('/posts', [PostController::class, 'browse']);
 Route::get('/posts/{slug}', [PostController::class, 'show']);
 Route::get('/posts/{slug}/comments', [CommentController::class, 'index']);
 
-// BlockSuspendedUsers on the whole authenticated group: a suspension has
-// to stop the account doing anything, not just hide its profile.
-Route::middleware(['auth:sanctum', BlockSuspendedUsers::class])->group(function () {
+// Authenticated, but *not* behind BlockSuspendedUsers — the three things
+// a suspended account still has to be able to do. Signing out must always
+// work, and an appeal route a suspended user can't reach could only ever
+// be used by people with nothing to appeal.
+Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::get('/auth/appeal', [AppealController::class, 'show']);
+    Route::post('/auth/appeal', [AppealController::class, 'store'])->middleware('throttle:5,60');
+});
+
+// BlockSuspendedUsers on everything else: a suspension has to stop the
+// account doing anything, not just hide its profile.
+Route::middleware(['auth:sanctum', BlockSuspendedUsers::class])->group(function () {
     Route::post('/auth/logout-everywhere', [AuthController::class, 'logoutEverywhere']);
     // The account's own live tokens, and revoking one of them. Scoped to
     // $request->user()'s tokens in the controller, so an id from another
@@ -149,6 +159,10 @@ Route::middleware(['auth:sanctum', BlockSuspendedUsers::class])->group(function 
         Route::post('/reports/{id}', [ModerationController::class, 'resolveReport']);
         Route::post('/takedown', [ModerationController::class, 'takedown']);
         Route::post('/users/{id}/suspend', [ModerationController::class, 'suspend']);
+        // The other side of AppealController: reading what suspended
+        // accounts wrote back, and deciding. Granting reinstates.
+        Route::get('/appeals', [ModerationController::class, 'appeals']);
+        Route::post('/appeals/{id}', [ModerationController::class, 'resolveAppeal']);
         Route::post('/users/{id}/badges', [ModerationController::class, 'badge']);
         Route::get('/actions', [ModerationController::class, 'actions']);
     });

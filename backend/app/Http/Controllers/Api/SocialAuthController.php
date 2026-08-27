@@ -105,7 +105,8 @@ class SocialAuthController extends Controller
             return redirect()->away($returnTo.'#error='.$e->getMessage());
         }
 
-        abort_if($user->moderation_state === User::SUSPENDED, 403, 'This account is suspended.');
+        // Suspended accounts may sign in — see AuthController::login
+        // for why refusing here would only remove their route to appeal.
 
         return redirect()->away($returnTo.'#token='.urlencode(AuthController::issueToken($user, $request)));
     }

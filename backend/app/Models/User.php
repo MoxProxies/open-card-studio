@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -79,6 +79,17 @@ class User extends Authenticatable
     public function socialAccounts(): HasMany
     {
         return $this->hasMany(SocialAccount::class);
+    }
+
+    /** Appeals this account has filed against its own suspension. */
+    public function appeals(): HasMany
+    {
+        return $this->hasMany(Appeal::class);
+    }
+
+    public function isSuspended(): bool
+    {
+        return $this->moderation_state === self::SUSPENDED;
     }
 
     /** False for an account created through a provider that has never set

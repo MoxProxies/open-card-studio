@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { api, isSuspendedError } from "./client";
 
 export interface AuthUser {
   id: number;
@@ -16,6 +16,8 @@ export interface AuthUser {
   /** Staff see the moderation destination. Presentation only — the
    * moderation API 404s for everyone else regardless. */
   is_staff?: boolean;
+  /** "ok" or "suspended". Only ever on the account's own record. */
+  moderation_state?: string;
 }
 
 interface AuthResponse {
@@ -29,6 +31,9 @@ type Listener = (user: AuthUser | null) => void;
 const listeners = new Set<Listener>();
 
 let currentUser: AuthUser | null = null;
+// Signed in, but the account is suspended: not the same state as signed
+// out, because the token is still good for exactly one thing — appealing.
+let suspended = false;
 
 export function getToken(): string | null {
   try {
@@ -54,6 +59,32 @@ function setUser(user: AuthUser | null): void {
   currentUser = user;
   for (const listener of listeners) listener(user);
 }
+
+/** Read-only snapshot for useSyncExternalStore, same as getCurrentUser. */
+export function getSuspended(): boolean {
+  return suspended;
+}
+
+/** A suspended account is held signed-out as far as the rest of the app
+ * is concerned — every feature would 403 anyway — but the token is kept,
+ * because the appeal endpoints are the one thing it still opens. */
+function setSuspended(value: boolean): void {
+  suspended = value;
+  setUser(null);
+}
+
+export interface Appeal {
+  id: number;
+  message: string;
+  state: "open" | "granted" | "denied";
+  response: string | null;
+  submitted_at: string;
+  resolved_at: string | null;
+}
+
+export const loadAppeal = () => api.get<{ suspended: boolean; appeal: Appeal | null }>("/api/auth/appeal");
+
+export const submitAppeal = (message: string) => api.post<Appeal>("/api/auth/appeal", { message });
 
 /** Read-only snapshot for a `useSyncExternalStore` selector (see AccountButton.tsx). */
 export function getCurrentUser(): AuthUser | null {
@@ -193,11 +224,16 @@ export async function register(name: string, email: string, password: string): P
 export async function login(email: string, password: string): Promise<AuthUser> {
   const { user, token } = await api.post<AuthResponse>("/api/auth/login", { email, password });
   setToken(token);
-  setUser(user);
+  // Signing in works while suspended — deliberately, see the backend's
+  // AuthController::login — so the sign-in form's success path is where
+  // the suspension surfaces, not an error.
+  if (user.moderation_state === "suspended") setSuspended(true);
+  else setUser(user);
   return user;
 }
 
 export async function logout(): Promise<void> {
+  suspended = false;
   try {
     await api.post("/api/auth/logout");
   } catch {
@@ -223,8 +259,11 @@ export async function restoreSession(): Promise<AuthUser | null> {
     const user = await api.get<AuthUser>("/api/auth/me");
     setUser(user);
     return user;
-  } catch {
-    setToken(null);
+  } catch (e) {
+    // A suspension isn't a broken session: the token is still valid, and
+    // throwing it away would leave the account unable to appeal.
+    if (isSuspendedError(e)) setSuspended(true);
+    else setToken(null);
     return null;
   }
 }

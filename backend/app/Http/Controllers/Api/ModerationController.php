@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Appeal;
 use App\Models\Badge;
+use App\Models\CardDesign;
+use App\Models\Collection;
 use App\Models\Comment;
 use App\Models\ModerationAction;
+use App\Models\Post;
 use App\Models\Report;
+use App\Models\Template;
 use App\Models\User;
 use App\Support\PointsLedger;
-use App\Support\Reactable;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -34,10 +37,10 @@ class ModerationController extends Controller
     /** What a takedown can point at — everything reportable except accounts,
      * which are suspended rather than removed. */
     private const TAKEDOWN_TYPES = [
-        'template' => \App\Models\Template::class,
-        'design' => \App\Models\CardDesign::class,
-        'collection' => \App\Models\Collection::class,
-        'post' => \App\Models\Post::class,
+        'template' => Template::class,
+        'design' => CardDesign::class,
+        'collection' => Collection::class,
+        'post' => Post::class,
         'comment' => Comment::class,
     ];
 
@@ -147,6 +150,74 @@ class ModerationController extends Controller
         $this->record($request, $data['suspended'] ? 'suspend' : 'reinstate', User::class, (string) $user->id, $data['reason'] ?? null);
 
         return response()->json(['id' => $user->id, 'moderation_state' => $user->moderation_state]);
+    }
+
+    /** The appeal queue: open appeals first, oldest first, same ordering
+     * and same reasoning as the report queue above. */
+    public function appeals(Request $request)
+    {
+        $params = $request->validate([
+            'state' => ['sometimes', Rule::in([Appeal::OPEN, 'granted', 'denied', 'all'])],
+        ]);
+
+        // oldest('id') for the same reason AppealController::show uses
+        // latest('id'): same-second ties make the order arbitrary.
+        $query = Appeal::query()->with('user:id,name,username,moderation_state')->oldest('id');
+
+        if (($params['state'] ?? Appeal::OPEN) !== 'all') {
+            $query->where('state', $params['state'] ?? Appeal::OPEN);
+        }
+
+        return response()->json(
+            $query->limit(100)->get()->map(fn (Appeal $appeal) => $appeal->toArray() + [
+                'user' => [
+                    'id' => $appeal->user_id,
+                    'name' => $appeal->user?->name,
+                    'username' => $appeal->user?->username,
+                    // Whether they're *still* suspended: an appeal can be
+                    // overtaken by a reinstatement decided elsewhere.
+                    'suspended' => (bool) $appeal->user?->isSuspended(),
+                ],
+            ])
+        );
+    }
+
+    /**
+     * Decide an appeal. Granting reinstates the account — the two were
+     * separate calls in an earlier draft, and the way that fails is a
+     * granted appeal where nobody remembered to lift the suspension.
+     *
+     * Denying is deliberately a decision, not silence: the appellant sees
+     * the response text, and an appeal that just sits open forever is the
+     * black box this whole flow exists to avoid.
+     */
+    public function resolveAppeal(Request $request, int $id)
+    {
+        $data = $request->validate([
+            'state' => ['required', Rule::in(['granted', 'denied'])],
+            // Required either way: "no" without a reason is what makes
+            // people file the same appeal five more times.
+            'response' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $appeal = Appeal::with('user')->findOrFail($id);
+
+        // Assigned, not mass-assigned — see Appeal::$fillable.
+        $appeal->state = $data['state'];
+        $appeal->response = $data['response'];
+        $appeal->resolved_by = $request->user()->id;
+        $appeal->resolved_at = now();
+        $appeal->save();
+
+        if ($data['state'] === 'granted' && $appeal->user) {
+            $appeal->user->moderation_state = 'ok';
+            $appeal->user->save();
+            $this->record($request, 'reinstate', User::class, (string) $appeal->user_id, 'Appeal granted: '.$data['response']);
+        }
+
+        $this->record($request, 'appeal_'.$data['state'], Appeal::class, (string) $appeal->id, $data['response']);
+
+        return response()->json($appeal->toArray());
     }
 
     /**

@@ -11,12 +11,19 @@ export const API_BASE_URL: string = (import.meta.env.VITE_API_BASE_URL as string
 export class ApiError extends Error {
   constructor(
     public status: number,
-    message: string
+    message: string,
+    /** The refusal's own flags, when it sent any — today just
+     * `suspended`, which the app has to tell apart from an ordinary 403
+     * (see BlockSuspendedUsers). */
+    public body: { suspended?: boolean } = {},
   ) {
     super(message);
     this.name = "ApiError";
   }
 }
+
+/** A refusal because the account is suspended, rather than any other 403. */
+export const isSuspendedError = (error: unknown): boolean => error instanceof ApiError && error.body.suspended === true;
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
@@ -37,13 +44,14 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     // isn't JSON at all (a proxy/gateway error page, a network tool's
     // interstitial, ...).
     let message = `Request failed (${res.status})`;
+    let body: { message?: string; suspended?: boolean } = {};
     try {
-      const body = (await res.json()) as { message?: string };
+      body = (await res.json()) as { message?: string; suspended?: boolean };
       if (body.message) message = body.message;
     } catch {
       // not JSON — keep the generic message
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, body);
   }
 
   if (res.status === 204) return undefined as T;

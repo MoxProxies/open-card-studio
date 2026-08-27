@@ -111,6 +111,33 @@ try {
   check("and their token stops working", 403, await statusAs(author, "/api/auth/me"));
   await staff.screenshot({ path: `${SHOT_DIR}/t3-after-suspend.png` });
 
+  console.log("== the suspended author is told, and can appeal ==");
+  await author.reload();
+  await author.getByTestId("suspended-notice").waitFor();
+  check("the app is replaced by the suspension notice", true, await author.getByTestId("suspended-notice").isVisible());
+  check("and it doesn't pretend they're signed out", 0, await author.getByTestId("sign-in").count());
+  await author.getByTestId("appeal-message").fill("The frame art is mine — I can send the layered source file and its timestamps.");
+  await author.getByTestId("appeal-submit").click();
+  await author.getByTestId("appeal-pending").waitFor();
+  check("the appeal is acknowledged", true, (await author.getByTestId("appeal-pending").innerText()).includes("with us"));
+  await author.screenshot({ path: `${SHOT_DIR}/t4-appeal.png` });
+
+  console.log("== staff work the appeal queue ==");
+  await go(staff, "moderation");
+  await staff.getByTestId("mod-tab-appeals").click();
+  // Matched by its text, not .first(): the queue is global, and the API
+  // suites run against this same database — picking whichever row is
+  // oldest would be picking someone else's appeal.
+  const appeal = staff.locator("[data-testid='appeal-row']:has-text(\"layered source file\")");
+  await appeal.waitFor();
+  check("the appeal reaches the queue", 1, await appeal.count());
+  promptAnswer = "Checked the timestamps — you're right, sorry about that.";
+  await appeal.getByTestId("appeal-grant").click();
+  await appeal.waitFor({ state: "detached" });
+  check("granting clears it from the queue", 0, await appeal.count());
+  check("and lifts the suspension", 200, await statusAs(author, "/api/auth/me"));
+  check("the profile is public again", 200, await statusOf(staff, `/api/users/${authorAccount.username}`));
+
   console.log("== dismissing a report leaves the content alone ==");
   const template2 = `Fine Layout ${stamp}`;
   const author2 = await openApp(browser);

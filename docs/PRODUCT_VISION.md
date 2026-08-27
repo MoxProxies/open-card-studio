@@ -247,10 +247,9 @@ Build this as one generic system, not four bespoke ones:
 > heuristics; the queue is where automation would attach if it stops
 > scaling. Revisit that if the volume ever justifies it.
 >
-> Still not done: a real device lab pass (this was verified in an
-> emulated touch context, not on hardware), and any appeals flow — a
-> suspended account is told it's suspended and pointed at support, with
-> no in-app route to contest it.
+> Appeals shipped afterwards — see the root README's
+> [Appeals](../README.md#appeals). Still not done: a real device lab pass
+> (this was verified in an emulated touch context, not on hardware).
 
 A dedicated pass rather than something assumed to have happened
 incidentally: touch-target sizing, the editor's pan/zoom/toolbar layout

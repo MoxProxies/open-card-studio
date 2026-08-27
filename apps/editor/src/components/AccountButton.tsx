@@ -1,9 +1,10 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { LogIn, LogOut, User } from "lucide-react";
-import { getCurrentUser, logout, restoreSession, subscribe } from "../api/auth";
+import { getCurrentUser, getSuspended, logout, restoreSession, subscribe } from "../api/auth";
 import { apiDesignStorage } from "../api/apiDesignStorage";
 import { localStorageDesignStorage, setActiveDesignStorage } from "../designStorage";
 import { AccountModal } from "./AccountModal";
+import { SuspendedNotice } from "./SuspendedNotice";
 import { ProfileModal } from "./ProfileModal";
 
 /**
@@ -18,6 +19,9 @@ import { ProfileModal } from "./ProfileModal";
  */
 export function AccountButton({ onViewProfile }: { onViewProfile: (username: string) => void }) {
   const user = useSyncExternalStore(subscribe, getCurrentUser);
+  // Suspended isn't "signed out": the token still works for the appeal
+  // endpoints, and the notice is what explains why nothing else does.
+  const suspended = useSyncExternalStore(subscribe, getSuspended);
   const [showModal, setShowModal] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [restoring, setRestoring] = useState(true);
@@ -32,10 +36,17 @@ export function AccountButton({ onViewProfile }: { onViewProfile: (username: str
 
   if (restoring) return null;
 
+  if (suspended) return <SuspendedNotice />;
+
   if (user) {
     return (
       <>
-        <button className="cs-btn" onClick={() => setShowProfile(true)} title={`Signed in as ${user.email} — edit your public profile`} data-testid="account-button">
+        <button
+          className="cs-btn"
+          onClick={() => setShowProfile(true)}
+          title={`Signed in as ${user.email} — edit your public profile`}
+          data-testid="account-button"
+        >
           <User size={16} /> {user.name}
         </button>
         <button

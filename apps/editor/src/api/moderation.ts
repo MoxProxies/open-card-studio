@@ -47,3 +47,20 @@ export const setUserBadge = (id: number, badge: string, granted: boolean, reason
   api.post<{ id: number; badges: BadgeInfo[] }>(`/api/moderation/users/${id}/badges`, { badge, granted, reason });
 
 export const loadAuditTrail = () => api.get<AuditEntry[]>("/api/moderation/actions");
+
+export interface QueuedAppeal {
+  id: number;
+  message: string;
+  state: "open" | "granted" | "denied";
+  response: string | null;
+  submitted_at: string;
+  resolved_at: string | null;
+  user: { id: number; name: string | null; username: string | null; suspended: boolean };
+}
+
+export const loadAppealQueue = (state: "open" | "granted" | "denied" | "all" = "open") => api.get<QueuedAppeal[]>(`/api/moderation/appeals?state=${state}`);
+
+/** Granting reinstates the account as part of the same call — the way
+ * two calls fail is a granted appeal nobody remembered to act on. */
+export const resolveAppeal = (id: number, state: "granted" | "denied", response: string) =>
+  api.post<QueuedAppeal>(`/api/moderation/appeals/${id}`, { state, response });

@@ -4,7 +4,8 @@ import { App } from "../App";
 import { AccountModal } from "../components/AccountModal";
 import { ProfileModal } from "../components/ProfileModal";
 import { ResetPasswordModal } from "../components/ResetPasswordModal";
-import { consumeSocialRedirect, getCurrentUser, logout, restoreSession, subscribe } from "../api/auth";
+import { SuspendedNotice } from "../components/SuspendedNotice";
+import { consumeSocialRedirect, getCurrentUser, getSuspended, logout, restoreSession, subscribe } from "../api/auth";
 import { apiDesignStorage } from "../api/apiDesignStorage";
 import { localStorageDesignStorage, setActiveDesignStorage } from "../designStorage";
 import { useIsNarrow } from "../hooks/useIsNarrow";
@@ -108,13 +109,20 @@ export function AppShell() {
     restoreSession();
   }, []);
 
+  // A suspended account is signed in as far as the API is concerned, but
+  // every feature 403s — so the shell says so and offers the appeal
+  // instead of leaving a working-looking app that refuses everything.
+  const suspended = useSyncExternalStore(subscribe, getSuspended);
+
   // Same swap AccountButton does in the embed: signing in moves storage
   // from this browser to the account.
   useEffect(() => {
     setActiveDesignStorage(user ? apiDesignStorage : localStorageDesignStorage);
   }, [user]);
 
-  const account = user ? (
+  // Nothing in the account slot while suspended: they aren't signed out,
+  // so "Sign in" would be a lie, and the notice below is the whole story.
+  const account = suspended ? null : user ? (
     <div style={{ display: "flex", gap: 4 }}>
       <button className="cs-btn" onClick={() => setShowProfileEditor(true)} data-testid="account-button" title={`Signed in as ${user.email}`}>
         <User size={16} /> {user.name}
@@ -214,6 +222,8 @@ export function AppShell() {
           </button>
         </div>
       )}
+
+      {suspended && <SuspendedNotice />}
 
       {narrow && <BottomTabs />}
 

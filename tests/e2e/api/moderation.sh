@@ -66,6 +66,36 @@ check "their profile 404s" 404 "$(curl -s -o /dev/null -w '%{http_code}' $BASE/a
 check "staff can't be suspended this way" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/moderation/users/$MID/suspend "${AM[@]}" "${J[@]}" -d '{"suspended":true,"reason":"x"}')"
 check "reinstating restores access without a re-login" 200 "$(curl -s -o /dev/null -X POST $BASE/api/moderation/users/$OID/suspend "${AM[@]}" "${J[@]}" -d '{"suspended":false}'; curl -s -o /dev/null -w '%{http_code}' $BASE/api/auth/me "${AO[@]}" -H 'Accept: application/json')"
 
+echo "== appeals =="
+check "nothing to appeal while in good standing" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/appeal "${AO[@]}" "${J[@]}" -d '{"message":"I would like my account back please."}')"
+curl -s -o /dev/null -X POST $BASE/api/moderation/users/$OID/suspend "${AM[@]}" "${J[@]}" -d '{"suspended":true,"reason":"Repeated infringement."}'
+check "a suspended account can still sign in" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/login "${J[@]}" -d "{\"email\":\"off$S@example.com\",\"password\":\"password123\"}")"
+check "the refusal says so in the body, not just in prose" "True" "$(curl -s $BASE/api/auth/me "${AO[@]}" -H 'Accept: application/json' | jqr "str(d.get('suspended') is True)")"
+check "but signing out still works for them" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/logout "${AO[@]}" -H 'Accept: application/json')"
+TOKO=$(curl -s -X POST $BASE/api/auth/login "${J[@]}" -d "{\"email\":\"off$S@example.com\",\"password\":\"password123\"}" | jqr "d['token']")
+AO=(-H "Authorization: Bearer $TOKO")
+check "a too-short appeal is refused" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/appeal "${AO[@]}" "${J[@]}" -d '{"message":"unfair"}')"
+FILED=$(curl -s -X POST $BASE/api/auth/appeal "${AO[@]}" "${J[@]}" -d '{"message":"The art was mine — here is the original file and the date I made it."}')
+APID=$(echo "$FILED" | jqr "d['id']")
+check "filing an appeal works while suspended" "True" "$([ -n "$APID" ] && echo True || echo False)"
+# `state` is a database default, so it's absent from a just-created model
+# unless the controller refreshes — and a client that reads it as
+# undefined shows a brand-new appeal as already decided.
+check "and the response carries its state" "open" "$(echo "$FILED" | jqr "d['state']")"
+check "a second open appeal is refused" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/appeal "${AO[@]}" "${J[@]}" -d '{"message":"Adding another appeal to the pile just in case."}')"
+check "they can see their own appeal's state" "open" "$(curl -s $BASE/api/auth/appeal "${AO[@]}" -H 'Accept: application/json' | jqr "d['appeal']['state']")"
+check "the queue is staff-only" 404 "$(curl -s -o /dev/null -w '%{http_code}' $BASE/api/moderation/appeals "${AR[@]}" -H 'Accept: application/json')"
+check "staff see it in the queue" 1 "$(curl -s $BASE/api/moderation/appeals "${AM[@]}" -H 'Accept: application/json' | jqr "len([a for a in d if a['id']==$APID])")"
+check "a decision needs a response" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/moderation/appeals/$APID "${AM[@]}" "${J[@]}" -d '{"state":"denied"}')"
+check "denying works" "denied" "$(curl -s -X POST $BASE/api/moderation/appeals/$APID "${AM[@]}" "${J[@]}" -d '{"state":"denied","response":"The upload timestamps do not support this."}' | jqr "d['state']")"
+check "the appellant sees the answer" "The upload timestamps do not support this." "$(curl -s $BASE/api/auth/appeal "${AO[@]}" -H 'Accept: application/json' | jqr "d['appeal']['response']")"
+check "a denial leaves them suspended" 403 "$(curl -s -o /dev/null -w '%{http_code}' $BASE/api/auth/me "${AO[@]}" -H 'Accept: application/json')"
+check "and they may appeal again" 201 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/appeal "${AO[@]}" "${J[@]}" -d '{"message":"Here is the raw file with EXIF data attached this time."}')"
+APID2=$(curl -s $BASE/api/auth/appeal "${AO[@]}" -H 'Accept: application/json' | jqr "d['appeal']['id']")
+check "granting one reinstates the account" 200 "$(curl -s -o /dev/null -X POST $BASE/api/moderation/appeals/$APID2 "${AM[@]}" "${J[@]}" -d '{"state":"granted","response":"Confirmed — sorry about that."}'; curl -s -o /dev/null -w '%{http_code}' $BASE/api/auth/me "${AO[@]}" -H 'Accept: application/json')"
+check "their profile is back" 200 "$(curl -s -o /dev/null -w '%{http_code}' $BASE/api/users/$UO -H 'Accept: application/json')"
+check "the open queue is empty again" 0 "$(curl -s $BASE/api/moderation/appeals "${AM[@]}" -H 'Accept: application/json' | jqr "len([a for a in d if a['id'] in ($APID,$APID2)])")"
+
 echo "== manual badges =="
 check "granting a manual badge" "True" "$(curl -s -X POST $BASE/api/moderation/users/$OID/badges "${AM[@]}" "${J[@]}" -d '{"badge":"pillar","granted":true,"reason":"Years of help."}' | jqr "any(b['id']=='pillar' for b in d['badges'])")"
 check "it shows on their public profile" "True" "$(curl -s $BASE/api/users/$UO -H 'Accept: application/json' | jqr "any(b['id']=='pillar' for b in d['badges'])")"
@@ -75,7 +105,7 @@ check "revoking it" "False" "$(curl -s -X POST $BASE/api/moderation/users/$OID/b
 
 echo "== the audit trail =="
 LOG=$(curl -s $BASE/api/moderation/actions "${AM[@]}" -H 'Accept: application/json')
-check "every action was recorded" "True" "$(echo "$LOG" | jqr "{'takedown','restore','suspend','reinstate','report_state','badge_grant','badge_revoke'} <= {a['action'] for a in d}")"
+check "every action was recorded" "True" "$(echo "$LOG" | jqr "{'takedown','restore','suspend','reinstate','report_state','badge_grant','badge_revoke','appeal_denied','appeal_granted'} <= {a['action'] for a in d}")"
 check "with the moderator's name" "Mod Erator" "$(echo "$LOG" | jqr "[a['actor'] for a in d if a['action']=='takedown'][0]")"
 check "and the stated reason" "Confirmed infringement." "$(echo "$LOG" | jqr "[a['reason'] for a in d if a['action']=='takedown'][-1]")"
 check "the trail is staff-only" 404 "$(curl -s -o /dev/null -w '%{http_code}' $BASE/api/moderation/actions "${AR[@]}" -H 'Accept: application/json')"
