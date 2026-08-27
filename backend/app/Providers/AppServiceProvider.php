@@ -33,6 +33,12 @@ class AppServiceProvider extends ServiceProvider
     {
         RateLimiter::for('register', fn (Request $request) => Limit::perMinute(config('security.register_per_minute'))->by($request->ip()));
 
+        // Six digits is a million combinations, and a challenge only
+        // tolerates a handful of wrong codes before it's void — this is
+        // what stops someone farming *fresh* challenges to get around
+        // that.
+        RateLimiter::for('two-factor', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
+
         RateLimiter::for('social', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
 
         // Asking for a reset sends mail to an address the caller names, so

@@ -5,6 +5,7 @@ import { apiDesignStorage } from "../api/apiDesignStorage";
 import { localStorageDesignStorage, setActiveDesignStorage } from "../designStorage";
 import { AccountModal } from "./AccountModal";
 import { SuspendedNotice } from "./SuspendedNotice";
+import { TwoFactorPrompt } from "./TwoFactorPrompt";
 import { ProfileModal } from "./ProfileModal";
 
 /**
@@ -23,6 +24,7 @@ export function AccountButton({ onViewProfile }: { onViewProfile: (username: str
   // endpoints, and the notice is what explains why nothing else does.
   const suspended = useSyncExternalStore(subscribe, getSuspended);
   const [showModal, setShowModal] = useState(false);
+  const [challenge, setChallenge] = useState<string | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [restoring, setRestoring] = useState(true);
 
@@ -78,7 +80,17 @@ export function AccountButton({ onViewProfile }: { onViewProfile: (username: str
       <button className="cs-btn" onClick={() => setShowModal(true)} title="Sign in to save designs to your account instead of just this browser">
         <LogIn size={16} /> Sign in
       </button>
-      {showModal && <AccountModal onSignedIn={() => setShowModal(false)} onClose={() => setShowModal(false)} />}
+      {showModal && (
+        <AccountModal
+          onSignedIn={() => setShowModal(false)}
+          onChallenge={(id) => {
+            setShowModal(false);
+            setChallenge(id);
+          }}
+          onClose={() => setShowModal(false)}
+        />
+      )}
+      {challenge && <TwoFactorPrompt challenge={challenge} onSignedIn={() => setChallenge(null)} onCancel={() => setChallenge(null)} />}
     </>
   );
 }

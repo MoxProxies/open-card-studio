@@ -2,6 +2,7 @@
 // tabs now, so "open the templates gallery" is a navigation, not a modal.
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { createHmac } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 /** Where the two servers are. Overridable so CI (and anyone running these
@@ -70,6 +71,32 @@ export async function signUp(page, name, email) {
   await page.getByPlaceholder("Password", { exact: true }).fill("password123");
   await page.getByRole("button", { name: "Create account" }).click();
   await page.getByTestId("account-button").waitFor();
+}
+
+/**
+ * A TOTP code for a base32 secret, computed here rather than asked of the
+ * backend: generating and verifying with the same implementation would
+ * pass even if that implementation were wrong.
+ */
+export function totp(secret, offset = 0) {
+  const key = base32Decode(secret);
+  const counter = Math.floor(Date.now() / 30_000) + offset;
+  const message = Buffer.alloc(8);
+  message.writeBigUInt64BE(BigInt(counter));
+  const digest = createHmac("sha1", key).update(message).digest();
+  const start = digest[digest.length - 1] & 0x0f;
+  const code = digest.readUInt32BE(start) & 0x7fffffff;
+  return String(code % 1_000_000).padStart(6, "0");
+}
+
+function base32Decode(secret) {
+  const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const character of secret.toUpperCase().replace(/=+$/, "")) {
+    bits += ALPHABET.indexOf(character).toString(2).padStart(5, "0");
+  }
+  const bytes = bits.match(/.{8}/g) ?? [];
+  return Buffer.from(bytes.map((byte) => parseInt(byte, 2)));
 }
 
 /** Signs in an existing account through the dialog. */

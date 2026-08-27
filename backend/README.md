@@ -33,11 +33,12 @@ php artisan auth:reset-link me@example.com   # a reset link, no mail sent
   `TemplateController`, `CollectionController`, `ProfileController`,
   `ReportController`, `SocialAuthController`, `EmailController`,
   `AppealController`, `AccountController` (export/delete),
-  `PluginController`. The owned-content controllers share
+  `TwoFactorController`, `PluginController`. The owned-content controllers share
   `OwnedContentController` (publish/delete).
 - `routes/api.php` — the entire route list; there is no `web.php`, see
   `bootstrap/app.php`'s doc comment for why.
-- `app/Support/` — `PointsLedger`, `Levels`, `BadgeRules`, `Reactable`.
+- `app/Support/` — `PointsLedger`, `Levels`, `BadgeRules`, `Reactable`,
+  `TwoFactor` (TOTP, recovery codes, sign-in challenges), `DeviceName`.
 - `config/gamification.php` — every points/levels/badges number.
 - `config/security.php` — rate limits that differ between a deployment
   and a test run; `app/Support/DeviceName.php` labels a session's device.

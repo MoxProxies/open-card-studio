@@ -8,6 +8,21 @@ pass=0; fail=0
 check() { if [ "$2" = "$3" ]; then echo "  PASS  $1 ($3)"; pass=$((pass+1)); else echo "  FAIL  $1 — expected $2, got $3"; fail=$((fail+1)); fi; }
 jqr() { python3 -c "import sys,json;d=json.load(sys.stdin);print(eval(sys.argv[1]))" "$1"; }
 J=(-H 'Content-Type: application/json' -H 'Accept: application/json')
+# A TOTP code, computed here rather than by the backend's own library:
+# generating and verifying with the same implementation would pass even
+# if that implementation were wrong. `offset` shifts the timestep, for
+# testing drift and replay.
+totp() {
+  python3 - "$1" "${2:-0}" <<'PYCODE'
+import base64, hashlib, hmac, struct, sys, time
+secret, offset = sys.argv[1], int(sys.argv[2])
+key = base64.b32decode(secret.upper() + "=" * ((8 - len(secret) % 8) % 8))
+counter = int(time.time()) // 30 + offset
+digest = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()
+start = digest[-1] & 0x0F
+print("%06d" % ((struct.unpack(">I", digest[start:start + 4])[0] & 0x7FFFFFFF) % 1000000))
+PYCODE
+}
 S=$(date +%s)$RANDOM
 
 echo "== password rules =="
@@ -87,6 +102,51 @@ check "hammering one address starts returning 429" "True" "$(echo "$codes" | gre
 # address must not lock everyone else out from the same IP.
 check "a different account still signs in from the same IP" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/login "${J[@]}" -d "{\"email\":\"ok$S@example.com\",\"password\":\"brandnew123\"}")"
 check "and registration is unaffected" 201 "$(reg "after$S" "password123")"
+
+echo "== two-factor authentication =="
+TA=$(curl -s -X POST $BASE/api/auth/register "${J[@]}" -d "{\"name\":\"Two Factor\",\"email\":\"tfa$S@example.com\",\"password\":\"password123\"}")
+TOKT=$(echo "$TA" | jqr "d['token']")
+AT=(-H "Authorization: Bearer $TOKT")
+check "a new account has no second factor" "False" "$(curl -s $BASE/api/auth/me "${AT[@]}" -H 'Accept: application/json' | jqr "str(d['has_two_factor'])")"
+SETUP=$(curl -s -X POST $BASE/api/auth/2fa/setup "${AT[@]}" "${J[@]}" -d '{}')
+SECRET=$(echo "$SETUP" | jqr "d['secret']")
+check "setup returns a secret" "True" "$(echo "$SETUP" | jqr "str(len(d['secret']) >= 16)")"
+check "and a scannable otpauth URI naming the account" "True" "$(echo "$SETUP" | jqr "str(d['otpauth_url'].startswith('otpauth://totp/') and 'tfa$S%40example.com' in d['otpauth_url'])")"
+check "an unconfirmed secret doesn't gate sign-in yet" "True" "$(curl -s -X POST $BASE/api/auth/login "${J[@]}" -d "{\"email\":\"tfa$S@example.com\",\"password\":\"password123\"}" | jqr "str('token' in d)")"
+check "a wrong code is refused" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/2fa/confirm "${AT[@]}" "${J[@]}" -d '{"code":"000000"}')"
+check "gibberish is refused, not a 500" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/2fa/confirm "${AT[@]}" "${J[@]}" -d '{"code":"not-a-code"}')"
+CODES=$(curl -s -X POST $BASE/api/auth/2fa/confirm "${AT[@]}" "${J[@]}" -d "{\"code\":\"$(totp "$SECRET")\"}")
+check "a real code turns it on" 8 "$(echo "$CODES" | jqr "len(d['recovery_codes'])")"
+check "and it's on the account now" "True" "$(curl -s $BASE/api/auth/me "${AT[@]}" -H 'Accept: application/json' | jqr "str(d['has_two_factor'])")"
+check "the secret is never served back" "True" "$(curl -s $BASE/api/auth/me "${AT[@]}" -H 'Accept: application/json' | jqr "str(not any('two_factor_secret' in k or 'recovery' in k for k in d))")"
+
+LOGIN=$(curl -s -X POST $BASE/api/auth/login "${J[@]}" -d "{\"email\":\"tfa$S@example.com\",\"password\":\"password123\"}")
+check "the password alone now buys a challenge, not a token" "True" "$(echo "$LOGIN" | jqr "str(d.get('two_factor') is True and 'token' not in d)")"
+CHAL=$(echo "$LOGIN" | jqr "d['challenge']")
+check "a wrong code doesn't complete it" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/2fa/challenge "${J[@]}" -d "{\"challenge\":\"$CHAL\",\"code\":\"000000\"}")"
+USED=$(totp "$SECRET")
+TOK2FA=$(curl -s -X POST $BASE/api/auth/2fa/challenge "${J[@]}" -d "{\"challenge\":\"$CHAL\",\"code\":\"$USED\"}" | jqr "d['token']")
+check "the right one does" 200 "$(curl -s -o /dev/null -w '%{http_code}' $BASE/api/auth/me -H "Authorization: Bearer $TOK2FA" -H 'Accept: application/json')"
+check "and the challenge is single-use" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/2fa/challenge "${J[@]}" -d "{\"challenge\":\"$CHAL\",\"code\":\"$(totp "$SECRET")\"}")"
+# The replay guard: a code stays valid for a whole timestep, so without
+# it one observed code works again for up to 90 seconds.
+CHAL2=$(curl -s -X POST $BASE/api/auth/login "${J[@]}" -d "{\"email\":\"tfa$S@example.com\",\"password\":\"password123\"}" | jqr "d['challenge']")
+check "a code already used can't be replayed" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/2fa/challenge "${J[@]}" -d "{\"challenge\":\"$CHAL2\",\"code\":\"$USED\"}")"
+check "a code from long ago is refused" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/2fa/challenge "${J[@]}" -d "{\"challenge\":\"$CHAL2\",\"code\":\"$(totp "$SECRET" -10)\"}")"
+RECOVERY=$(echo "$CODES" | jqr "d['recovery_codes'][0]")
+check "a recovery code works instead" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/2fa/challenge "${J[@]}" -d "{\"challenge\":\"$CHAL2\",\"code\":\"$RECOVERY\"}")"
+CHAL3=$(curl -s -X POST $BASE/api/auth/login "${J[@]}" -d "{\"email\":\"tfa$S@example.com\",\"password\":\"password123\"}" | jqr "d['challenge']")
+check "but only once" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/2fa/challenge "${J[@]}" -d "{\"challenge\":\"$CHAL3\",\"code\":\"$RECOVERY\"}")"
+# Five wrong codes and the challenge is void — otherwise six digits is a
+# million tries with one password entry.
+for i in $(seq 1 5); do curl -s -o /dev/null -X POST $BASE/api/auth/2fa/challenge "${J[@]}" -d "{\"challenge\":\"$CHAL3\",\"code\":\"00000$i\"}"; done
+check "a challenge gives up after enough wrong codes" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/2fa/challenge "${J[@]}" -d "{\"challenge\":\"$CHAL3\",\"code\":\"$(totp "$SECRET")\"}")"
+check "an unknown challenge is refused" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/auth/2fa/challenge "${J[@]}" -d "{\"challenge\":\"made-up\",\"code\":\"$(totp "$SECRET")\"}")"
+
+check "turning it off needs the password" 422 "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE $BASE/api/auth/2fa -H "Authorization: Bearer $TOK2FA" "${J[@]}" -d '{"password":"wrongpassword1"}')"
+check "regenerating replaces the old codes" "True" "$(curl -s -X POST $BASE/api/auth/2fa/recovery-codes -H "Authorization: Bearer $TOK2FA" "${J[@]}" -d '{"password":"password123"}' | jqr "str(len(d['recovery_codes']) == 8 and '$RECOVERY' not in d['recovery_codes'])")"
+check "turning it off works with it" 200 "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE $BASE/api/auth/2fa -H "Authorization: Bearer $TOK2FA" "${J[@]}" -d '{"password":"password123"}')"
+check "and the password alone signs in again" "True" "$(curl -s -X POST $BASE/api/auth/login "${J[@]}" -d "{\"email\":\"tfa$S@example.com\",\"password\":\"password123\"}" | jqr "str('token' in d)")"
 
 echo "== taking your data with you, and closing the account =="
 DA=$(curl -s -X POST $BASE/api/auth/register "${J[@]}" -d "{\"name\":\"Lea Ving\",\"email\":\"leave$S@example.com\",\"password\":\"password123\"}")

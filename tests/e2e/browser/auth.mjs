@@ -2,7 +2,7 @@
 // unconfirmed-email prompt, and the password-reset link end to end.
 import { chromium } from "playwright";
 import { readFile } from "node:fs/promises";
-import { reporter, openApp, go, signUp, signIn, statusAs, me as whoami, resetLinkFor, API, SHOT_DIR, EDITOR } from "./helpers.mjs";
+import { reporter, openApp, go, signUp, signIn, statusAs, me as whoami, resetLinkFor, totp, API, SHOT_DIR, EDITOR } from "./helpers.mjs";
 
 const stamp = Date.now();
 const EMAIL = `authui${stamp}@example.com`;
@@ -63,6 +63,67 @@ try {
   check("while this one still works", 200, await statusAs(page, "/api/auth/me"));
   await page.keyboard.press("Escape");
 
+  console.log("== two-factor authentication ==");
+  await page.getByTestId("account-button").click();
+  await page.getByTestId("two-factor-enable").click();
+  await page.getByTestId("two-factor-setup").waitFor();
+  await page.getByTestId("two-factor-qr").waitFor();
+  check("setup shows a scannable QR code", 1, await page.locator("[data-testid='two-factor-qr'] svg path").count());
+  const secret = (await page.getByTestId("two-factor-secret").innerText()).trim();
+  check("and the key to type in by hand", true, secret.length >= 16);
+  await page.screenshot({ path: `${SHOT_DIR}/a3-2fa-setup.png` });
+
+  await page.getByTestId("two-factor-setup-code").fill("000000");
+  await page.getByTestId("two-factor-confirm").click();
+  await page.waitForTimeout(700);
+  check("a wrong code leaves setup open", 1, await page.getByTestId("two-factor-setup").count());
+  check("and hands over no recovery codes", 0, await page.getByTestId("recovery-codes").count());
+
+  await page.getByTestId("two-factor-setup-code").fill(totp(secret));
+  await page.getByTestId("two-factor-confirm").click();
+  await page.getByTestId("recovery-codes").waitFor();
+  const recoveryCodes = (await page.getByTestId("recovery-code-list").innerText()).trim().split("\n");
+  check("confirming hands over recovery codes", 8, recoveryCodes.length);
+  await page.screenshot({ path: `${SHOT_DIR}/a4-2fa-recovery.png` });
+  await page.getByTestId("recovery-codes-done").click();
+  check("and the profile says it's on", 1, await page.getByTestId("two-factor-on").count());
+  await page.keyboard.press("Escape");
+
+  console.log("== signing in now takes a code ==");
+  const phone = await openApp(browser);
+  await phone.getByTestId("sign-in").click();
+  await phone.getByPlaceholder("Email", { exact: true }).fill(EMAIL);
+  await phone.getByPlaceholder("Password", { exact: true }).fill("password123");
+  await phone.locator("form").getByRole("button", { name: "Sign in", exact: true }).click();
+  await phone.getByTestId("two-factor-prompt").waitFor();
+  check("the password alone stops at the code prompt", 0, await phone.getByTestId("account-button").count());
+  await phone.getByTestId("two-factor-code").fill("000000");
+  await phone.getByTestId("two-factor-submit").click();
+  await phone.waitForTimeout(700);
+  check("a wrong code is refused", 0, await phone.getByTestId("account-button").count());
+  // A recovery code goes in the same field — the case someone reaches for
+  // when the phone with the app on it is the thing they've lost.
+  await phone.getByTestId("two-factor-code").fill(recoveryCodes[0]);
+  await phone.getByTestId("two-factor-submit").click();
+  await phone.getByTestId("account-button").waitFor();
+  check("a recovery code signs you in", true, await phone.getByTestId("account-button").isVisible());
+  await phone.screenshot({ path: `${SHOT_DIR}/a5-2fa-signed-in.png` });
+
+  console.log("== and it can be turned back off ==");
+  await page.getByTestId("account-button").click();
+  await page.getByTestId("two-factor-disable").click();
+  await page.getByTestId("reauth").waitFor();
+  await page.getByTestId("reauth-value").fill("wrong-password");
+  await page.getByTestId("reauth-confirm").click();
+  await page.waitForTimeout(600);
+  check("a wrong password won't turn it off", 1, await page.getByTestId("reauth").count());
+  await page.getByTestId("reauth-value").fill("password123");
+  await page.getByTestId("reauth-confirm").click();
+  await page.getByTestId("two-factor-notice").waitFor();
+  check("turning it off says so", true, (await page.getByTestId("two-factor-notice").innerText()).includes("off"));
+  check("and the enable button is back", 1, await page.getByTestId("two-factor-enable").count());
+  await page.keyboard.press("Escape");
+
   console.log("== data rights ==");
   await page.getByTestId("account-button").click();
   const download = page.waitForEvent("download");
@@ -92,7 +153,7 @@ try {
   await fresh.getByTestId("reset-password").waitFor();
   check("the link opens the reset dialog", true, await fresh.getByTestId("reset-password").isVisible());
   check("the token is scrubbed from the address bar", false, fresh.url().includes("token="));
-  await fresh.screenshot({ path: `${SHOT_DIR}/a3-reset-form.png` });
+  await fresh.screenshot({ path: `${SHOT_DIR}/a6-reset-form.png` });
 
   await fresh.getByTestId("reset-password").fill("brandnew123");
   await fresh.getByTestId("reset-submit").click();
@@ -110,7 +171,7 @@ try {
   await fresh.locator("form").getByRole("button", { name: "Sign in", exact: true }).click();
   await fresh.getByTestId("account-button").waitFor();
   check("the new password signs in", true, await fresh.getByTestId("account-button").isVisible());
-  await fresh.screenshot({ path: `${SHOT_DIR}/a4-signed-in-again.png` });
+  await fresh.screenshot({ path: `${SHOT_DIR}/a7-signed-in-again.png` });
 
   console.log("== and the account can be closed for good ==");
   await fresh.getByTestId("account-button").click();

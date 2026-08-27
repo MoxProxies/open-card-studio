@@ -11,12 +11,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@card-studio/scene-schema": "workspace:*",
-    "@card-studio/plugin-sdk": "workspace:*",
-    "@card-studio/plugin-scryfall-import": "workspace:*",
     "@card-studio/plugin-asset-pack-default": "workspace:*",
+    "@card-studio/plugin-scryfall-import": "workspace:*",
+    "@card-studio/plugin-sdk": "workspace:*",
+    "@card-studio/scene-schema": "workspace:*",
     "konva": "^9.3.16",
     "lucide-react": "^1.30.0",
+    "qrcode-generator": "^2.0.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-konva": "^18.2.10",

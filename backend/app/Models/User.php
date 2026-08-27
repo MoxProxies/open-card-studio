@@ -41,6 +41,16 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        // Never serialized anywhere, under any circumstances: the secret
+        // *is* the second factor, and a recovery code is a password that
+        // skips it. The account's own endpoints expose
+        // `two_factor_confirmed_at` (whether it's on), never these.
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+        // Hidden too, though it's only a date: whether an account has a
+        // second factor is a signal worth not publishing, and the
+        // account's own endpoints report it as `has_two_factor` instead.
+        'two_factor_confirmed_at',
         // Never in an API response: `email` is on a public profile's model
         // too, and a profile is readable by anyone. The account's own
         // /api/auth/me adds it back explicitly (AuthController::me).
@@ -53,6 +63,11 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_staff' => 'boolean',
+            'two_factor_confirmed_at' => 'datetime',
+            // Encrypted at rest: a leaked database dump otherwise hands
+            // over the second factor for every account in it.
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
         ];
     }
 
@@ -91,6 +106,14 @@ class User extends Authenticatable
     public function appeals(): HasMany
     {
         return $this->hasMany(Appeal::class);
+    }
+
+    /** True only once a code from the app has been checked — an
+     * unconfirmed secret is someone who opened the setup screen and
+     * wandered off, and must never gate a sign-in. */
+    public function hasTwoFactor(): bool
+    {
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
     }
 
     public function isSuspended(): bool

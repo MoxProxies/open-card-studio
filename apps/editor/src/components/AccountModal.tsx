@@ -6,6 +6,9 @@ import { Modal } from "./Modal";
 
 interface AccountModalProps {
   onSignedIn: () => void;
+  /** The account has a second factor: the password was right, but the
+   * session doesn't exist until a code is entered (TwoFactorPrompt). */
+  onChallenge: (challenge: string) => void;
   onClose: () => void;
 }
 
@@ -15,7 +18,7 @@ type Mode = "login" | "register";
  * root README's "Backend (API)"). On success, AccountButton.tsx's caller
  * is responsible for switching designStorage over to apiDesignStorage —
  * this component only handles the credential exchange itself. */
-export function AccountModal({ onSignedIn, onClose }: AccountModalProps) {
+export function AccountModal({ onSignedIn, onChallenge, onClose }: AccountModalProps) {
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -36,7 +39,9 @@ export function AccountModal({ onSignedIn, onClose }: AccountModalProps) {
     setError(null);
     try {
       if (mode === "login") {
-        await login(email, password);
+        const result = await login(email, password);
+
+        if ("challenge" in result) return onChallenge(result.challenge);
       } else {
         await register(name, email, password);
       }

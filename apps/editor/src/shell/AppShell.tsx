@@ -5,6 +5,7 @@ import { AccountModal } from "../components/AccountModal";
 import { ProfileModal } from "../components/ProfileModal";
 import { ResetPasswordModal } from "../components/ResetPasswordModal";
 import { SuspendedNotice } from "../components/SuspendedNotice";
+import { TwoFactorPrompt } from "../components/TwoFactorPrompt";
 import { consumeSocialRedirect, getCurrentUser, getSuspended, logout, restoreSession, subscribe } from "../api/auth";
 import { apiDesignStorage } from "../api/apiDesignStorage";
 import { localStorageDesignStorage, setActiveDesignStorage } from "../designStorage";
@@ -46,6 +47,9 @@ export function AppShell() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [resetting, setResetting] = useState<{ token: string; email: string } | null>(null);
+  // Set when a password (or a provider round-trip) came back with a
+  // second-factor challenge instead of a session.
+  const [challenge, setChallenge] = useState<string | null>(null);
 
   useEffect(() => {
     syncFromLocation();
@@ -90,7 +94,12 @@ export function AppShell() {
         return;
       }
 
-      const { error } = consumeSocialRedirect();
+      const { challenge: socialChallenge, error } = consumeSocialRedirect();
+
+      // A provider sign-in on an account with 2FA comes back with a
+      // challenge rather than a token — same prompt as the password path.
+      if (socialChallenge) setChallenge(socialChallenge);
+
       if (error) {
         setAuthError(
           error === "email_unverified"
@@ -233,7 +242,22 @@ export function AppShell() {
             setShowSignIn(false);
             navigate({ tab: "profile" });
           }}
+          onChallenge={(id) => {
+            setShowSignIn(false);
+            setChallenge(id);
+          }}
           onClose={() => setShowSignIn(false)}
+        />
+      )}
+
+      {challenge && (
+        <TwoFactorPrompt
+          challenge={challenge}
+          onSignedIn={() => {
+            setChallenge(null);
+            navigate({ tab: "profile" });
+          }}
+          onCancel={() => setChallenge(null)}
         />
       )}
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Support\SocialProviders;
+use App\Support\TwoFactor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -107,6 +108,14 @@ class SocialAuthController extends Controller
 
         // Suspended accounts may sign in — see AuthController::login
         // for why refusing here would only remove their route to appeal.
+
+        // A second factor applies to provider sign-in too. Skipping it
+        // here would make "link a provider" a documented way around the
+        // thing the account turned on, and an attacker who takes over the
+        // linked provider account is exactly who it's for.
+        if ($user->hasTwoFactor()) {
+            return redirect()->away($returnTo.'#challenge='.urlencode(app(TwoFactor::class)->startChallenge($user)));
+        }
 
         return redirect()->away($returnTo.'#token='.urlencode(AuthController::issueToken($user, $request)));
     }

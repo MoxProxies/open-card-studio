@@ -21,12 +21,21 @@ export interface AuthUser {
   /** False for an account created through a provider that never set a
    * password — it confirms destructive actions by username instead. */
   has_password?: boolean;
+  /** Whether a TOTP second factor is on. The secret and recovery codes
+   * are never served to anyone, this account included. */
+  has_two_factor?: boolean;
 }
 
 interface AuthResponse {
   user: AuthUser;
   token: string;
 }
+
+/**
+ * What a correct password gets you: either a session, or — when the
+ * account has a second factor — a challenge to answer with a code.
+ */
+export type SignInResult = { user: AuthUser } | { challenge: string };
 
 const TOKEN_KEY = "card-studio:auth-token:v1";
 
@@ -143,14 +152,17 @@ export async function startSocialSignIn(provider: string): Promise<void> {
  * when the provider or the backend refused (a denied consent screen, an
  * unverifiable email).
  */
-export function consumeSocialRedirect(): { token?: string; error?: string } {
+export function consumeSocialRedirect(): { token?: string; challenge?: string; error?: string } {
   const hash = window.location.hash.replace(/^#/, "");
   if (!hash) return {};
 
   const params = new URLSearchParams(hash);
   const token = params.get("token");
+  // A second factor applies to provider sign-in too, so the backend can
+  // send back a challenge where it would otherwise send a token.
+  const challenge = params.get("challenge");
   const error = params.get("error");
-  if (!token && !error) return {};
+  if (!token && !challenge && !error) return {};
 
   // replaceState, not pushState: the URL carrying a token should not be
   // somewhere the back button can return to.
@@ -158,7 +170,7 @@ export function consumeSocialRedirect(): { token?: string; error?: string } {
 
   if (token) setToken(token);
 
-  return { token: token ?? undefined, error: error ?? undefined };
+  return { token: token ?? undefined, challenge: challenge ?? undefined, error: error ?? undefined };
 }
 
 export interface AuthSession {
@@ -218,14 +230,30 @@ export async function resendVerification(): Promise<string> {
 }
 
 export async function register(name: string, email: string, password: string): Promise<AuthUser> {
-  const { user, token } = await api.post<AuthResponse>("/api/auth/register", { name, email, password });
-  setToken(token);
-  setUser(user);
-  return user;
+  return adoptSession(await api.post<AuthResponse>("/api/auth/register", { name, email, password }));
 }
 
-export async function login(email: string, password: string): Promise<AuthUser> {
-  const { user, token } = await api.post<AuthResponse>("/api/auth/login", { email, password });
+export async function login(email: string, password: string): Promise<SignInResult> {
+  const response = await api.post<AuthResponse | { two_factor: true; challenge: string }>("/api/auth/login", { email, password });
+
+  // A second factor turns sign-in into two calls: the password buys a
+  // challenge, and completeTwoFactor below spends it.
+  if ("two_factor" in response) return { challenge: response.challenge };
+
+  return { user: adoptSession(response) };
+}
+
+/** The second half of a sign-in: a challenge from login (or from a
+ * provider redirect) plus a code from the authenticator app — or a
+ * recovery code, which the backend accepts in the same field. */
+export async function completeTwoFactor(challenge: string, code: string): Promise<AuthUser> {
+  return adoptSession(await api.post<AuthResponse>("/api/auth/2fa/challenge", { challenge, code: code.trim() }));
+}
+
+/** Stores a token and its account — the one place both sign-in paths and
+ * registration converge, so the suspension check can't be forgotten on
+ * one of them. */
+function adoptSession({ user, token }: AuthResponse): AuthUser {
   setToken(token);
   // Signing in works while suspended — deliberately, see the backend's
   // AuthController::login — so the sign-in form's success path is where

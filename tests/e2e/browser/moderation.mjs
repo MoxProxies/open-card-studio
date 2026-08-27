@@ -53,7 +53,10 @@ try {
   const staffAccount = await whoami(staff);
   promote(staffAccount.id);
   await staff.reload();
-  await staff.getByTestId("app-shell").waitFor();
+  // The shell renders before the stored session is restored, and the
+  // moderation tab only exists once the account comes back as staff — so
+  // wait for the signed-in state, not just for the app.
+  await staff.getByTestId("account-button").waitFor();
   check("the moderation tab appears for staff", 1, await staff.getByTestId("tab-moderation").count());
   await go(staff, "moderation");
   const report = staff.locator(`[data-testid='report-row']:has-text("${TEMPLATE}")`).last();

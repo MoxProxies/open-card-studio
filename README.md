@@ -1399,6 +1399,38 @@ anyone makes). Login is rate-limited **by email *and* IP** — by IP alone,
 one attacker behind a NAT locks out everyone sharing that address, and it
 does nothing about a distributed attempt on one account.
 
+### Two-factor authentication
+
+TOTP, the ordinary kind any authenticator app speaks. Setup is
+deliberately **two steps**: `/auth/2fa/setup` mints a secret to scan, and
+it only counts as on once `/auth/2fa/confirm` has checked a code
+generated from it — enabling in one step locks out anyone whose scan
+silently failed or whose phone clock is wrong. Confirming hands back
+eight single-use recovery codes, shown exactly once.
+
+With it on, a correct password buys a **challenge**, not a token: a
+server-side, single-use, five-minute ticket redeemed at
+`/auth/2fa/challenge` with a code (or a recovery code — same field, so
+the error message can't say which one was closer). A provider sign-in
+goes through the same challenge; skipping it there would make "link a
+provider" a documented way around the thing the account turned on.
+
+Three details that aren't the library's job:
+
+- **The secret and recovery codes are encrypted at rest** and never
+  served back, to the account included. A dump that leaks TOTP secrets
+  hands over the second factor for every account in it.
+- **A used code can't be replayed.** A code is valid for a whole
+  timestep, so without remembering the accepted one, an observed code
+  works again for up to 90 seconds.
+- **A challenge gives up after five wrong codes**, and fresh challenges
+  are rate-limited. Six digits is a million combinations; that's what
+  keeps it a million.
+
+Turning it off, or printing new recovery codes, re-authenticates first —
+password, or a current code for an account that signs in through a
+provider and has none.
+
 **Sessions.** Tokens expire (30 days, `SANCTUM_TOKEN_TTL_MINUTES`) — a
 bearer token that never does is a permanent credential sitting in a
 browser's `localStorage`. Each one is named for the device that asked for
@@ -2167,15 +2199,15 @@ on the `.sh`) — override either if your layout differs.
 
 ## Tests
 
-501 end-to-end checks in `tests/e2e/` — curl against a running backend,
+536 end-to-end checks in `tests/e2e/` — curl against a running backend,
 Playwright against the running editor. That's the default here: every bug
 that actually shipped was one reading the diff missed and running the app
 caught.
 
-The exception is `backend/tests/Feature/` (41 PHPUnit tests), for the
+The exception is `backend/tests/Feature/` (48 PHPUnit tests), for the
 handful of things a live run can't honestly prove — an OAuth provider
-lying about a verified email, an email actually being queued, or a token
-expiring thirty days from now.
+lying about a verified email, an email actually being queued, a token
+expiring thirty days from now, or a column being ciphertext on disk.
 
 ```sh
 pnpm test:e2e            # boots its own backend + editor, runs everything

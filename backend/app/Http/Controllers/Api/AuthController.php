@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\DeviceName;
 use App\Support\SocialProviders;
+use App\Support\TwoFactor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -57,7 +58,7 @@ class AuthController extends Controller
         EmailController::dispatchVerification($user);
 
         return response()->json([
-            'user' => static::withEmail($user),
+            'user' => static::selfPayload($user),
             'token' => static::issueToken($user, $request),
         ], 201);
     }
@@ -106,15 +107,26 @@ class AuthController extends Controller
         // than leaving the account half-locked for the rest of the window.
         RateLimiter::clear($throttleKey);
 
-        // Deliberately *not* refused here. A suspended account that
-        // can't sign in can't appeal either, and every endpoint that
+        // With a second factor on, a correct password buys a challenge
+        // rather than a token — see TwoFactorController. Deliberately
+        // *after* the rate-limit clear above: the password was right, and
+        // the code has its own attempt budget.
+        if ($user->hasTwoFactor()) {
+            return response()->json([
+                'two_factor' => true,
+                'challenge' => app(TwoFactor::class)->startChallenge($user),
+            ]);
+        }
+
+        // Suspension deliberately *not* refused here. A suspended account
+        // that can't sign in can't appeal either, and every endpoint that
         // matters still 403s (BlockSuspendedUsers) — this is
         // authentication succeeding and authorisation failing, which is
         // the honest shape of it. The account's moderation_state rides
         // along in the response so the client shows the suspension
         // screen instead of a working app.
         return response()->json([
-            'user' => static::withEmail($user),
+            'user' => static::selfPayload($user),
             'token' => static::issueToken($user, $request),
         ]);
     }
@@ -216,22 +228,29 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return response()->json(static::withEmail($request->user()));
+        return response()->json(static::selfPayload($request->user()));
     }
 
     /**
+     * What an account is told about itself: its own record, plus the two
+     * computed flags a client needs to draw the right controls.
+     *
      * User::$hidden drops `email` so it can never leak through a public
-     * profile (see User::toPublicProfile). These three endpoints are the
-     * account talking to itself about itself, so it comes back here.
+     * profile (see User::toPublicProfile); register/login/me — and the
+     * 2FA challenge, which completes a sign-in — are the account talking
+     * to itself about itself, so it comes back here.
      */
-    private static function withEmail(User $user): array
+    public static function selfPayload(User $user): array
     {
         // An array rather than the model: `has_password` is computed, and
         // appending it to the model would follow it into every other
         // place a User gets serialized — including relations loaded
         // without the password column, where it would answer "no"
         // incorrectly.
-        return $user->makeVisible('email')->toArray() + ['has_password' => $user->hasPassword()];
+        return $user->makeVisible('email')->toArray() + [
+            'has_password' => $user->hasPassword(),
+            'has_two_factor' => $user->hasTwoFactor(),
+        ];
     }
 
     /** A free, URL-safe handle derived from the display name — `ada-lovelace`,
