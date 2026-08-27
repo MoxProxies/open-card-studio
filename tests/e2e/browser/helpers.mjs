@@ -72,6 +72,15 @@ export async function signUp(page, name, email) {
   await page.getByTestId("account-button").waitFor();
 }
 
+/** Signs in an existing account through the dialog. */
+export async function signIn(page, email, password) {
+  await page.getByTestId("sign-in").click();
+  await page.getByPlaceholder("Email", { exact: true }).fill(email);
+  await page.getByPlaceholder("Password", { exact: true }).fill(password);
+  await page.locator("form").getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByTestId("account-button").waitFor();
+}
+
 // cache: "no-store" throughout — a suite re-reads the same URL after
 // changing it server-side, and a cached 200 makes a passing assertion out
 // of a stale response.

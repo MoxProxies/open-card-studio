@@ -107,7 +107,7 @@ class SocialAuthController extends Controller
 
         abort_if($user->moderation_state === User::SUSPENDED, 403, 'This account is suspended.');
 
-        return redirect()->away($returnTo.'#token='.urlencode($user->createToken('api')->plainTextToken));
+        return redirect()->away($returnTo.'#token='.urlencode(AuthController::issueToken($user, $request)));
     }
 
     /**

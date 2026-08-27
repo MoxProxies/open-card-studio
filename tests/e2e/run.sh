@@ -83,6 +83,11 @@ if [ -z "${E2E_API_URL:-}" ]; then
   # The editor's origin has to be allowed or every browser suite fails on
   # CORS instead of on anything real.
   export CORS_ALLOWED_ORIGINS="http://localhost:$WEB_PORT,http://127.0.0.1:$WEB_PORT"
+  # Every suite signs up from 127.0.0.1, so the whole run shares one
+  # registration bucket — at the production limit a long run eventually
+  # 429s, and the symptom is a sign-up form that never completes rather
+  # than anything that names a rate limit. See config/security.php.
+  export REGISTER_PER_MINUTE=1000
   # The links in password-reset emails, and the allowlist social sign-in
   # returns tokens to, are both built from this — so it has to be the
   # editor this run actually started, not the dev default.
@@ -118,6 +123,13 @@ run() { # run <label> <command...>
   if [ -z "$summary" ] || echo "$summary" | grep -qv ', 0 failed' || echo "$summary" | grep -q '^== 0 passed'; then
     echo "FAILED ${summary:-(no summary — suite crashed)}"
     echo "$output" | grep -E 'FAIL|Error|error:' | head -20 | sed 's/^/    /'
+    # A suite that *threw* reports one useless line ("Timeout exceeded")
+    # — the locator it was waiting for is on the lines after it, which
+    # the grep above drops. Show the tail as well, or the failure can't
+    # be diagnosed without re-running by hand.
+    if [ -z "$summary" ] || echo "$output" | grep -q 'threw:'; then
+      echo "$output" | tail -25 | sed 's/^/    | /'
+    fi
     failed=1
   else
     echo "$summary"

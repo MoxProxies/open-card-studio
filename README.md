@@ -1379,9 +1379,16 @@ because otherwise you're guessing at a password that was never set.
 (`12345678` passes a bare length check and is among the first guesses
 anyone makes). Login is rate-limited **by email *and* IP** — by IP alone,
 one attacker behind a NAT locks out everyone sharing that address, and it
-does nothing about a distributed attempt on one account. "Sign out
-everywhere" revokes every token, which is the only way to end a session
-you aren't holding.
+does nothing about a distributed attempt on one account.
+
+**Sessions.** Tokens expire (30 days, `SANCTUM_TOKEN_TTL_MINUTES`) — a
+bearer token that never does is a permanent credential sitting in a
+browser's `localStorage`. Each one is named for the device that asked for
+it, so the account's own **signed-in devices** list reads "Chrome on
+macOS" rather than four rows of "api", and any one of them can be revoked
+on its own. "Sign out everywhere" is still there for when you'd rather
+not work out which row is the problem. Expiring doesn't delete the row,
+so `sanctum:prune-expired` runs daily (`routes/console.php`).
 
 The linking rules are covered by `backend/tests/Feature/SocialAuthTest.php`
 with a mocked provider — including the takeover case — since a live OAuth
@@ -2124,14 +2131,15 @@ on the `.sh`) — override either if your layout differs.
 
 ## Tests
 
-434 end-to-end checks in `tests/e2e/` — curl against a running backend,
+452 end-to-end checks in `tests/e2e/` — curl against a running backend,
 Playwright against the running editor. That's the default here: every bug
 that actually shipped was one reading the diff missed and running the app
 caught.
 
-The exception is `backend/tests/Feature/` (23 PHPUnit tests), for the
+The exception is `backend/tests/Feature/` (36 PHPUnit tests), for the
 handful of things a live run can't honestly prove — an OAuth provider
-lying about a verified email, or an email actually being queued.
+lying about a verified email, an email actually being queued, or a token
+expiring thirty days from now.
 
 ```sh
 pnpm test:e2e            # boots its own backend + editor, runs everything

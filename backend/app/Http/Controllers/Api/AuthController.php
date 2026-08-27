@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\DeviceName;
 use App\Support\SocialProviders;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * Plain bearer-token auth via Sanctum's personal access tokens — no
@@ -56,7 +58,7 @@ class AuthController extends Controller
 
         return response()->json([
             'user' => static::withEmail($user),
-            'token' => $user->createToken('api')->plainTextToken,
+            'token' => static::issueToken($user, $request),
         ], 201);
     }
 
@@ -108,7 +110,7 @@ class AuthController extends Controller
 
         return response()->json([
             'user' => static::withEmail($user),
-            'token' => $user->createToken('api')->plainTextToken,
+            'token' => static::issueToken($user, $request),
         ]);
     }
 
@@ -117,6 +119,74 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logged out.']);
+    }
+
+    /**
+     * The account's own signed-in devices — one row per live token, so
+     * "what is signed in as me right now" is answerable, and a session
+     * you don't recognise can be ended on its own rather than by signing
+     * every device out.
+     *
+     * The token itself is never returned (only its hash is stored, and a
+     * list endpoint has no business handing one back anyway); the id is
+     * what revoking takes.
+     */
+    public function sessions(Request $request)
+    {
+        $current = static::currentTokenId($request);
+
+        return response()->json(
+            $request->user()->tokens()->latest('last_used_at')->latest('created_at')->get()->map(fn ($token) => [
+                'id' => $token->id,
+                'device' => $token->name,
+                'created_at' => $token->created_at,
+                'last_used_at' => $token->last_used_at,
+                'expires_at' => $token->expires_at,
+                // So the UI can label one row "this device" and refuse to
+                // silently sign you out of the tab you're looking at.
+                'current' => $token->id === $current,
+            ])
+        );
+    }
+
+    /** Ends one session. Revoking the current one is allowed — it's just
+     * a sign-out — but the client is told, so it can clear its own token
+     * rather than carrying on with a dead one. */
+    public function revokeSession(Request $request, int $id)
+    {
+        $token = $request->user()->tokens()->whereKey($id)->firstOrFail();
+        $wasCurrent = $token->id === static::currentTokenId($request);
+        $token->delete();
+
+        return response()->json(['id' => $id, 'was_current' => $wasCurrent]);
+    }
+
+    /**
+     * The id of the token the request came in on, or null when there
+     * isn't one to speak of. Sanctum hands back a TransientToken — which
+     * has no id at all, so reading `->id` on it is a fatal error, not a
+     * null — whenever the user was resolved by something other than a
+     * bearer token.
+     */
+    private static function currentTokenId(Request $request): ?int
+    {
+        $token = $request->user()->currentAccessToken();
+
+        return $token instanceof PersonalAccessToken ? $token->getKey() : null;
+    }
+
+    /**
+     * Every token this app issues comes from here, so they all get the
+     * same device label and the same expiry. Sanctum's config expiration
+     * would cover the expiry on its own, but writing `expires_at` means
+     * the sessions list above can show a real date instead of one it
+     * inferred from a config value that may since have changed.
+     */
+    public static function issueToken(User $user, Request $request): string
+    {
+        $ttl = (int) config('sanctum.expiration');
+
+        return $user->createToken(DeviceName::from($request), ['*'], $ttl > 0 ? now()->addMinutes($ttl) : null)->plainTextToken;
     }
 
     /**
@@ -153,10 +223,6 @@ class AuthController extends Controller
     {
         return $user->makeVisible('email');
     }
-
-    /** `is_staff` rides along on the account's own record so the client can
-     * show the moderation destination — it's already in the model's
-     * attributes, and is never part of a public profile. */
 
     /** A free, URL-safe handle derived from the display name — `ada-lovelace`,
      * `ada-lovelace-2`, ... Only used when the client didn't pick one. */

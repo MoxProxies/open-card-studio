@@ -91,6 +91,11 @@ Route::get('/posts/{slug}/comments', [CommentController::class, 'index']);
 Route::middleware(['auth:sanctum', BlockSuspendedUsers::class])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::post('/auth/logout-everywhere', [AuthController::class, 'logoutEverywhere']);
+    // The account's own live tokens, and revoking one of them. Scoped to
+    // $request->user()'s tokens in the controller, so an id from another
+    // account 404s rather than revoking someone else's session.
+    Route::get('/auth/sessions', [AuthController::class, 'sessions']);
+    Route::delete('/auth/sessions/{id}', [AuthController::class, 'revokeSession']);
     Route::post('/auth/email/verify/send', [EmailController::class, 'sendVerification'])->middleware('throttle:5,1');
     Route::get('/auth/me', [AuthController::class, 'me']);
 

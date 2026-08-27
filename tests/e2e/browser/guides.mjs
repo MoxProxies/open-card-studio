@@ -107,6 +107,9 @@ try {
   console.log("== the author moderates their own thread ==");
   await author.reload();
   await author.getByTestId("post-reader").waitFor();
+  // The thread is a second fetch after the post itself, so the reader
+  // shell being up says nothing about the comments having arrived.
+  await author.locator("[data-testid='comment']").first().waitFor();
   check("the author sees the comment", 1, await author.locator("[data-testid='comment']").count());
   check("and can delete it", 1, await author.locator("[data-testid='comment-delete']").count());
   await author.locator("[data-testid='comment-delete']").first().click();

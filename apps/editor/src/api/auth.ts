@@ -127,6 +127,32 @@ export function consumeSocialRedirect(): { token?: string; error?: string } {
   return { token: token ?? undefined, error: error ?? undefined };
 }
 
+export interface AuthSession {
+  id: number;
+  /** A rough label for the device the token was issued to — see the
+   * backend's DeviceName. "Unknown device" is a normal value. */
+  device: string;
+  created_at: string;
+  last_used_at: string | null;
+  expires_at: string | null;
+  /** The session this browser is holding. Revoking it is a sign-out. */
+  current: boolean;
+}
+
+/** Every live token on this account — "what is signed in as me". */
+export const loadSessions = () => api.get<AuthSession[]>("/api/auth/sessions");
+
+/** Ends one session. Returns true when it was this browser's, in which
+ * case the caller has already been signed out locally. */
+export async function revokeSession(id: number): Promise<boolean> {
+  const { was_current } = await api.delete<{ was_current: boolean }>(`/api/auth/sessions/${id}`);
+  if (was_current) {
+    setToken(null);
+    setUser(null);
+  }
+  return was_current;
+}
+
 /** Ends every session this account has, not just this browser's. */
 export async function logoutEverywhere(): Promise<number> {
   const { sessions_ended } = await api.post<{ sessions_ended: number }>("/api/auth/logout-everywhere");

@@ -1,7 +1,7 @@
 // Authentication in a real browser: the sign-in dialog's extras, the
 // unconfirmed-email prompt, and the password-reset link end to end.
 import { chromium } from "playwright";
-import { reporter, openApp, go, signUp, statusAs, me as whoami, resetLinkFor, SHOT_DIR, EDITOR } from "./helpers.mjs";
+import { reporter, openApp, go, signUp, signIn, statusAs, me as whoami, resetLinkFor, SHOT_DIR, EDITOR } from "./helpers.mjs";
 
 const stamp = Date.now();
 const EMAIL = `authui${stamp}@example.com`;
@@ -43,6 +43,25 @@ try {
   check("the control is offered", 1, await page.getByTestId("sign-out-everywhere").count());
   await page.keyboard.press("Escape");
 
+  console.log("== signed-in devices ==");
+  // A second browser context is a second session on the same account —
+  // the case the list exists for.
+  const second = await openApp(browser);
+  await signIn(second, EMAIL, "password123");
+  await page.getByTestId("account-button").click();
+  await page.getByTestId("account-sessions").waitFor();
+  check("both sessions are listed", 2, await page.getByTestId("session-row").count());
+  check("exactly one is this device", 1, await page.locator("[data-testid='session-row'][data-current='true']").count());
+  await page.screenshot({ path: `${SHOT_DIR}/a2-sessions.png` });
+
+  const other = page.locator("[data-testid='session-row'][data-current='false']");
+  await other.getByTestId("session-revoke").click();
+  await other.waitFor({ state: "detached" });
+  check("revoking one leaves only this device", 1, await page.getByTestId("session-row").count());
+  check("and the other browser's token is dead", 401, await statusAs(second, "/api/auth/me"));
+  check("while this one still works", 200, await statusAs(page, "/api/auth/me"));
+  await page.keyboard.press("Escape");
+
   console.log("== the reset link opens a form and changes the password ==");
   const link = resetLinkFor(EMAIL);
   const fresh = await openApp(browser);
@@ -50,7 +69,7 @@ try {
   await fresh.getByTestId("reset-password").waitFor();
   check("the link opens the reset dialog", true, await fresh.getByTestId("reset-password").isVisible());
   check("the token is scrubbed from the address bar", false, fresh.url().includes("token="));
-  await fresh.screenshot({ path: `${SHOT_DIR}/a2-reset-form.png` });
+  await fresh.screenshot({ path: `${SHOT_DIR}/a3-reset-form.png` });
 
   await fresh.getByTestId("reset-password").fill("brandnew123");
   await fresh.getByTestId("reset-submit").click();
@@ -68,7 +87,7 @@ try {
   await fresh.locator("form").getByRole("button", { name: "Sign in", exact: true }).click();
   await fresh.getByTestId("account-button").waitFor();
   check("the new password signs in", true, await fresh.getByTestId("account-button").isVisible());
-  await fresh.screenshot({ path: `${SHOT_DIR}/a3-signed-in-again.png` });
+  await fresh.screenshot({ path: `${SHOT_DIR}/a4-signed-in-again.png` });
 } catch (e) {
   fail(`threw: ${e.message}`);
 } finally {

@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
      */
     private function configureRateLimiters(): void
     {
-        RateLimiter::for('register', fn (Request $request) => Limit::perMinute(30)->by($request->ip()));
+        RateLimiter::for('register', fn (Request $request) => Limit::perMinute(config('security.register_per_minute'))->by($request->ip()));
 
         RateLimiter::for('social', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
 

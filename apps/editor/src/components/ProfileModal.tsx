@@ -3,6 +3,7 @@ import { Loader2, LogOut, MailWarning } from "lucide-react";
 import { apiErrorMessage } from "../api/client";
 import { logoutEverywhere, resendVerification, setCurrentUser, type AuthUser } from "../api/auth";
 import { updateProfile } from "../api/profiles";
+import { AccountSessions } from "./AccountSessions";
 import { Modal } from "./Modal";
 
 interface ProfileModalProps {
@@ -124,8 +125,13 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
 
         <hr style={{ border: "none", borderTop: "1px solid var(--cs-border)", margin: "4px 0" }} />
 
-        {/* The only way to end a session you aren't currently holding —
-            what you want after losing a device. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 12, color: "var(--cs-text-muted)" }}>Signed-in devices</span>
+          <AccountSessions onSignedOut={onClose} />
+        </div>
+
+        {/* The blunt version of the list above — for when you'd rather not
+            work out which row is the problem. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <button
             type="button"

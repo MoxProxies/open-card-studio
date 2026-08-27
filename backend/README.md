@@ -37,6 +37,8 @@ php artisan auth:reset-link me@example.com   # a reset link, no mail sent
   `bootstrap/app.php`'s doc comment for why.
 - `app/Support/` — `PointsLedger`, `Levels`, `BadgeRules`, `Reactable`.
 - `config/gamification.php` — every points/levels/badges number.
+- `config/security.php` — rate limits that differ between a deployment
+  and a test run; `app/Support/DeviceName.php` labels a session's device.
 - `config/knowledge_base.php` — knowledge-base categories.
 - `app/Http/Middleware/` — `EnsureStaff` (404s for non-staff),
   `BlockSuspendedUsers`.
