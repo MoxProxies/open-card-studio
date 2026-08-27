@@ -5,7 +5,9 @@ use App\Http\Controllers\Api\CardDesignController;
 use App\Http\Controllers\Api\CollectionController;
 use App\Http\Controllers\Api\BadgeController;
 use App\Http\Controllers\Api\FeatureController;
+use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\PluginController;
+use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ReactionController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReportController;
@@ -42,6 +44,13 @@ Route::post('/templates/{id}/use', [TemplateController::class, 'use'])->middlewa
 Route::get('/users/{username}', [ProfileController::class, 'show']);
 // A published collection is a public page, like a published template.
 Route::get('/collections/{id}', [CollectionController::class, 'show']);
+
+// The knowledge base. Public to read — a guide nobody can find without an
+// account is a guide nobody reads. Posts are addressed by slug, not uuid:
+// the slug is the URL people share.
+Route::get('/posts', [PostController::class, 'browse']);
+Route::get('/posts/{slug}', [PostController::class, 'show']);
+Route::get('/posts/{slug}/comments', [CommentController::class, 'index']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -80,6 +89,15 @@ Route::middleware('auth:sanctum')->group(function () {
     // Membership: both sides owner-scoped — see CollectionController::addDesign.
     Route::put('/collections/{id}/designs/{designId}', [CollectionController::class, 'addDesign']);
     Route::delete('/collections/{id}/designs/{designId}', [CollectionController::class, 'removeDesign']);
+
+    Route::get('/my/posts', [PostController::class, 'index']);
+    Route::put('/posts/{id}', [PostController::class, 'upsert']);
+    Route::post('/posts/{id}/publish', [PostController::class, 'publish']);
+    Route::delete('/posts/{id}', [PostController::class, 'destroy']);
+    // Edit history — owner-only until there's a staff role, see the controller.
+    Route::get('/posts/{id}/revisions', [PostController::class, 'revisions']);
+    Route::post('/posts/{slug}/comments', [CommentController::class, 'store'])->middleware('throttle:30,1');
+    Route::delete('/comments/{id}', [CommentController::class, 'destroy']);
 
     Route::get('/templates', [TemplateController::class, 'index']);
     Route::put('/templates/{id}', [TemplateController::class, 'upsert']);

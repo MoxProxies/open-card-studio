@@ -7,7 +7,7 @@ export interface ReactionState {
 }
 
 /** What can be liked or featured. Mirrors the backend's Support\Reactable::TYPES. */
-export type ReactableType = "design" | "template" | "collection";
+export type ReactableType = "design" | "template" | "collection" | "post";
 
 export interface LevelProgress {
   points: number;

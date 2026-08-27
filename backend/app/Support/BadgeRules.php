@@ -24,6 +24,7 @@ class BadgeRules
         return [
             'first-template' => fn (User $user) => $user->templates()->published()->exists(),
             'first-collection' => fn (User $user) => $user->collections()->published()->exists(),
+            'first-post' => fn (User $user) => $user->posts()->published()->exists(),
             'well-liked' => fn (User $user) => static::reactionsReceived($user) >= 25,
             'level-three' => fn (User $user) => Levels::for(PointsLedger::total($user))['level'] >= 3,
         ];

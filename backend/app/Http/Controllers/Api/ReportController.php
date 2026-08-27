@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\CardDesign;
 use App\Models\Collection;
+use App\Models\Comment;
+use App\Models\Post;
 use App\Models\Report;
 use App\Models\Template;
 use App\Models\User;
@@ -27,6 +29,8 @@ class ReportController extends Controller
         'design' => CardDesign::class,
         'collection' => Collection::class,
         'user' => User::class,
+        'post' => Post::class,
+        'comment' => Comment::class,
     ];
 
     /** A shortlist for the UI, not a schema constraint — the column is free text. */

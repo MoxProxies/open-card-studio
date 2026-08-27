@@ -53,6 +53,9 @@ class ProfileController extends Controller
             // Counting only what a visitor could actually open: an
             // unfiltered count would tell them how many private designs
             // the collection holds.
+            'posts' => $user->posts()->published()->withCount(['reactions', 'comments'])
+                ->latest('updated_at')->limit(self::LISTING_LIMIT)->get()
+                ->map(fn ($post) => $post->setRelation('user', $user)->toSummary() + $post->reactionState($viewer)),
             'collections' => $user->collections()->published()
                 ->withCount(['cardDesigns as design_count' => fn ($query) => $query->publiclyReadable()])
                 ->withCount('reactions')->latest('updated_at')->limit(self::LISTING_LIMIT)->get()

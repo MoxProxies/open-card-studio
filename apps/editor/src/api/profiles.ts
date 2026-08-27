@@ -98,7 +98,10 @@ export async function updateProfile(edit: ProfileEdit): Promise<AuthUser> {
 }
 
 /** What a client may report. Mirrors ReportController::REPORTABLE. */
-export type ReportableType = "template" | "design" | "user" | "collection";
+/** Mirrors the backend's ReportController::REPORTABLE — everything a
+ * report can point at, which is a superset of what can be liked (an
+ * account can be reported but not liked). */
+export type ReportableType = "template" | "design" | "user" | "collection" | "post" | "comment";
 
 /** Mirrors ReportController::REASONS — a shortlist for the UI, not a schema constraint. */
 export const REPORT_REASONS = [

@@ -1177,6 +1177,43 @@ blocked; and the properties panel's X/Y/Width/Height/Rotation inputs had
 no `disabled` gating on `locked` at all, so retyping coordinates by hand
 always worked regardless of the lock.
 
+## Knowledge base
+
+Community guides — printing, cutting, card stock, design tips. A post is
+another owned-and-publishable type (`OwnedByUser` + `Publishable` +
+`Reactable`), so likes, reports, visibility, moderation state, featuring
+and profile listings all came for free. What's specific to it:
+
+- **A slug, generated once from the first title and never changed.**
+  Renaming a guide keeps its URL rather than breaking every link to it.
+- **Edit history.** A `post_revisions` row is written *before* each
+  change, so it holds the superseded version. This is a moderation
+  feature — "what did this say before it was edited" can't be answered
+  retroactively — and is owner-only until there's a staff role.
+- **Comments**, polymorphic like reactions and reports, so a thread can
+  attach to a design later. A commenter can delete their own; so can the
+  post's author, since a thread on your guide is yours to keep clean.
+- Categories come from `config/knowledge_base.php` — a shortlist, not a
+  table, same call as report reasons.
+
+**Markdown is rendered to React elements, never to an HTML string** —
+`apps/editor/src/markdown.tsx`, no `dangerouslySetInnerHTML` anywhere.
+Post bodies are user-generated and public, so the usual markdown→HTML
+path would need a sanitizer, and a sanitizer is a thing you can get
+subtly wrong. Building React nodes makes injection impossible by
+construction; link hrefs are still scheme-allowlisted, because
+`javascript:` in an href isn't markup injection. Supported: headings,
+lists, quotes, fences, rules, and inline bold/italic/code/links.
+
+| route | auth | notes |
+| --- | --- | --- |
+| `GET /api/posts` | — | `?q=&category=&tag=&sort=` |
+| `GET /api/posts/{slug}` | optional | by slug; drafts are owner-only |
+| `GET/POST /api/posts/{slug}/comments` | read: — | posting needs an account |
+| `PUT /api/posts/{id}` | ✓ | upsert; records a revision on a text change |
+| `GET /api/posts/{id}/revisions` | ✓ | owner-only |
+| `DELETE /api/comments/{id}` | ✓ | commenter or post author |
+
 ## App shell (standalone app)
 
 `pnpm dev:editor` serves an **app**, not a canvas with dialogs stacked on

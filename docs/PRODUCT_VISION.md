@@ -225,12 +225,14 @@ Build this as one generic system, not four bespoke ones:
 
 ### Phase 5 — Community & knowledge base
 
-Posts/guides (markdown or a light rich-text format), categories/tags,
-edit history (needed for moderation — "what did this look like before
-it was edited" matters once content is public and community-authored),
-comments if wanted. Reuses the Phase 4 reaction system for upvotes and
-Phase 2's report/visibility groundwork rather than inventing new
-versions of either.
+> **Shipped** — see the root README's [Knowledge
+> base](../README.md#knowledge-base). Posts, categories, tags, edit
+> history and comments, reusing the Phase 4 reactions and the Phase 2
+> report/visibility groundwork exactly as planned — a post is another
+> `OwnedByUser + Publishable + Reactable` model. Markdown renders to
+> React elements rather than HTML, so there is no sanitizer to get wrong.
+> Comments are polymorphic but only exposed on posts; attaching them to a
+> design is a product decision nobody has made.
 
 ### Phase 6 — Mobile-first UI pass & trust/safety hardening
 

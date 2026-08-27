@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\CardDesign;
 use App\Models\Collection;
+use App\Models\Post;
 use App\Models\Template;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rule;
@@ -21,6 +22,7 @@ class Reactable
         'design' => CardDesign::class,
         'template' => Template::class,
         'collection' => Collection::class,
+        'post' => Post::class,
     ];
 
     public static function rule(): In

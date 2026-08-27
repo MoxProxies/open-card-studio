@@ -26,6 +26,7 @@ return [
         'template_used' => 2,
         'collection_published' => 5,
         'design_published' => 2,
+        'post_published' => 15,
     ],
 
     /**

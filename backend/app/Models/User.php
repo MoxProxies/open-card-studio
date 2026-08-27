@@ -24,6 +24,7 @@ class User extends Authenticatable
         'cardDesigns' => CardDesign::class,
         'templates' => Template::class,
         'collections' => Collection::class,
+        'posts' => Post::class,
     ];
 
     protected $fillable = [
@@ -65,6 +66,11 @@ class User extends Authenticatable
     public function collections(): HasMany
     {
         return $this->hasMany(Collection::class);
+    }
+
+    public function posts(): HasMany
+    {
+        return $this->hasMany(Post::class);
     }
 
     public function pointEvents(): HasMany
