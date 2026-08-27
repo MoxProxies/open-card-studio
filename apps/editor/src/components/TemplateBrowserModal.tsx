@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, useSyncExternalStore, type MouseEvent } from "react";
-import { X, Search, Loader2, Trash2, LayoutTemplate, Upload, Users } from "lucide-react";
+import { Search, Loader2, Trash2, LayoutTemplate, Upload, Users } from "lucide-react";
 import type { Design } from "@card-studio/scene-schema";
-import { ApiError } from "../api/client";
+import { apiErrorMessage } from "../api/client";
+import { Modal } from "./Modal";
 import { getCurrentUser, subscribe } from "../api/auth";
 import {
   browseTemplates,
@@ -70,7 +71,7 @@ export function TemplateBrowserModal({ design, onUseTemplate, onClose }: Templat
     const request = tab === "mine" ? listMyTemplates() : browseTemplates({ q: search, sort });
     request
       .then(setTemplates)
-      .catch((e: unknown) => setListError(e instanceof ApiError ? e.message : "Couldn't load templates — check your connection and try again."))
+      .catch((e: unknown) => setListError(apiErrorMessage(e, "Couldn't load templates — check your connection and try again.")))
       .finally(() => setListLoading(false));
   }, [tab, search, sort]);
 
@@ -91,18 +92,6 @@ export function TemplateBrowserModal({ design, onUseTemplate, onClose }: Templat
     return () => clearTimeout(timer);
   }, [refresh, canList, reloadToken]);
 
-  useEffect(() => {
-    // Escape closes the save dialog stacked on top of this one first —
-    // both listen on window, so without this guard one press would close
-    // both and throw away whatever the author had typed.
-    if (showSaveModal) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose, showSaveModal]);
-
   const handleUse = async (summary: TemplateSummary) => {
     if (!window.confirm(`Start a new design from "${summary.name}"? Any unsaved changes to the current one will be lost.`)) return;
     setBusyId(summary.id);
@@ -114,7 +103,7 @@ export function TemplateBrowserModal({ design, onUseTemplate, onClose }: Templat
       void markTemplateUsed(summary.id).catch(() => {});
       onUseTemplate(designFromTemplate(template));
     } catch (e) {
-      setActionError(e instanceof ApiError ? e.message : "Couldn't open that template — check your connection and try again.");
+      setActionError(apiErrorMessage(e, "Couldn't open that template — check your connection and try again."));
     } finally {
       setBusyId(null);
     }
@@ -126,7 +115,7 @@ export function TemplateBrowserModal({ design, onUseTemplate, onClose }: Templat
       const updated = await setTemplateVisibility(id, visibility);
       setTemplates((current) => current.map((t) => (t.id === id ? updated : t)));
     } catch (e) {
-      setActionError(e instanceof ApiError ? e.message : "Couldn't change that template's visibility.");
+      setActionError(apiErrorMessage(e, "Couldn't change that template's visibility."));
     }
   };
 
@@ -138,92 +127,124 @@ export function TemplateBrowserModal({ design, onUseTemplate, onClose }: Templat
       await deleteTemplate(summary.id);
       setReloadToken((n) => n + 1);
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "Couldn't delete that template.");
+      setActionError(apiErrorMessage(err, "Couldn't delete that template."));
     }
   };
 
   return (
-    <div
-      className="cs-root"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      style={{ position: "fixed", inset: 0, background: "var(--cs-backdrop)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
-    >
-      <div
-        data-testid="template-browser"
-        style={{
-          background: "var(--cs-surface)",
-          borderRadius: 12,
-          width: "min(640px, 92vw)",
-          maxHeight: "84vh",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 20px 50px var(--cs-shadow)",
-        }}
+    <>
+      <Modal
+        title="Templates"
+        onClose={onClose}
+        width="min(640px, 92vw)"
+        testId="template-browser"
+        toolbar={
+          <>
+            <button className={`cs-btn${tab === "browse" ? " cs-active" : ""}`} onClick={() => setTab("browse")} data-testid="template-tab-browse">
+              <Users size={14} /> Community
+            </button>
+            <button className={`cs-btn${tab === "mine" ? " cs-active" : ""}`} onClick={() => setTab("mine")} data-testid="template-tab-mine">
+              <LayoutTemplate size={14} /> My templates
+            </button>
+            <div style={{ flex: 1 }} />
+            <button
+              className="cs-btn"
+              data-testid="template-save-current"
+              onClick={() => {
+                setEditing(undefined);
+                setShowSaveModal(true);
+              }}
+              disabled={!user}
+              title={user ? "Publish the design you're editing as a reusable template" : "Sign in to save templates to your account"}
+            >
+              <Upload size={14} /> Save current design as template
+            </button>
+            {tab === "browse" && (
+              <div style={{ display: "flex", gap: 8, width: "100%" }}>
+                <div style={{ position: "relative", flex: 1 }}>
+                  <Search
+                    size={14}
+                    style={{
+                      position: "absolute",
+                      left: 8,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "var(--cs-text-muted)",
+                    }}
+                  />
+                  <input
+                    className="cs-input"
+                    placeholder="Search community templates…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{ width: "100%", paddingLeft: 28 }}
+                    data-testid="template-search"
+                  />
+                </div>
+                <select className="cs-input" value={sort} onChange={(e) => setSort(e.target.value as "recent" | "popular")} style={{ width: 130 }}>
+                  <option value="recent">Newest</option>
+                  <option value="popular">Most used</option>
+                </select>
+              </div>
+            )}
+          </>
+        }
       >
-        <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--cs-border)" }}>
-          <h2 className="cs-heading" style={{ fontSize: 16, fontWeight: 600, margin: 0, flex: 1 }}>Templates</h2>
-          <button className="cs-icon-btn" onClick={onClose} title="Close">
-            <X size={16} />
-          </button>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, padding: "12px 16px", borderBottom: "1px solid var(--cs-border)", alignItems: "center", flexWrap: "wrap" }}>
-          <button className={`cs-btn${tab === "browse" ? " cs-active" : ""}`} onClick={() => setTab("browse")} data-testid="template-tab-browse">
-            <Users size={14} /> Community
-          </button>
-          <button className={`cs-btn${tab === "mine" ? " cs-active" : ""}`} onClick={() => setTab("mine")} data-testid="template-tab-mine">
-            <LayoutTemplate size={14} /> My templates
-          </button>
-          <div style={{ flex: 1 }} />
-          <button
-            className="cs-btn"
-            data-testid="template-save-current"
-            onClick={() => {
-              setEditing(undefined);
-              setShowSaveModal(true);
+        {actionError && (
+          <p
+            style={{
+              color: "var(--cs-danger)",
+              fontSize: 13,
+              padding: "8px 16px",
+              margin: 0,
             }}
-            disabled={!user}
-            title={user ? "Publish the design you're editing as a reusable template" : "Sign in to save templates to your account"}
           >
-            <Upload size={14} /> Save current design as template
-          </button>
-        </div>
-
-        {tab === "browse" && (
-          <div style={{ display: "flex", gap: 8, padding: "12px 16px", borderBottom: "1px solid var(--cs-border)" }}>
-            <div style={{ position: "relative", flex: 1 }}>
-              <Search size={14} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "var(--cs-text-muted)" }} />
-              <input
-                className="cs-input"
-                placeholder="Search community templates…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ width: "100%", paddingLeft: 28 }}
-                data-testid="template-search"
-              />
-            </div>
-            <select className="cs-input" value={sort} onChange={(e) => setSort(e.target.value as "recent" | "popular")} style={{ width: 130 }}>
-              <option value="recent">Newest</option>
-              <option value="popular">Most used</option>
-            </select>
-          </div>
+            {actionError}
+          </p>
         )}
-
-        {actionError && <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "8px 16px", margin: 0 }}>{actionError}</p>}
 
         <div style={{ padding: 8, overflowY: "auto", flex: 1 }}>
           {!canList ? (
-            <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>Sign in to see the templates you've saved.</p>
+            <p
+              style={{
+                color: "var(--cs-text-muted)",
+                fontSize: 13,
+                padding: "6px 8px",
+              }}
+            >
+              Sign in to see the templates you've saved.
+            </p>
           ) : listLoading ? (
-            <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+            <p
+              style={{
+                color: "var(--cs-text-muted)",
+                fontSize: 13,
+                padding: "6px 8px",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
               <Loader2 size={14} className="cs-spin" /> Loading…
             </p>
           ) : listError ? (
-            <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "6px 8px" }}>{listError}</p>
+            <p
+              style={{
+                color: "var(--cs-danger)",
+                fontSize: 13,
+                padding: "6px 8px",
+              }}
+            >
+              {listError}
+            </p>
           ) : templates.length === 0 ? (
-            <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>
+            <p
+              style={{
+                color: "var(--cs-text-muted)",
+                fontSize: 13,
+                padding: "6px 8px",
+              }}
+            >
               {tab === "mine"
                 ? "You haven't saved any templates yet — lock the layers you want fixed, then use the button above."
                 : "No published templates match that search yet."}
@@ -244,16 +265,40 @@ export function TemplateBrowserModal({ design, onUseTemplate, onClose }: Templat
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {t.name}
+                  </div>
                   {t.description && (
-                    <div style={{ fontSize: 12, color: "var(--cs-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--cs-text-muted)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {t.description}
                     </div>
                   )}
-                  <div style={{ fontSize: 11, color: "var(--cs-text-muted)", marginTop: 2 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--cs-text-muted)",
+                      marginTop: 2,
+                    }}
+                  >
                     {/* Attribution is deliberately always shown, never
-                        conditional on a hover or a detail view — see this
-                        component's doc comment. */}
+                      conditional on a hover or a detail view — see this
+                      component's doc comment. */}
                     by {t.author.name ?? "a community member"} · used {t.usageCount}×{t.version > 1 ? ` · v${t.version}` : ""}
                     {t.tags.length > 0 && ` · ${t.tags.join(", ")}`}
                   </div>
@@ -301,7 +346,7 @@ export function TemplateBrowserModal({ design, onUseTemplate, onClose }: Templat
             ))
           )}
         </div>
-      </div>
+      </Modal>
 
       {showSaveModal && (
         <SaveAsTemplateModal
@@ -322,6 +367,6 @@ export function TemplateBrowserModal({ design, onUseTemplate, onClose }: Templat
           }}
         />
       )}
-    </div>
+    </>
   );
 }

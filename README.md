@@ -1116,14 +1116,11 @@ one — they answer two different questions:
   layer is `contentLocked` and the current entitlements say no, and the
   Content field's label shows a lock icon (filled accent color if the
   current account can edit anyway, muted if not) so it's visually obvious
-  a field is gated even before you try typing into it. **Toggled from the
-  properties panel**, next to the position lock — that toggle is what a
-  template author uses to mark a layer as fixed chrome rather than a
-  fill-in slot (see [Community templates](#community-templates)).
-  Asymmetric on purpose: turning the content lock *on* is ungated, but
-  turning it *off* requires `canEditLockedContent`, since otherwise the
-  premium gate would be one click away from being switched off by exactly
-  the accounts it applies to.
+  a field is gated even before you try typing into it. Toggled from the
+  properties panel next to the position lock — asymmetric on purpose:
+  turning it *on* is ungated, turning it *off* needs
+  `canEditLockedContent`, or the premium gate would be one click from
+  being switched off by the accounts it applies to.
 
 A layer can be `locked` and not `contentLocked`, `contentLocked` and not
 `locked`, both, or neither — the two never imply each other. The spec
@@ -1182,82 +1179,58 @@ always worked regardless of the lock.
 
 ## Community templates
 
-A **template is a `Design` plus publishing metadata** — not a second
-scene format, and not a new "slot" schema. That's the whole design
-decision (see
-[`docs/PRODUCT_VISION.md`](docs/PRODUCT_VISION.md)'s "The architectural
-centerpiece"): the two lock booleans every layer already carries (see
-[Field locking](#field-locking)) are exactly the vocabulary a template
-needs, so a template author builds the layout in the editor as it
-already exists, locks what should stay fixed, and publishes.
+A **template is a `Design` plus publishing metadata** — no second scene
+format, no slot schema. The two lock flags every layer already has (see
+[Field locking](#field-locking)) are the whole mechanism:
 
-| layer flags | role in a template | who can change what |
+| layer flags | role | who can change it |
 | --- | --- | --- |
-| `locked: true, contentLocked: true` | decorative chrome — frame art, rarity symbol, background | nobody filling in the template moves it or replaces what it says |
-| `locked: true, contentLocked: false` | a **fill-in slot** — name, rules text, art | position/size/font stay as the author set them; the *value* is the point |
-| `locked: false` | freely movable | anything; the save-as-template dialog counts these so an author notices before publishing |
+| `locked` + `contentLocked` | fixed chrome (frame art, rarity symbol) | nobody |
+| `locked` only | a fill-in slot | its *value*, not its position |
+| neither | freely movable | anything |
 
-Both flags are toggled from the properties panel (position lock and
-content lock sit side by side there — see [Field
-locking](#field-locking)), so authoring a template is the editor you
-already know plus two clicks per layer, not a separate mode.
+Both flags toggle from the properties panel, so authoring a template is
+the normal editor plus two clicks per layer.
 
-`apps/editor/src/cardTemplates.ts` is that mapping in code
-(`classifyTemplateLayer`, `summarizeTemplateLayers`) plus
-`designFromTemplate`, which is all "new design from this template"
-amounts to: spread the template's `design`, mint a new `Design.id`, run
-it through `Design.parse()` (same forward-compat defaulting
-[Save/load](#saveload) relies on), done — **every lock flag carries
-through exactly as authored, and layer ids are deliberately *not*
-regenerated** (they only need to be unique within one design, and
-keeping them is what keeps `RARITY_LAYER_ID`, each layer's `groupId`,
-and text layers' `fieldId` pointing at the right things).
+`cardTemplates.ts` holds that mapping (`classifyTemplateLayer`,
+`summarizeTemplateLayers`) and `designFromTemplate`, which is all "new
+design from template" is: spread the template's `design`, new
+`Design.id`, `Design.parse()`. Lock flags carry through as authored.
+Layer ids are kept, not regenerated — they only need to be unique within
+one design, and keeping them keeps `RARITY_LAYER_ID`, `groupId`, and
+`fieldId` valid.
 
-**UI.** A "Templates" button in the toolbar (next to "Designs", behind
-the same `hideLocalDesignLibrary` gate) opens `TemplateBrowserModal.tsx`:
-a **Community** tab (the published gallery, searchable, sortable by
-newest/most-used) and a **My templates** tab (every visibility, with a
-per-row visibility dropdown, "Update", and delete). "Use" clones the
-template into a fresh design and loads it — the same confirm-then-
-`loadDesign` path as loading a saved design. "Save current design as
-template" opens `SaveAsTemplateModal.tsx` (name, description, up to 8
-free-text tags, visibility) which also shows the chrome/slot/unlocked
-breakdown described above rather than offering any separate slot-
-definition mode. Browsing and using a template work signed out;
-publishing and "My templates" need an account.
+**UI.** A toolbar "Templates" button (same `hideLocalDesignLibrary` gate
+as "Designs") opens `TemplateBrowserModal.tsx`: a **Community** tab
+(published gallery, search + sort) and **My templates** (all
+visibilities, with visibility/update/delete per row). "Use" clones into
+a fresh design and loads it. "Save current design as template" opens
+`SaveAsTemplateModal.tsx`, which reports the chrome/slot/unlocked
+breakdown instead of offering a slot-definition mode. Browsing and using
+work signed out; publishing doesn't.
 
-**Backend.** `templates` (see the migration) mirrors `card_designs`:
-client-generated UUID primary key, PUT-upsert-by-id, `design` stored
-completely opaque. On top of that it carries `description`, free-text
-`tags` (deliberately not an enum of franchises — see PRODUCT_VISION's
-liability section), `visibility` (`private`/`unlisted`/`published`),
-`usage_count`, `version`, and a `moderation_state` column present from
-the first migration so a takedown has somewhere to write. Endpoints:
+**Backend.** `templates` mirrors `card_designs` (client UUID key,
+PUT-upsert-by-id, opaque `design`) plus `description`, free-text `tags`,
+`visibility` (`private`/`unlisted`/`published`), `usage_count`,
+`version`, and a `moderation_state` column present from the first
+migration so a takedown has somewhere to write.
 
-- `GET /api/templates/browse` — public gallery, published rows only,
-  `?q=&tag=&sort=recent|popular&limit=`.
-- `GET /api/templates/{id}` — one template *with* its design blob;
-  public when published/unlisted, owner-only when private (it reads a
-  bearer token when one is sent, hence no `auth:sanctum` on the route).
-- `POST /api/templates/{id}/use` — bumps `usage_count`. Unauthenticated
-  (a signed-out use still counts) and rate-limited instead.
-- `GET /api/templates` (auth) — "my templates", every visibility.
-- `PUT /api/templates/{id}` (auth) — create/update; bumps `version` only
-  when the design blob itself changed.
-- `POST /api/templates/{id}/publish` (auth) — visibility on its own, so
-  a list row can flip private↔published without re-uploading the design.
-- `DELETE /api/templates/{id}` (auth).
+| route | auth | notes |
+| --- | --- | --- |
+| `GET /api/templates/browse` | — | published only; `?q=&tag=&sort=recent\|popular&limit=` |
+| `GET /api/templates/{id}` | optional | with `design`; private is owner-only |
+| `POST /api/templates/{id}/use` | — | bumps `usage_count`, rate-limited |
+| `GET /api/templates` | ✓ | my templates, all visibilities |
+| `PUT /api/templates/{id}` | ✓ | `version` bumps only if `design` changed |
+| `POST /api/templates/{id}/publish` | ✓ | visibility only, no design re-upload |
+| `DELETE /api/templates/{id}` | ✓ | |
 
-Every listing row includes its author's name: community templates are
-attributed to the member who made them and are never presented as
-official or first-party.
+Every row carries its author's name — community templates are
+attributed, never presented as first-party.
 
-**Not built (Phase 1 scope, deliberately):** a visual "define this
-region as a slot with these constraints" authoring mode beyond the lock
-flags; migrating designs already made from a template when that template
-changes (`version` is a marker for humans, nothing reads it to transform
-anything); and fork/remix lineage between templates and the designs made
-from them.
+**Deferred:** visual slot-constraint authoring, migrating designs when a
+template changes (`version` is a human marker, nothing reads it), and
+fork/remix lineage.
 
 ## AI art generation
 
@@ -1863,10 +1836,7 @@ on the `.sh`) — override either if your layout differs.
   the `studio_design` column, the submission endpoint, the render-triggering
   job, and the actual embed page — none of that lives in this repo, so
   none of it exists yet from Card Studio's side either.
-- Template authoring beyond the lock flags — a visual "define this region
-  as a slot with these constraints" mode, migrating designs already made
-  from a template when that template changes, and fork/remix lineage. All
-  three are explicitly deferred; see [Community
-  templates](#community-templates).
+- Template authoring beyond the lock flags — see [Community
+  templates](#community-templates)'s "Deferred".
 - Deploy config for either app (including actually running
   `services/render` somewhere reachable from moxproxies-website's backend)

@@ -130,13 +130,7 @@ class TemplateController extends Controller
             'design' => ['required', 'array'],
         ]);
 
-        // Same guard, same reasoning as CardDesignController::upsert: a
-        // client-generated id colliding with another account's row would
-        // otherwise miss updateOrCreate's (id, user_id) WHERE and try to
-        // INSERT a duplicate primary key — an ugly 500 instead of a clean
-        // rejection.
-        $existing = Template::find($id);
-        abort_if($existing && $existing->user_id !== $request->user()->id, 409, 'That template id belongs to another account.');
+        $existing = Template::abortIfOwnedByAnotherUser($request, $id, 'template');
 
         if (array_key_exists('tags', $data)) {
             $data['tags'] = $this->normalizeTags($data['tags']);

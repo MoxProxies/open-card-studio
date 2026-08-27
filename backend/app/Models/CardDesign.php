@@ -2,18 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\OwnedByUser;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CardDesign extends Model
 {
-    use HasFactory;
-
-    /** Primary key is a client-supplied UUID, not an auto-increment int — see the migration's doc comment. */
-    public $incrementing = false;
-
-    protected $keyType = 'string';
+    use HasFactory, OwnedByUser;
 
     protected $fillable = [
         'id',

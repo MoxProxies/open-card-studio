@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { X, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { FRAME_ASSETS, FRAME_CATEGORIES, getFrameAssetUrl } from "../frameAssets";
+import { Modal } from "./Modal";
 
 interface FrameLibraryModalProps {
   onSelect: (assetId: string) => void;
@@ -14,14 +15,6 @@ export function FrameLibraryModal({ onSelect, onClose }: FrameLibraryModalProps)
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
-
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return FRAME_ASSETS.filter((asset) => {
@@ -32,40 +25,12 @@ export function FrameLibraryModal({ onSelect, onClose }: FrameLibraryModalProps)
   }, [category, search]);
 
   return (
-    <div
-      className="cs-root"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "var(--cs-backdrop)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-      }}
-    >
-      <div
-        style={{
-          background: "var(--cs-surface)",
-          borderRadius: 12,
-          width: "min(720px, 92vw)",
-          maxHeight: "84vh",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 20px 50px var(--cs-shadow)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--cs-border)" }}>
-          <h2 className="cs-heading" style={{ fontSize: 16, fontWeight: 600, margin: 0, flex: 1 }}>Frame library</h2>
-          <button className="cs-icon-btn" onClick={onClose} title="Close">
-            <X size={16} />
-          </button>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, padding: "12px 16px", borderBottom: "1px solid var(--cs-border)" }}>
+    <Modal
+      title="Frame library"
+      onClose={onClose}
+      width="min(720px, 92vw)"
+      toolbar={
+        <>
           <select className="cs-input" value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: 160 }}>
             <option value="">All folders</option>
             {FRAME_CATEGORIES.map((c) => (
@@ -85,37 +50,35 @@ export function FrameLibraryModal({ onSelect, onClose }: FrameLibraryModalProps)
               autoFocus
             />
           </div>
-        </div>
-
-        <div style={{ padding: 16, overflowY: "auto", flex: 1 }}>
-          {filtered.length === 0 ? (
-            <p style={{ color: "var(--cs-text-muted)", fontSize: 13 }}>No frames match.</p>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 12 }}>
-              {filtered.map((asset) => (
-                <button
-                  key={asset.id}
-                  className="cs-swatch"
-                  onClick={() => onSelect(asset.id)}
-                  title={`${asset.categoryLabel} / ${asset.name}`}
-                  style={{ display: "flex", flexDirection: "column", gap: 4, padding: 6 }}
+        </>
+      }
+    >
+      <div style={{ padding: 16 }}>
+        {filtered.length === 0 ? (
+          <p style={{ color: "var(--cs-text-muted)", fontSize: 13 }}>No frames match.</p>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 12 }}>
+            {filtered.map((asset) => (
+              <button
+                key={asset.id}
+                className="cs-swatch"
+                onClick={() => onSelect(asset.id)}
+                title={`${asset.categoryLabel} / ${asset.name}`}
+                style={{ display: "flex", flexDirection: "column", gap: 4, padding: 6 }}
+              >
+                <div style={{ aspectRatio: "63 / 88", overflow: "hidden", borderRadius: 4, background: "var(--cs-surface-soft)" }}>
+                  <img src={getFrameAssetUrl(asset.id)} alt={asset.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                </div>
+                <span
+                  style={{ fontSize: 11, color: "var(--cs-text)", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                 >
-                  <div style={{ aspectRatio: "63 / 88", overflow: "hidden", borderRadius: 4, background: "var(--cs-surface-soft)" }}>
-                    <img
-                      src={getFrameAssetUrl(asset.id)}
-                      alt={asset.name}
-                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    />
-                  </div>
-                  <span style={{ fontSize: 11, color: "var(--cs-text)", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {asset.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+                  {asset.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }

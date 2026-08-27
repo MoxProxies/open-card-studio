@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\OwnedByUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -19,12 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Template extends Model
 {
-    use HasFactory;
-
-    /** Primary key is a client-supplied UUID, not an auto-increment int — see the migration's doc comment. */
-    public $incrementing = false;
-
-    protected $keyType = 'string';
+    use HasFactory, OwnedByUser;
 
     /** `usage_count` and `moderation_state` are deliberately absent: a
      * request can't claim a usage count for its own template, and

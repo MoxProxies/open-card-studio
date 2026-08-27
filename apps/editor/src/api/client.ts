@@ -51,6 +51,16 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await res.json()) as T;
 }
 
+/**
+ * The message to show a user for a failed request: the backend's own
+ * message when it sent one (a validation error, a 409, a 404 — these are
+ * written to be read), otherwise `fallback`, since a raw network/parse
+ * error string isn't something to put in front of anyone.
+ */
+export function apiErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiError ? error.message : fallback;
+}
+
 export const api = {
   get: <T>(path: string): Promise<T> => request<T>(path),
   post: <T>(path: string, body?: unknown): Promise<T> => request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }),

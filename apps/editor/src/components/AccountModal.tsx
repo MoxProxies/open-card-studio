@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { X, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { login, register } from "../api/auth";
-import { ApiError } from "../api/client";
+import { apiErrorMessage } from "../api/client";
+import { Modal } from "./Modal";
 
 interface AccountModalProps {
   onSignedIn: () => void;
@@ -22,14 +23,6 @@ export function AccountModal({ onSignedIn, onClose }: AccountModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
-
   const submit = async () => {
     setSubmitting(true);
     setError(null);
@@ -41,85 +34,53 @@ export function AccountModal({ onSignedIn, onClose }: AccountModalProps) {
       }
       onSignedIn();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Something went wrong — check your connection and try again.");
+      setError(apiErrorMessage(e, "Something went wrong — check your connection and try again."));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div
-      className="cs-root"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      style={{ position: "fixed", inset: 0, background: "var(--cs-backdrop)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
-    >
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-        style={{
-          background: "var(--cs-surface)",
-          borderRadius: 12,
-          width: "min(360px, 92vw)",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 20px 50px var(--cs-shadow)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--cs-border)" }}>
-          <h2 className="cs-heading" style={{ fontSize: 16, fontWeight: 600, margin: 0, flex: 1 }}>
-            {mode === "login" ? "Sign in" : "Create account"}
-          </h2>
-          <button type="button" className="cs-icon-btn" onClick={onClose} title="Close">
-            <X size={16} />
-          </button>
-        </div>
+    <Modal title={mode === "login" ? "Sign in" : "Create account"} onClose={onClose} width="min(360px, 92vw)" onSubmit={() => void submit()}>
+      <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+        {mode === "register" && <input className="cs-input" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />}
+        <input
+          className="cs-input"
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoFocus={mode === "login"}
+        />
+        <input
+          className="cs-input"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          minLength={8}
+          required
+        />
 
-        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-          {mode === "register" && (
-            <input className="cs-input" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
-          )}
-          <input
-            className="cs-input"
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoFocus={mode === "login"}
-          />
-          <input
-            className="cs-input"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={8}
-            required
-          />
+        {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
 
-          {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
+        <button className="cs-btn" type="submit" disabled={submitting} style={{ justifyContent: "center" }}>
+          {submitting && <Loader2 size={14} className="cs-spin" />}
+          {mode === "login" ? "Sign in" : "Create account"}
+        </button>
 
-          <button className="cs-btn" type="submit" disabled={submitting} style={{ justifyContent: "center" }}>
-            {submitting && <Loader2 size={14} className="cs-spin" />}
-            {mode === "login" ? "Sign in" : "Create account"}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setMode((m) => (m === "login" ? "register" : "login"));
-              setError(null);
-            }}
-            style={{ background: "none", border: "none", color: "var(--cs-text-muted)", fontSize: 12, cursor: "pointer", padding: 0 }}
-          >
-            {mode === "login" ? "Need an account? Create one" : "Already have an account? Sign in"}
-          </button>
-        </div>
-      </form>
-    </div>
+        <button
+          type="button"
+          onClick={() => {
+            setMode((m) => (m === "login" ? "register" : "login"));
+            setError(null);
+          }}
+          style={{ background: "none", border: "none", color: "var(--cs-text-muted)", fontSize: 12, cursor: "pointer", padding: 0 }}
+        >
+          {mode === "login" ? "Need an account? Create one" : "Already have an account? Sign in"}
+        </button>
+      </div>
+    </Modal>
   );
 }

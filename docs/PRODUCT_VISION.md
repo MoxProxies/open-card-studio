@@ -135,18 +135,11 @@ explicitly now, expensive to unwind later:
 
 ### Phase 1 — Generic template engine
 
-> **Shipped.** The `templates` table, its CRUD/publish/browse endpoints,
-> and the editor's Templates button (save-as-template, community
-> gallery, "new design from this template") all exist — see the root
-> README's [Community templates](../README.md#community-templates) for
-> how they work and which lock flags mean what. The three explicitly
-> out-of-scope items below stayed out of scope; they're listed in the
-> README's "Not built yet" too. One thing this phase had to add that
-> wasn't anticipated here: `contentLocked` had no UI at all (it could
-> only be set by a `text-template-library/` default), so a template
-> author literally couldn't mark a layer as fixed chrome — the
-> properties panel now has a content-lock toggle next to the position
-> lock, ungated to turn on and entitlement-gated to turn off.
+> **Shipped** — see the root README's [Community
+> templates](../README.md#community-templates). The three out-of-scope
+> items below stayed out of scope. One thing this didn't anticipate:
+> `contentLocked` had no UI at all, so an author couldn't mark a layer as
+> chrome; the properties panel now has a toggle for it.
 
 The designer's core value proposition, and the reason the "reduction in
 liability" goal and the "not just MTG" goal are actually the same

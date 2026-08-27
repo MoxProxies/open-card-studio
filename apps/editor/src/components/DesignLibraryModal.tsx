@@ -1,8 +1,9 @@
 import { useEffect, useState, type MouseEvent } from "react";
-import { X, Save, FilePlus, FolderOpen, Trash2, Loader2 } from "lucide-react";
+import { Save, FilePlus, FolderOpen, Trash2, Loader2 } from "lucide-react";
 import type { Design } from "@card-studio/scene-schema";
 import { designStorage, type DesignSummary } from "../designStorage";
-import { ApiError } from "../api/client";
+import { apiErrorMessage } from "../api/client";
+import { Modal } from "./Modal";
 
 interface DesignLibraryModalProps {
   design: Design;
@@ -39,7 +40,7 @@ export function DesignLibraryModal({ design, onRename, onSave, onNew, onLoad, on
     designStorage
       .list()
       .then(setSummaries)
-      .catch((e: unknown) => setListError(e instanceof ApiError ? e.message : "Couldn't load your saved designs — check your connection and try again."))
+      .catch((e: unknown) => setListError(apiErrorMessage(e, "Couldn't load your saved designs — check your connection and try again.")))
       .finally(() => setListLoading(false));
   };
 
@@ -49,14 +50,6 @@ export function DesignLibraryModal({ design, onRename, onSave, onNew, onLoad, on
     refresh();
   }, []);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
-
   const handleSave = async () => {
     setSaving(true);
     setActionError(null);
@@ -64,7 +57,7 @@ export function DesignLibraryModal({ design, onRename, onSave, onNew, onLoad, on
       await onSave();
       refresh();
     } catch (e) {
-      setActionError(e instanceof ApiError ? e.message : "Couldn't save — check your connection and try again.");
+      setActionError(apiErrorMessage(e, "Couldn't save — check your connection and try again."));
     } finally {
       setSaving(false);
     }
@@ -80,7 +73,7 @@ export function DesignLibraryModal({ design, onRename, onSave, onNew, onLoad, on
       if (loaded) onLoad(loaded);
       else setActionError("That design couldn't be found — it may have been deleted elsewhere.");
     } catch (e) {
-      setActionError(e instanceof ApiError ? e.message : "Couldn't load that design — check your connection and try again.");
+      setActionError(apiErrorMessage(e, "Couldn't load that design — check your connection and try again."));
     } finally {
       setLoadingId(null);
     }
@@ -94,7 +87,7 @@ export function DesignLibraryModal({ design, onRename, onSave, onNew, onLoad, on
       await designStorage.remove(id);
       refresh();
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "Couldn't delete — check your connection and try again.");
+      setActionError(apiErrorMessage(err, "Couldn't delete — check your connection and try again."));
     }
   };
 
@@ -104,101 +97,72 @@ export function DesignLibraryModal({ design, onRename, onSave, onNew, onLoad, on
   };
 
   return (
-    <div
-      className="cs-root"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      style={{ position: "fixed", inset: 0, background: "var(--cs-backdrop)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
-    >
-      <div
-        style={{
-          background: "var(--cs-surface)",
-          borderRadius: 12,
-          width: "min(480px, 92vw)",
-          maxHeight: "80vh",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 20px 50px var(--cs-shadow)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--cs-border)" }}>
-          <h2 className="cs-heading" style={{ fontSize: 16, fontWeight: 600, margin: 0, flex: 1 }}>Save / load design</h2>
-          <button className="cs-icon-btn" onClick={onClose} title="Close">
-            <X size={16} />
-          </button>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, padding: "12px 16px", borderBottom: "1px solid var(--cs-border)" }}>
-          <input
-            className="cs-input"
-            value={design.name}
-            onChange={(e) => onRename(e.target.value)}
-            placeholder="Design name"
-            style={{ flex: 1 }}
-          />
+    <Modal
+      title="Save / load design"
+      onClose={onClose}
+      toolbar={
+        <>
+          <input className="cs-input" value={design.name} onChange={(e) => onRename(e.target.value)} placeholder="Design name" style={{ flex: 1 }} />
           <button className="cs-btn" onClick={() => void handleSave()} disabled={saving} title="Save this design">
             {saving ? <Loader2 size={14} className="cs-spin" /> : <Save size={14} />} Save
           </button>
           <button className="cs-btn" onClick={handleNew} title="Start a new blank design">
             <FilePlus size={14} /> New
           </button>
-        </div>
+        </>
+      }
+    >
+      {actionError && <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "8px 16px", margin: 0 }}>{actionError}</p>}
 
-        {actionError && (
-          <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "8px 16px", margin: 0 }}>{actionError}</p>
-        )}
-
-        <div style={{ padding: 8, overflowY: "auto", flex: 1 }}>
-          {listLoading ? (
-            <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
-              <Loader2 size={14} className="cs-spin" /> Loading…
-            </p>
-          ) : listError ? (
-            <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "6px 8px" }}>{listError}</p>
-          ) : summaries.length === 0 ? (
-            <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>No saved designs yet — click Save above.</p>
-          ) : (
-            summaries.map((s) => {
-              const isCurrent = s.id === design.id;
-              return (
-                <div
-                  key={s.id}
-                  data-testid="saved-design-row"
-                  onClick={() => void handleLoad(s.id)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "8px 8px",
-                    borderRadius: 6,
-                    cursor: isCurrent ? "default" : "pointer",
-                    background: isCurrent ? "var(--cs-accent-soft)" : "transparent",
-                    marginBottom: 2,
-                    opacity: loadingId === s.id ? 0.6 : 1,
-                  }}
-                >
-                  {loadingId === s.id ? (
-                    <Loader2 size={15} color="var(--cs-text-muted)" className="cs-spin" style={{ flex: "none" }} />
-                  ) : (
-                    <FolderOpen size={15} color="var(--cs-text-muted)" style={{ flex: "none" }} />
-                  )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {s.name}
-                      {isCurrent && <span style={{ color: "var(--cs-text-muted)" }}> (current)</span>}
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--cs-text-muted)" }}>{new Date(s.updatedAt).toLocaleString()}</div>
+      <div style={{ padding: 8 }}>
+        {listLoading ? (
+          <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+            <Loader2 size={14} className="cs-spin" /> Loading…
+          </p>
+        ) : listError ? (
+          <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "6px 8px" }}>{listError}</p>
+        ) : summaries.length === 0 ? (
+          <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>No saved designs yet — click Save above.</p>
+        ) : (
+          summaries.map((s) => {
+            const isCurrent = s.id === design.id;
+            return (
+              <div
+                key={s.id}
+                data-testid="saved-design-row"
+                onClick={() => void handleLoad(s.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 8px",
+                  borderRadius: 6,
+                  cursor: isCurrent ? "default" : "pointer",
+                  background: isCurrent ? "var(--cs-accent-soft)" : "transparent",
+                  marginBottom: 2,
+                  opacity: loadingId === s.id ? 0.6 : 1,
+                }}
+              >
+                {loadingId === s.id ? (
+                  <Loader2 size={15} color="var(--cs-text-muted)" className="cs-spin" style={{ flex: "none" }} />
+                ) : (
+                  <FolderOpen size={15} color="var(--cs-text-muted)" style={{ flex: "none" }} />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {s.name}
+                    {isCurrent && <span style={{ color: "var(--cs-text-muted)" }}> (current)</span>}
                   </div>
-                  <button className="cs-icon-btn" title="Delete" onClick={(e) => void handleDelete(s.id, s.name, e)}>
-                    <Trash2 size={13} />
-                  </button>
+                  <div style={{ fontSize: 11, color: "var(--cs-text-muted)" }}>{new Date(s.updatedAt).toLocaleString()}</div>
                 </div>
-              );
-            })
-          )}
-        </div>
+                <button className="cs-icon-btn" title="Delete" onClick={(e) => void handleDelete(s.id, s.name, e)}>
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            );
+          })
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
