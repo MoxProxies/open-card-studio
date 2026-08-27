@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\BadgeRules;
 use App\Support\Levels;
 use App\Support\PointsLedger;
 use App\Support\Reactable;
@@ -43,7 +44,7 @@ class ProfileController extends Controller
             'profile' => $user->toPublicProfile(),
             // Points/level/badges are public: they're the visible part of
             // the point of having them.
-            'stats' => Levels::progress(PointsLedger::total($user)) + ['reactions_received' => \App\Support\BadgeRules::reactionsReceived($user)],
+            'stats' => Levels::progress(PointsLedger::total($user)) + ['reactions_received' => BadgeRules::reactionsReceived($user)],
             'badges' => $user->badges->map->toArray(),
             'featured' => $this->featured($user, $viewer),
             'templates' => $user->templates()->published()->withCount('reactions')->latest('updated_at')->limit(self::LISTING_LIMIT)->get()
@@ -100,10 +101,18 @@ class ProfileController extends Controller
                 Rule::notIn(self::RESERVED_USERNAMES),
             ],
             'bio' => ['sometimes', 'nullable', 'string', 'max:1000'],
-            // https only, and only ever rendered by the viewer's browser —
-            // nothing server-side fetches it. A real upload path needs file
-            // storage this backend doesn't have yet.
-            'avatar_url' => ['sometimes', 'nullable', 'string', 'max:2048', 'url', 'starts_with:https://'],
+            // Either an https link somewhere else, or one of this
+            // deployment's own uploads (UploadController). https-only for
+            // the former, because an http image on an https page is a
+            // mixed-content warning and a downgrade attack surface; the
+            // latter is allowed on whatever scheme this deployment runs,
+            // since a dev box on http would otherwise be unable to use
+            // the upload button it just rendered.
+            'avatar_url' => ['sometimes', 'nullable', 'string', 'max:2048', 'url', function (string $attribute, mixed $value, \Closure $fail) {
+                if (! str_starts_with((string) $value, 'https://') && ! str_starts_with((string) $value, url('/api/uploads/'))) {
+                    $fail('An avatar has to be an https link, or an image uploaded here.');
+                }
+            }],
         ], [
             'username.regex' => 'A username can use lowercase letters, numbers, dashes and underscores, and must start and end with a letter or number.',
         ]);

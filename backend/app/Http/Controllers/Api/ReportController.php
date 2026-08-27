@@ -9,6 +9,7 @@ use App\Models\Comment;
 use App\Models\Post;
 use App\Models\Report;
 use App\Models\Template;
+use App\Models\Upload;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -31,6 +32,10 @@ class ReportController extends Controller
         'user' => User::class,
         'post' => Post::class,
         'comment' => Comment::class,
+        // Art is reportable in its own right, not only through whatever
+        // design happens to show it: the same image can sit in several,
+        // and taking it down once should settle it everywhere.
+        'upload' => Upload::class,
     ];
 
     /** A shortlist for the UI, not a schema constraint — the column is free text. */

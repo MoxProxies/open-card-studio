@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SocialAuthController;
 use App\Http\Controllers\Api\TemplateController;
 use App\Http\Controllers\Api\TwoFactorController;
+use App\Http\Controllers\Api\UploadController;
 use App\Http\Middleware\BlockSuspendedUsers;
 use App\Http\Middleware\EnsureStaff;
 use Illuminate\Support\Facades\Route;
@@ -81,6 +82,12 @@ Route::get('/templates/{id}', [TemplateController::class, 'show']);
 // Throttled rather than authenticated: see TemplateController::use()'s
 // doc comment for why a signed-out use still has to count.
 Route::post('/templates/{id}/use', [TemplateController::class, 'use'])->middleware('throttle:30,1');
+
+// Stored images. Public to *read*, like the gallery: art inside a
+// published design has to load for anyone looking at it, and the UUID is
+// what makes an unshared one unreachable. Uploading needs an account —
+// see the group below.
+Route::get('/uploads/{id}', [UploadController::class, 'show']);
 
 // A public profile is the page a shared template is meant to lead back to,
 // so it can't require an account either. `email` never appears in one —
@@ -147,6 +154,12 @@ Route::middleware(['auth:sanctum', BlockSuspendedUsers::class])->group(function 
     // One report endpoint for every content type — see ReportController.
     // Auth'd: an anonymous report queue is a spam queue.
     Route::post('/reports', [ReportController::class, 'store'])->middleware('throttle:20,1');
+
+    // Throttled: this one writes files to disk, and the per-account
+    // quota is a ceiling on total size, not on how fast it fills.
+    Route::post('/uploads', [UploadController::class, 'store'])->middleware('throttle:60,1');
+    Route::get('/uploads', [UploadController::class, 'index']);
+    Route::delete('/uploads/{id}', [UploadController::class, 'destroy']);
 
     Route::get('/card-designs', [CardDesignController::class, 'index']);
     Route::get('/card-designs/{id}', [CardDesignController::class, 'show']);

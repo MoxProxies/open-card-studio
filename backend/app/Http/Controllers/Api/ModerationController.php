@@ -12,6 +12,7 @@ use App\Models\ModerationAction;
 use App\Models\Post;
 use App\Models\Report;
 use App\Models\Template;
+use App\Models\Upload;
 use App\Models\User;
 use App\Support\PointsLedger;
 use Illuminate\Http\Request;
@@ -42,6 +43,7 @@ class ModerationController extends Controller
         'collection' => Collection::class,
         'post' => Post::class,
         'comment' => Comment::class,
+        'upload' => Upload::class,
     ];
 
     /** The queue. Open reports first, oldest first — a complaint that has

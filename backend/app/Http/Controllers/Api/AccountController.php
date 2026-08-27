@@ -43,6 +43,9 @@ class AccountController extends Controller
                 'design_ids' => $collection->cardDesigns->pluck('id'),
             ]),
             'posts' => $user->posts()->get(),
+            // The rows, not the bytes: an export is JSON, and the images
+            // are already downloadable one URL at a time.
+            'uploads' => $user->uploads()->get(),
             'comments' => $user->comments()->get(),
             'reactions' => $user->reactions()->get(['reactable_type', 'reactable_id', 'created_at']),
             'point_events' => $user->pointEvents()->get(),
@@ -101,6 +104,12 @@ class AccountController extends Controller
         }
 
         $user->tokens()->delete();
+
+        // One at a time through the model, because the file on disk goes
+        // with the row (see Upload::delete) — a cascading foreign key
+        // deletes rows and leaves the bytes behind forever.
+        $user->uploads()->get()->each->delete();
+
         $user->delete();
 
         return response()->json(['message' => 'Your account and everything in it has been deleted.']);

@@ -96,6 +96,12 @@ class User extends Authenticatable
         return $this->hasMany(SocialAccount::class);
     }
 
+    /** Images this account has stored — card art and avatars. */
+    public function uploads(): HasMany
+    {
+        return $this->hasMany(Upload::class);
+    }
+
     /** Comments this account has written, on anyone's content. */
     public function comments(): HasMany
     {

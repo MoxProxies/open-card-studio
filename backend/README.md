@@ -27,13 +27,13 @@ php artisan auth:reset-link me@example.com   # a reset link, no mail sent
 
 - `app/Models/` — `User`, `CardDesign`, `Template`, `Collection`, `Report`,
   `Reaction`, `PointEvent`, `Badge`, `Post`, `PostRevision`, `Comment`,
-  `ModerationAction`, `Appeal`;
+  `ModerationAction`, `Appeal`, `Upload`;
   `Concerns/` holds what they share (`OwnedByUser`, `Publishable`).
 - `app/Http/Controllers/Api/` — `AuthController`, `CardDesignController`,
   `TemplateController`, `CollectionController`, `ProfileController`,
   `ReportController`, `SocialAuthController`, `EmailController`,
   `AppealController`, `AccountController` (export/delete),
-  `TwoFactorController`, `PluginController`. The owned-content controllers share
+  `TwoFactorController`, `UploadController`, `PluginController`. The owned-content controllers share
   `OwnedContentController` (publish/delete).
 - `routes/api.php` — the entire route list; there is no `web.php`, see
   `bootstrap/app.php`'s doc comment for why.
@@ -42,6 +42,9 @@ php artisan auth:reset-link me@example.com   # a reset link, no mail sent
 - `config/gamification.php` — every points/levels/badges number.
 - `config/security.php` — rate limits that differ between a deployment
   and a test run; `app/Support/DeviceName.php` labels a session's device.
+- `config/uploads.php` + `app/Support/ImageIngest.php` — size, dimension
+  and quota limits for stored images, and the re-encode that strips their
+  metadata; files live on the `local` disk under `storage/app/private`.
 - `config/knowledge_base.php` — knowledge-base categories.
 - `app/Http/Middleware/` — `EnsureStaff` (404s for non-staff),
   `BlockSuspendedUsers`.
