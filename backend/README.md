@@ -23,9 +23,9 @@ php artisan route:list     # see every registered route
 
 ## Layout
 
-- `app/Models/` — `User`, `CardDesign`.
+- `app/Models/` — `User`, `CardDesign`, `Template`.
 - `app/Http/Controllers/Api/` — `AuthController`, `CardDesignController`,
-  `PluginController`.
+  `TemplateController`, `PluginController`.
 - `routes/api.php` — the entire route list; there is no `web.php`, see
   `bootstrap/app.php`'s doc comment for why.
 - `config/plugins.php` — the plugin discovery registry `GET /api/plugins`
@@ -33,4 +33,8 @@ php artisan route:list     # see every registered route
 - `database/migrations/` — `users`/`sessions`/`cache`/`jobs` are
   Laravel's own framework tables (needed since `.env.example` defaults
   cache/queue/session to the `database` driver); `personal_access_tokens`
-  is Sanctum's; `card_designs` is the one app-specific table.
+  is Sanctum's; `card_designs` and `templates` are the app-specific
+  tables. `templates` holds community-authored card layouts — a scene
+  Design blob plus owner/name/description/tags/visibility/usage count,
+  see the root README's [Community
+  templates](../README.md#community-templates).

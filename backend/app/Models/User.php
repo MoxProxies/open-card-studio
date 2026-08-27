@@ -35,4 +35,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(CardDesign::class);
     }
+
+    public function templates(): HasMany
+    {
+        return $this->hasMany(Template::class);
+    }
 }

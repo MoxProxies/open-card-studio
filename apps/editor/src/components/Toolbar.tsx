@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type Konva from "konva";
 import type { RefObject } from "react";
 import type { Layer } from "@card-studio/scene-schema";
-import { Frame, Type, Shapes, ImageUp, Undo2, Redo2, Copy, Trash2, Download, Ruler, Search, Sparkles, Scissors, Save, Maximize2, Minimize2 } from "lucide-react";
+import { Frame, Type, Shapes, ImageUp, Undo2, Redo2, Copy, Trash2, Download, Ruler, Search, Sparkles, Scissors, Save, Maximize2, Minimize2, LayoutTemplate } from "lucide-react";
 import { useDesignStore } from "../store/DesignProvider";
 import { PRINT_DPI, createEmptyDesign, STANDARD_CARD_SIZE_MM } from "@card-studio/scene-schema";
 import { exportStageToPngDataUrl } from "../export";
@@ -10,6 +10,7 @@ import { FrameLibraryModal } from "./FrameLibraryModal";
 import { TextTemplateMenu } from "./TextTemplateMenu";
 import { AiArtModal } from "./AiArtModal";
 import { DesignLibraryModal } from "./DesignLibraryModal";
+import { TemplateBrowserModal } from "./TemplateBrowserModal";
 import { AccountButton } from "./AccountButton";
 import { getTextTemplates, type TextFieldTemplate } from "../textTemplates";
 import { RARITY_ASSETS, getRarityAssetUrl } from "../rarityAssets";
@@ -69,6 +70,7 @@ export function Toolbar({
   const [showImportSearch, setShowImportSearch] = useState(false);
   const [showAiArtModal, setShowAiArtModal] = useState(false);
   const [showDesignLibrary, setShowDesignLibrary] = useState(false);
+  const [showTemplateBrowser, setShowTemplateBrowser] = useState(false);
   // Whichever ImportSourcePlugin the host app registered as active (see
   // src/plugins.ts) — undefined when none is installed, in which case the
   // Import button below doesn't render at all rather than doing nothing.
@@ -729,6 +731,15 @@ export function Toolbar({
           <Save size={16} /> Designs
         </button>
       )}
+      {/* Same `hideLocalDesignLibrary` gate as the Designs button and the
+          account button: a host embedding this editor with its own
+          persistence (moxproxies-website) manages its own content and has
+          no use for this app's community template gallery either. */}
+      {!hideLocalDesignLibrary && (
+        <button className="cs-btn" onClick={() => setShowTemplateBrowser(true)} title="Start a design from a community template, or publish this one as a template">
+          <LayoutTemplate size={16} /> Templates
+        </button>
+      )}
       {!hideLocalDesignLibrary && <AccountButton />}
       <button className="cs-btn" onClick={handleExport} title={`Export PNG at ${PRINT_DPI} DPI`}>
         <Download size={16} /> Export ({PRINT_DPI} DPI)
@@ -748,6 +759,21 @@ export function Toolbar({
             setShowDesignLibrary(false);
           }}
           onClose={() => setShowDesignLibrary(false)}
+        />
+      )}
+
+      {showTemplateBrowser && (
+        <TemplateBrowserModal
+          design={design}
+          onUseTemplate={(fromTemplate) => {
+            // Exactly what loading a saved design does — a design started
+            // from a template is an ordinary Design from here on, with the
+            // template's lock flags carried through as authored (see
+            // cardTemplates.ts's designFromTemplate).
+            loadDesign(fromTemplate);
+            setShowTemplateBrowser(false);
+          }}
+          onClose={() => setShowTemplateBrowser(false)}
         />
       )}
 
