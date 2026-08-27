@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\CardDesign;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * Every action here scopes to $request->user(), never a raw
@@ -19,18 +20,26 @@ use Illuminate\Http\Request;
  * behavior — so `upsert()` below is the only write path, whether this is
  * a design's first save or its fiftieth.
  */
-class CardDesignController extends Controller
+class CardDesignController extends OwnedContentController
 {
+    protected function owned(Request $request): HasMany
+    {
+        return $request->user()->cardDesigns();
+    }
+
+    protected static function model(): string
+    {
+        return CardDesign::class;
+    }
+
     public function index(Request $request)
     {
-        return $request->user()->cardDesigns()->latest('updated_at')->get(['id', 'name', 'updated_at']);
+        return response()->json($this->owned($request)->latest('updated_at')->get()->map->toSummary());
     }
 
     public function show(Request $request, string $id)
     {
-        $cardDesign = $request->user()->cardDesigns()->findOrFail($id);
-
-        return $cardDesign;
+        return response()->json($this->owned($request)->findOrFail($id));
     }
 
     public function upsert(Request $request, string $id)
@@ -38,17 +47,10 @@ class CardDesignController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'design' => ['required', 'array'],
-            'visibility' => ['sometimes', 'string', 'in:private,unlisted,public'],
+            'visibility' => ['sometimes', Rule::in(CardDesign::VISIBILITIES)],
         ]);
 
-        // A client-generated id colliding with another user's row is
-        // vanishingly unlikely (a real UUID) but not impossible to send
-        // on purpose — without this check, updateOrCreate's WHERE
-        // (id, user_id) wouldn't match that row and would instead try to
-        // INSERT a second row with the same primary key, surfacing as an
-        // ugly 500 (duplicate key) rather than a clean rejection.
-        $existing = CardDesign::find($id);
-        abort_if($existing && $existing->user_id !== $request->user()->id, 409, 'That design id belongs to another account.');
+        CardDesign::abortIfOwnedByAnotherUser($request, $id, 'design');
 
         $cardDesign = CardDesign::updateOrCreate(
             ['id' => $id, 'user_id' => $request->user()->id],
@@ -56,12 +58,5 @@ class CardDesignController extends Controller
         );
 
         return response()->json($cardDesign);
-    }
-
-    public function destroy(Request $request, string $id)
-    {
-        $request->user()->cardDesigns()->where('id', $id)->delete();
-
-        return response()->noContent();
     }
 }

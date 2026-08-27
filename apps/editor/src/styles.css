@@ -180,3 +180,29 @@
 .cs-resize-handle:active > div {
   background: var(--cs-accent);
 }
+
+/* Touch targets. Keyed on the *pointer*, not the viewport: a small window
+ * on a desktop still has a mouse and doesn't need 44px buttons, while a
+ * tablet in landscape is wide but still finger-driven. 44px is the usual
+ * accessibility floor for a touch target. */
+@media (pointer: coarse) {
+  .cs-root .cs-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  .cs-root .cs-icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .cs-root .cs-input {
+    min-height: 44px;
+  }
+
+  /* A textarea's height is its rows, not a tap target — forcing 44px on
+   * the min would fight the author's row count. */
+  .cs-root textarea.cs-input {
+    min-height: 0;
+  }
+}

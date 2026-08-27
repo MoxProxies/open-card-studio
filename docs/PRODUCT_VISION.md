@@ -135,6 +135,12 @@ explicitly now, expensive to unwind later:
 
 ### Phase 1 — Generic template engine
 
+> **Shipped** — see the root README's [Community
+> templates](../README.md#community-templates). The three out-of-scope
+> items below stayed out of scope. One thing this didn't anticipate:
+> `contentLocked` had no UI at all, so an author couldn't mark a layer as
+> chrome; the properties panel now has a toggle for it.
+
 The designer's core value proposition, and the reason the "reduction in
 liability" goal and the "not just MTG" goal are actually the same
 requirement wearing two hats. Scope:
@@ -156,6 +162,12 @@ requirement wearing two hats. Scope:
 
 ### Phase 2 — Accounts & public profiles
 
+> **Shipped** — see the root README's [Accounts &
+> profiles](../README.md#accounts--profiles). Usernames, bios, avatar
+> URLs, public profiles, one shared visibility vocabulary across designs
+> and templates, and the polymorphic report table. Avatars are a URL
+> field, not an upload — this backend has no file storage yet.
+
 Extends the Sanctum auth already built (`backend/app/Http/Controllers/
 Api/AuthController.php`) rather than replacing it: username, avatar,
 bio, a public profile page listing a user's published designs/templates/
@@ -165,6 +177,13 @@ the schema for every content type that's about to become public.
 
 ### Phase 3 — Collections
 
+> **Shipped** — see the root README's
+> [Collections](../README.md#collections). It did what it was meant to
+> as a test of the earlier phases: the model is two concerns and an
+> abstract controller, and the only genuinely new code is the membership
+> pivot and the rule that a public collection hides (and doesn't count)
+> its owner's private designs.
+
 Grouping owned designs (think: a binder or a deck) — ownership scoping,
 visibility, and a collection detail page follow the same pattern
 `card_designs` already established. Should be a relatively small phase;
@@ -173,6 +192,17 @@ moderation state) generalize cleanly before Phase 5 asks them to
 generalize twice more (posts, gamification).
 
 ### Phase 4 — Gamification core
+
+> **Shipped** — see the root README's [Points, levels &
+> badges](../README.md#points-levels--badges). All five pieces exist:
+> polymorphic reactions, the append-only ledger, a thresholds table,
+> rule-based *and* manual badges, and level-gated featuring. **The
+> numbers in `backend/config/gamification.php` are placeholders** — they
+> are still the open decision this document lists for a human, and
+> nothing else hardcodes them. Two behaviours worth a decision if you
+> disagree: awards are never reversed when someone un-reacts, and manual
+> badge granting has no endpoint (no staff role exists yet to authorise
+> one — a founder grants from tinker).
 
 Build this as one generic system, not four bespoke ones:
 
@@ -195,14 +225,32 @@ Build this as one generic system, not four bespoke ones:
 
 ### Phase 5 — Community & knowledge base
 
-Posts/guides (markdown or a light rich-text format), categories/tags,
-edit history (needed for moderation — "what did this look like before
-it was edited" matters once content is public and community-authored),
-comments if wanted. Reuses the Phase 4 reaction system for upvotes and
-Phase 2's report/visibility groundwork rather than inventing new
-versions of either.
+> **Shipped** — see the root README's [Knowledge
+> base](../README.md#knowledge-base). Posts, categories, tags, edit
+> history and comments, reusing the Phase 4 reactions and the Phase 2
+> report/visibility groundwork exactly as planned — a post is another
+> `OwnedByUser + Publishable + Reactable` model. Markdown renders to
+> React elements rather than HTML, so there is no sanitizer to get wrong.
+> Comments are polymorphic but only exposed on posts; attaching them to a
+> design is a product decision nobody has made.
 
 ### Phase 6 — Mobile-first UI pass & trust/safety hardening
+
+> **Shipped.** Both halves — see the root README's [App
+> shell](../README.md#app-shell-standalone-app) for the navigation and
+> the responsive editor, and [Moderation](../README.md#moderation) for
+> the report queue, takedowns, suspensions and the audit trail.
+>
+> The staffing question this document leaves open was answered as
+> **"the founders review a queue"**, because it's the shape that needs
+> the least tooling to be safe. Nothing auto-hides and there are no
+> heuristics; the queue is where automation would attach if it stops
+> scaling. Revisit that if the volume ever justifies it.
+>
+> Still not done: a real device lab pass (this was verified in an
+> emulated touch context, not on hardware), and any appeals flow — a
+> suspended account is told it's suspended and pointed at support, with
+> no in-app route to contest it.
 
 A dedicated pass rather than something assumed to have happened
 incidentally: touch-target sizing, the editor's pan/zoom/toolbar layout

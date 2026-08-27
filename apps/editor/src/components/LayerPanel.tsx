@@ -44,7 +44,9 @@ function buildEntries(layers: Layer[], groupNames: Map<string, string>): Entry[]
 const entryRowId = (e: Entry) => (e.kind === "group" ? `group:${e.groupId}` : e.layer.id);
 const iconBtnStyle = { width: 20, height: 20, flex: "none" };
 
-export function LayerPanel({ width }: { width: number }) {
+/** `width` is a number for the desktop resizable column and "100%" when
+ * the panel fills the editor's mobile bottom sheet (App.tsx). */
+export function LayerPanel({ width }: { width: number | string }) {
   const layers = useDesignStore((s) => s.design.layers);
   const groups = useDesignStore((s) => s.design.groups);
   const selectedLayerIds = useDesignStore((s) => s.selectedLayerIds);

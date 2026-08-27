@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { useDesignStore } from "../store/DesignProvider";
 import { isTypingTarget } from "../isTypingTarget";
+import { isModalOpen } from "../modalStack";
 
 const NUDGE_MM = 0.5;
 const NUDGE_MM_LARGE = 5;
 
 /** Delete/backspace, arrow-key nudge, ctrl/cmd+Z undo, ctrl/cmd+shift+Z (or ctrl+Y) redo,
- * ctrl/cmd+D duplicate, Escape to clear selection. Disabled while typing in an input. */
+ * ctrl/cmd+D duplicate, Escape to clear selection. Disabled while typing in
+ * an input, and while any modal is open (see modalStack.ts). */
 export function useKeyboardShortcuts() {
   const selectedLayerIds = useDesignStore((s) => s.selectedLayerIds);
   const removeLayers = useDesignStore((s) => s.removeLayers);
@@ -18,7 +20,7 @@ export function useKeyboardShortcuts() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (isTypingTarget(e)) return;
+      if (isTypingTarget(e) || isModalOpen()) return;
       const meta = e.metaKey || e.ctrlKey;
 
       if (meta && e.key.toLowerCase() === "z") {

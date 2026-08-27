@@ -23,14 +23,29 @@ php artisan route:list     # see every registered route
 
 ## Layout
 
-- `app/Models/` — `User`, `CardDesign`.
+- `app/Models/` — `User`, `CardDesign`, `Template`, `Collection`, `Report`,
+  `Reaction`, `PointEvent`, `Badge`, `Post`, `PostRevision`, `Comment`, `ModerationAction`;
+  `Concerns/` holds what they share (`OwnedByUser`, `Publishable`).
 - `app/Http/Controllers/Api/` — `AuthController`, `CardDesignController`,
-  `PluginController`.
+  `TemplateController`, `CollectionController`, `ProfileController`,
+  `ReportController`,
+  `PluginController`. The owned-content controllers share
+  `OwnedContentController` (publish/delete).
 - `routes/api.php` — the entire route list; there is no `web.php`, see
   `bootstrap/app.php`'s doc comment for why.
+- `app/Support/` — `PointsLedger`, `Levels`, `BadgeRules`, `Reactable`.
+- `config/gamification.php` — every points/levels/badges number.
+- `config/knowledge_base.php` — knowledge-base categories.
+- `app/Http/Middleware/` — `EnsureStaff` (404s for non-staff),
+  `BlockSuspendedUsers`.
 - `config/plugins.php` — the plugin discovery registry `GET /api/plugins`
   serves.
 - `database/migrations/` — `users`/`sessions`/`cache`/`jobs` are
   Laravel's own framework tables (needed since `.env.example` defaults
   cache/queue/session to the `database` driver); `personal_access_tokens`
-  is Sanctum's; `card_designs` is the one app-specific table.
+  is Sanctum's; `card_designs`, `templates`, `collections`
+  (+ its `card_design_collection` pivot) and `reports` are the
+  app-specific tables. `templates` holds community-authored card layouts — a scene
+  Design blob plus owner/name/description/tags/visibility/usage count,
+  see the root README's [Community
+  templates](../README.md#community-templates).

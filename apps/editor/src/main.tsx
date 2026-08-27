@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createEmptyDesign, STANDARD_CARD_SIZE_MM } from "@card-studio/scene-schema";
 import { DesignProvider } from "./store/DesignProvider";
-import { App } from "./App";
+import { AppShell } from "./shell/AppShell";
 import { DEFAULT_ENTITLEMENTS } from "./entitlements";
 import "./styles.css";
 import "./fonts.generated.css";
@@ -26,8 +26,12 @@ rootEl.style.height = "100%";
 
 createRoot(rootEl).render(
   <StrictMode>
-    <DesignProvider initialDesign={design} initialEntitlements={entitlements}>
-      <App />
+    {/* hideLocalDesignLibrary: the shell provides navigation to the
+        library, templates and the account, so the editor's own copies of
+        those buttons would duplicate it. The embed, which has no shell,
+        leaves the flag alone and keeps them. */}
+    <DesignProvider initialDesign={design} initialEntitlements={entitlements} hideLocalDesignLibrary>
+      <AppShell />
     </DesignProvider>
   </StrictMode>
 );

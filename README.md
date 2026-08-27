@@ -127,6 +127,10 @@ meant to depend on that codebase. **What it has:**
   stored and returned completely opaque (whatever JSON the frontend's
   `getDesign()` produces), so the frontend's schema can evolve without a
   backend migration.
+- `templates` CRUD + publish + browse — community-authored card
+  layouts, see [Community templates](#community-templates) below for the
+  endpoint list and why a template is just a `Design` plus publishing
+  metadata.
 - `GET /api/plugins` — the plugin discovery registry described above.
 
 **Wired up:** `apps/editor` calls all of this. `AccountButton` (top-right
@@ -1104,15 +1108,19 @@ one — they answer two different questions:
   `contentLocked` or the current user's access level. This is the "don't
   let a signature drift off its corner by an accidental drag" lock.
 - **`contentLocked`** — can this layer's *content* be edited (a
-  `TextLayer`'s text; the rarity dropdown, for the one designated rarity/
-  set-symbol layer)? When true, editing additionally requires
-  `Entitlements.canEditLockedContent` — the "premium" gate. The
-  properties panel's Content textarea and the rarity `<select>` are both
-  `disabled` whenever a layer is `contentLocked` and the current
-  entitlements say no, and the Content field's label shows a lock icon
-  (filled accent color if the current account can edit anyway, muted if
-  not) so it's visually obvious a field is gated even before you try
-  typing into it.
+  `TextLayer`'s text; a `FrameLayer`'s frame art; the rarity dropdown,
+  for the one designated rarity/set-symbol layer)? When true, editing
+  additionally requires `Entitlements.canEditLockedContent` — the
+  "premium" gate. The properties panel's Content textarea, its "Change
+  frame…" button, and the rarity `<select>` are all `disabled` whenever a
+  layer is `contentLocked` and the current entitlements say no, and the
+  Content field's label shows a lock icon (filled accent color if the
+  current account can edit anyway, muted if not) so it's visually obvious
+  a field is gated even before you try typing into it. Toggled from the
+  properties panel next to the position lock — asymmetric on purpose:
+  turning it *on* is ungated, turning it *off* needs
+  `canEditLockedContent`, or the premium gate would be one click from
+  being switched off by the accounts it applies to.
 
 A layer can be `locked` and not `contentLocked`, `contentLocked` and not
 `locked`, both, or neither — the two never imply each other. The spec
@@ -1168,6 +1176,298 @@ rotate handles stayed active even though drag was already correctly
 blocked; and the properties panel's X/Y/Width/Height/Rotation inputs had
 no `disabled` gating on `locked` at all, so retyping coordinates by hand
 always worked regardless of the lock.
+
+## Moderation
+
+Staff-only tooling, built as **"the founders review a queue"** — the
+choice `docs/PRODUCT_VISION.md` leaves open, and the one that needs the
+least tooling to be safe. **Nothing is automated:** no auto-hiding at a
+report threshold, no heuristics. A human reads a report and decides. If
+that stops scaling, the queue is where automation attaches.
+
+`users.is_staff` is the whole permission model — one privileged role, so
+no roles table. It is deliberately **not mass-assignable**; a founder
+grants it directly:
+
+```sh
+php artisan tinker --execute='$u = App\Models\User::where("email","…")->first(); $u->is_staff = true; $u->save();'
+```
+
+`EnsureStaff` answers **404, not 403** — a 403 tells a prober the
+moderation surface exists. Hiding the tab in the UI is presentation; the
+404 is the boundary.
+
+| action | effect |
+| --- | --- |
+| **Takedown** | hides content from everyone *including its owner*, and reverses the points it earned. Requires a stated reason. |
+| **Suspend** | blocks every authenticated request (`BlockSuspendedUsers`) and hides the profile. Deletes nothing, so it's reversible and an appeal has something to look at. The token isn't revoked, so reinstating doesn't force a re-login. |
+| **Resolve** | marks a report reviewed/actioned/dismissed. Never touches content — a takedown is a separate, explicit call. |
+| **Badges** | grants or revokes the manual badges. Rule-based ones are refused: hand-granting one would be a lie the next evaluation disagrees with. |
+
+Every action writes a `moderation_actions` row — append-only, like the
+points ledger, because a decision you can quietly edit afterwards isn't
+an audit trail. Undoing is a new row.
+
+Staff can't suspend staff or themselves: two people arguing with the
+suspend button is not a moderation process.
+
+## Knowledge base
+
+Community guides — printing, cutting, card stock, design tips. A post is
+another owned-and-publishable type (`OwnedByUser` + `Publishable` +
+`Reactable`), so likes, reports, visibility, moderation state, featuring
+and profile listings all came for free. What's specific to it:
+
+- **A slug, generated once from the first title and never changed.**
+  Renaming a guide keeps its URL rather than breaking every link to it.
+- **Edit history.** A `post_revisions` row is written *before* each
+  change, so it holds the superseded version. This is a moderation
+  feature — "what did this say before it was edited" can't be answered
+  retroactively — and is owner-only until there's a staff role.
+- **Comments**, polymorphic like reactions and reports, so a thread can
+  attach to a design later. A commenter can delete their own; so can the
+  post's author, since a thread on your guide is yours to keep clean.
+- Categories come from `config/knowledge_base.php` — a shortlist, not a
+  table, same call as report reasons.
+
+**Markdown is rendered to React elements, never to an HTML string** —
+`apps/editor/src/markdown.tsx`, no `dangerouslySetInnerHTML` anywhere.
+Post bodies are user-generated and public, so the usual markdown→HTML
+path would need a sanitizer, and a sanitizer is a thing you can get
+subtly wrong. Building React nodes makes injection impossible by
+construction; link hrefs are still scheme-allowlisted, because
+`javascript:` in an href isn't markup injection. Supported: headings,
+lists, quotes, fences, rules, and inline bold/italic/code/links.
+
+| route | auth | notes |
+| --- | --- | --- |
+| `GET /api/posts` | — | `?q=&category=&tag=&sort=` |
+| `GET /api/posts/{slug}` | optional | by slug; drafts are owner-only |
+| `GET/POST /api/posts/{slug}/comments` | read: — | posting needs an account |
+| `PUT /api/posts/{id}` | ✓ | upsert; records a revision on a text change |
+| `GET /api/posts/{id}/revisions` | ✓ | owner-only |
+| `DELETE /api/comments/{id}` | ✓ | commenter or post author |
+
+## App shell (standalone app)
+
+`pnpm dev:editor` serves an **app**, not a canvas with dialogs stacked on
+it: five destinations you navigate between, deep-linked in the URL hash.
+
+| | |
+| --- | --- |
+| **Design** | the editor |
+| **Library** | saved designs + collections |
+| **Templates** | the community gallery |
+| **Guides** | the knowledge base |
+| **Profile** | yours, or whoever you tapped through to |
+
+Below 768px navigation is a **bottom tab bar** (thumbs reach the bottom
+of a phone); above it, a **website-style top nav**. One breakpoint,
+`shell/useIsNarrow.ts`.
+
+Routes live in `shell/navStore.ts` and mirror to the hash — `#/templates`,
+`#/u/:username`, `#/guides/:slug` — so a profile or guide can be linked
+to and survives a reload. A hash rather than paths: the bundle is static
+and can sit at any base path without a server rewrite.
+
+Dialogs still exist for things that genuinely are one — signing in,
+saving a template, filing a report. The rule: a **destination** is
+somewhere you browse; a **dialog** is a task you finish and dismiss.
+
+**The editor stays mounted** across navigation (hidden, not unmounted) —
+glancing at the gallery must not throw away the design in progress or
+its undo history.
+
+**The embed doesn't use any of this.** `<card-studio-editor>` renders the
+editor alone with its own toolbar buttons and its own dialogs — a host
+page has its own navigation. That's why the big surfaces are chrome-free
+panels (`TemplatesPanel`, `LibraryPanel`, `ProfilePanel`) that take a
+render prop: one implementation, rendered as a page by the shell and as a
+dialog by the embed.
+
+**The editor is responsive too.** Below 768px its three panes collapse to
+a full-bleed canvas plus a bottom sheet holding Layers *or* Properties,
+switched by a segmented control (`App.tsx`). The sheet caps at 46vh so
+the canvas never disappears behind it, and the toolbar scrolls sideways
+rather than wrapping into rows that eat the canvas.
+
+Touch targets (44px floor) key on `@media (pointer: coarse)`, not the
+viewport: a small window on a desktop still has a mouse, and a landscape
+tablet is wide but finger-driven. `useIsNarrow` lives in `hooks/`, not
+`shell/`, because an embedded editor on a phone has no shell but is just
+as narrow.
+
+Re-selecting the tab you're already on remounts the view and refetches
+(`navStore`'s `epoch`) — the behaviour every app has, and the only way to
+notice that something you're looking at changed elsewhere.
+
+## Points, levels & badges
+
+One generic system, not four. **All the numbers live in
+`backend/config/gamification.php`** — points per action, the level
+thresholds, the featuring gate — because they're a product decision, not
+a code one. Nothing reads a hardcoded value anywhere else.
+
+**Reactions** are one polymorphic table, one endpoint (`POST
+/api/reactions`, toggles and returns the resulting state) and one
+component (`ReactionButton.tsx`) across designs, templates and
+collections. Posts join in Phase 5 by adding `use Reactable` to a model.
+
+**Points are an append-only ledger** (`point_events`), never an integer
+column — so "why am I level 3" is answerable by reading rows. Two rules
+worth knowing:
+
+- Every award carries a `dedupe_key`, so awards are exactly-once.
+  Unliking and re-liking can't farm points; nor can unpublishing and
+  republishing.
+- **Awards are never taken back.** Un-reacting doesn't subtract, because
+  "your total dropped because a stranger changed their mind" is a worse
+  property than "an early like still counts". The `amount` column is
+  signed so moderation *can* reverse, by appending a negative row.
+
+Reacting to your own work is worth nothing, and `template_used` only
+awards for a signed-in use (the endpoint is deliberately open, so an
+anonymous award would be farmable in a loop).
+
+**Levels** are a pure function of the total against the thresholds
+table. **Badges** are their own entity, awarded either by a rule in
+`App\Support\BadgeRules` or by hand — both modelled from the start,
+since "Pillar" is never going to be automatable. The catalog is seeded
+in the migration, so `php artisan migrate` remains the whole setup step.
+
+**Featuring** is the one perk levels unlock: pin your own published work
+to your profile, above a configured level and up to a configured count.
+
+| route | auth | notes |
+| --- | --- | --- |
+| `POST /api/reactions` | ✓ | `{type, id}`; toggles |
+| `POST /api/featured` | ✓ | `{type, id, featured}`; level-gated |
+| `GET /api/badges` | — | the catalog |
+
+Profile responses carry `stats`, `badges` and `featured`; listings carry
+`reaction_count` and `reacted`.
+
+## Accounts & profiles
+
+Every account has a **username** (the public handle a profile is
+addressed by, auto-generated from the display name at signup and
+editable after), plus an optional bio and avatar URL. `name` stays
+free-text and non-unique; `username` is the unique one.
+
+`GET /api/users/{username}` is public and returns the profile plus
+everything that account has published — templates and designs both.
+`email` can never appear there: `User::$hidden` drops it, and the three
+auth endpoints that legitimately need it add it back explicitly.
+
+**Visibility is one vocabulary** across every content type
+(`App\Models\Concerns\Publishable` on the backend, `visibility.ts` on
+the frontend): `private` / `unlisted` / `published`, with
+`moderation_state` overriding all three. Only `published` is listed;
+`unlisted` is fetchable by id. Designs get the same per-row visibility
+dropdown templates have, and the same `POST .../publish` endpoint (both
+inherit it from `OwnedContentController`).
+
+**Reports** are one polymorphic table and one endpoint (`POST
+/api/reports`, auth'd, rate-limited) covering templates, designs and
+accounts — collections and posts later. Filing a report stores a row and
+nothing else: no auto-hiding, no notification. The queue that acts on
+them is Phase 4/6; the point of having it now is that nothing became
+public without somewhere for a complaint to go.
+
+| route | auth | notes |
+| --- | --- | --- |
+| `GET /api/users/{username}` | — | profile + published templates/designs |
+| `PATCH /api/profile` | ✓ | name, username, bio, avatar_url |
+| `POST /api/reports` | ✓ | `{type, id, reason, details}`; re-reporting updates |
+| `POST /api/card-designs/{id}/publish` | ✓ | visibility only |
+
+**UI.** The toolbar account button opens the profile editor; the author
+credit on any gallery row opens that person's public profile, where
+their templates can be used directly. Report buttons sit on other
+people's templates and profiles, never your own.
+
+## Collections
+
+A collection is a named group of the owner's **own** designs — a binder,
+a deck, a set. Almost no code of its own: `OwnedByUser` +
+`Publishable` + `OwnedContentController` give it the UUID key,
+ownership scoping, the visibility vocabulary, moderation state, and
+publish/delete for free. What's specific is the membership pivot
+(`card_design_collection`, hand-ordered by `position`) and one rule:
+
+> A published collection can hold private designs. Everyone except the
+> owner sees only the ones they could open anyway — **and a count that
+> matches**, since an unfiltered count would leak how many private
+> designs are in there. `Publishable::scopePubliclyReadable` is the
+> query-side twin of `isPubliclyReadable()`; keep them in step.
+
+| route | auth | notes |
+| --- | --- | --- |
+| `GET /api/collections/{id}` | optional | with its designs, filtered for the viewer |
+| `GET /api/collections` | ✓ | mine, with counts |
+| `PUT /api/collections/{id}` | ✓ | upsert by id |
+| `PUT/DELETE /api/collections/{id}/designs/{designId}` | ✓ | membership; both sides owner-scoped |
+| `POST /api/collections/{id}/publish` | ✓ | visibility only |
+| `DELETE /api/collections/{id}` | ✓ | doesn't delete the designs |
+
+**UI.** A "Collections" tab in the Designs dialog: create, publish,
+delete, and file the design you're editing into one. Published
+collections appear on the public profile.
+
+## Community templates
+
+A **template is a `Design` plus publishing metadata** — no second scene
+format, no slot schema. The two lock flags every layer already has (see
+[Field locking](#field-locking)) are the whole mechanism:
+
+| layer flags | role | who can change it |
+| --- | --- | --- |
+| `locked` + `contentLocked` | fixed chrome (frame art, rarity symbol) | nobody |
+| `locked` only | a fill-in slot | its *value*, not its position |
+| neither | freely movable | anything |
+
+Both flags toggle from the properties panel, so authoring a template is
+the normal editor plus two clicks per layer.
+
+`cardTemplates.ts` holds that mapping (`classifyTemplateLayer`,
+`summarizeTemplateLayers`) and `designFromTemplate`, which is all "new
+design from template" is: spread the template's `design`, new
+`Design.id`, `Design.parse()`. Lock flags carry through as authored.
+Layer ids are kept, not regenerated — they only need to be unique within
+one design, and keeping them keeps `RARITY_LAYER_ID`, `groupId`, and
+`fieldId` valid.
+
+**UI.** A toolbar "Templates" button (same `hideLocalDesignLibrary` gate
+as "Designs") opens `TemplateBrowserModal.tsx`: a **Community** tab
+(published gallery, search + sort) and **My templates** (all
+visibilities, with visibility/update/delete per row). "Use" clones into
+a fresh design and loads it. "Save current design as template" opens
+`SaveAsTemplateModal.tsx`, which reports the chrome/slot/unlocked
+breakdown instead of offering a slot-definition mode. Browsing and using
+work signed out; publishing doesn't.
+
+**Backend.** `templates` mirrors `card_designs` (client UUID key,
+PUT-upsert-by-id, opaque `design`) plus `description`, free-text `tags`,
+`visibility` (`private`/`unlisted`/`published`), `usage_count`,
+`version`, and a `moderation_state` column present from the first
+migration so a takedown has somewhere to write.
+
+| route | auth | notes |
+| --- | --- | --- |
+| `GET /api/templates/browse` | — | published only; `?q=&tag=&sort=recent\|popular&limit=` |
+| `GET /api/templates/{id}` | optional | with `design`; private is owner-only |
+| `POST /api/templates/{id}/use` | — | bumps `usage_count`, rate-limited |
+| `GET /api/templates` | ✓ | my templates, all visibilities |
+| `PUT /api/templates/{id}` | ✓ | `version` bumps only if `design` changed |
+| `POST /api/templates/{id}/publish` | ✓ | visibility only, no design re-upload |
+| `DELETE /api/templates/{id}` | ✓ | |
+
+Every row carries its author's name — community templates are
+attributed, never presented as first-party.
+
+**Deferred:** visual slot-constraint authoring, migrating designs when a
+template changes (`version` is a human marker, nothing reads it), and
+fork/remix lineage.
 
 ## AI art generation
 
@@ -1773,5 +2073,7 @@ on the `.sh`) — override either if your layout differs.
   the `studio_design` column, the submission endpoint, the render-triggering
   job, and the actual embed page — none of that lives in this repo, so
   none of it exists yet from Card Studio's side either.
+- Template authoring beyond the lock flags — see [Community
+  templates](#community-templates)'s "Deferred".
 - Deploy config for either app (including actually running
   `services/render` somewhere reachable from moxproxies-website's backend)

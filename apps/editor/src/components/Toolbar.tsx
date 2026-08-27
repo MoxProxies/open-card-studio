@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { useIsNarrow } from "../hooks/useIsNarrow";
 import type Konva from "konva";
 import type { RefObject } from "react";
 import type { Layer } from "@card-studio/scene-schema";
-import { Frame, Type, Shapes, ImageUp, Undo2, Redo2, Copy, Trash2, Download, Ruler, Search, Sparkles, Scissors, Save, Maximize2, Minimize2 } from "lucide-react";
+import { Frame, Type, Shapes, ImageUp, Undo2, Redo2, Copy, Trash2, Download, Ruler, Search, Sparkles, Scissors, Save, Maximize2, Minimize2, LayoutTemplate } from "lucide-react";
 import { useDesignStore } from "../store/DesignProvider";
 import { PRINT_DPI, createEmptyDesign, STANDARD_CARD_SIZE_MM } from "@card-studio/scene-schema";
 import { exportStageToPngDataUrl } from "../export";
@@ -10,6 +11,8 @@ import { FrameLibraryModal } from "./FrameLibraryModal";
 import { TextTemplateMenu } from "./TextTemplateMenu";
 import { AiArtModal } from "./AiArtModal";
 import { DesignLibraryModal } from "./DesignLibraryModal";
+import { TemplateBrowserModal } from "./TemplateBrowserModal";
+import { PublicProfileModal } from "./PublicProfileModal";
 import { AccountButton } from "./AccountButton";
 import { getTextTemplates, type TextFieldTemplate } from "../textTemplates";
 import { RARITY_ASSETS, getRarityAssetUrl } from "../rarityAssets";
@@ -69,6 +72,11 @@ export function Toolbar({
   const [showImportSearch, setShowImportSearch] = useState(false);
   const [showAiArtModal, setShowAiArtModal] = useState(false);
   const [showDesignLibrary, setShowDesignLibrary] = useState(false);
+  const [showTemplateBrowser, setShowTemplateBrowser] = useState(false);
+  const narrow = useIsNarrow();
+  // Whose public profile is open, if any — set from an author's name in the
+  // template gallery or from your own profile editor.
+  const [viewingProfile, setViewingProfile] = useState<string | null>(null);
   // Whichever ImportSourcePlugin the host app registered as active (see
   // src/plugins.ts) — undefined when none is installed, in which case the
   // Import button below doesn't render at all rather than doing nothing.
@@ -603,7 +611,22 @@ export function Toolbar({
   };
 
   return (
-    <div className="cs-root" style={{ display: "flex", alignItems: "center", gap: 6, padding: 8, borderBottom: "1px solid var(--cs-border)" }}>
+    <div
+      className="cs-root"
+      data-testid="toolbar"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        padding: 8,
+        borderBottom: "1px solid var(--cs-border)",
+        // On a phone there's no room for every tool at once, so the bar
+        // scrolls sideways rather than wrapping into three stacked rows
+        // that eat the canvas. flex:none on the children stops them being
+        // squashed to nothing by the overflow.
+        ...(narrow ? { overflowX: "auto" as const, overflowY: "hidden" as const, flexWrap: "nowrap" as const, flex: "none" } : {}),
+      }}
+    >
       <button className="cs-btn" onClick={() => setShowFrameLibrary(true)}>
         <Frame size={16} /> Frame
       </button>
@@ -689,7 +712,7 @@ export function Toolbar({
         <Trash2 size={16} />
       </button>
 
-      <div style={{ flex: 1 }} />
+      <div style={{ flex: narrow ? "none" : 1 }} />
 
       <button
         className={`cs-icon-btn${showSafeArea ? " cs-active" : ""}`}
@@ -729,7 +752,16 @@ export function Toolbar({
           <Save size={16} /> Designs
         </button>
       )}
-      {!hideLocalDesignLibrary && <AccountButton />}
+      {/* Same `hideLocalDesignLibrary` gate as the Designs button and the
+          account button: a host embedding this editor with its own
+          persistence (moxproxies-website) manages its own content and has
+          no use for this app's community template gallery either. */}
+      {!hideLocalDesignLibrary && (
+        <button className="cs-btn" onClick={() => setShowTemplateBrowser(true)} title="Start a design from a community template, or publish this one as a template">
+          <LayoutTemplate size={16} /> Templates
+        </button>
+      )}
+      {!hideLocalDesignLibrary && <AccountButton onViewProfile={setViewingProfile} />}
       <button className="cs-btn" onClick={handleExport} title={`Export PNG at ${PRINT_DPI} DPI`}>
         <Download size={16} /> Export ({PRINT_DPI} DPI)
       </button>
@@ -748,6 +780,34 @@ export function Toolbar({
             setShowDesignLibrary(false);
           }}
           onClose={() => setShowDesignLibrary(false)}
+        />
+      )}
+
+      {showTemplateBrowser && (
+        <TemplateBrowserModal
+          design={design}
+          onUseTemplate={(fromTemplate) => {
+            // Exactly what loading a saved design does — a design started
+            // from a template is an ordinary Design from here on, with the
+            // template's lock flags carried through as authored (see
+            // cardTemplates.ts's designFromTemplate).
+            loadDesign(fromTemplate);
+            setShowTemplateBrowser(false);
+          }}
+          onViewProfile={setViewingProfile}
+          onClose={() => setShowTemplateBrowser(false)}
+        />
+      )}
+
+      {viewingProfile && (
+        <PublicProfileModal
+          username={viewingProfile}
+          onUseTemplate={(fromTemplate) => {
+            loadDesign(fromTemplate);
+            setViewingProfile(null);
+            setShowTemplateBrowser(false);
+          }}
+          onClose={() => setViewingProfile(null)}
         />
       )}
 
