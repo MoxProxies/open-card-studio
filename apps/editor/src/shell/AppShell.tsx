@@ -8,11 +8,12 @@ import { apiDesignStorage } from "../api/apiDesignStorage";
 import { localStorageDesignStorage, setActiveDesignStorage } from "../designStorage";
 import { useIsNarrow } from "../hooks/useIsNarrow";
 import { BottomTabs, TopNav } from "./Nav";
-import { navigate, syncFromLocation, useRoute } from "./navStore";
+import { navigate, syncFromLocation, useNavEpoch, useRoute } from "./navStore";
 import { LibraryView } from "./views/LibraryView";
 import { TemplatesView } from "./views/TemplatesView";
 import { GuidesView } from "./views/GuidesView";
 import { ProfileView } from "./views/ProfileView";
+import { ModerationView } from "./views/ModerationView";
 
 /**
  * The standalone app: an editor plus the community around it, structured
@@ -35,6 +36,7 @@ import { ProfileView } from "./views/ProfileView";
  */
 export function AppShell() {
   const route = useRoute();
+  const epoch = useNavEpoch();
   const narrow = useIsNarrow();
   const user = useSyncExternalStore(subscribe, getCurrentUser);
   const [showSignIn, setShowSignIn] = useState(false);
@@ -109,11 +111,14 @@ export function AppShell() {
           <App />
         </div>
         {route.tab !== "design" && (
-          <div style={{ position: "absolute", inset: 0 }}>
+          // Keyed by the nav epoch so re-selecting the current tab
+          // remounts the view and refetches — see navStore's `epoch`.
+          <div key={epoch} style={{ position: "absolute", inset: 0 }}>
             {route.tab === "library" && <LibraryView />}
             {route.tab === "templates" && <TemplatesView />}
             {route.tab === "guides" && <GuidesView />}
             {route.tab === "profile" && <ProfileView onSignIn={() => setShowSignIn(true)} />}
+            {route.tab === "moderation" && <ModerationView />}
           </div>
         )}
       </main>

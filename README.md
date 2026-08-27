@@ -1177,6 +1177,40 @@ blocked; and the properties panel's X/Y/Width/Height/Rotation inputs had
 no `disabled` gating on `locked` at all, so retyping coordinates by hand
 always worked regardless of the lock.
 
+## Moderation
+
+Staff-only tooling, built as **"the founders review a queue"** — the
+choice `docs/PRODUCT_VISION.md` leaves open, and the one that needs the
+least tooling to be safe. **Nothing is automated:** no auto-hiding at a
+report threshold, no heuristics. A human reads a report and decides. If
+that stops scaling, the queue is where automation attaches.
+
+`users.is_staff` is the whole permission model — one privileged role, so
+no roles table. It is deliberately **not mass-assignable**; a founder
+grants it directly:
+
+```sh
+php artisan tinker --execute='$u = App\Models\User::where("email","…")->first(); $u->is_staff = true; $u->save();'
+```
+
+`EnsureStaff` answers **404, not 403** — a 403 tells a prober the
+moderation surface exists. Hiding the tab in the UI is presentation; the
+404 is the boundary.
+
+| action | effect |
+| --- | --- |
+| **Takedown** | hides content from everyone *including its owner*, and reverses the points it earned. Requires a stated reason. |
+| **Suspend** | blocks every authenticated request (`BlockSuspendedUsers`) and hides the profile. Deletes nothing, so it's reversible and an appeal has something to look at. The token isn't revoked, so reinstating doesn't force a re-login. |
+| **Resolve** | marks a report reviewed/actioned/dismissed. Never touches content — a takedown is a separate, explicit call. |
+| **Badges** | grants or revokes the manual badges. Rule-based ones are refused: hand-granting one would be a lie the next evaluation disagrees with. |
+
+Every action writes a `moderation_actions` row — append-only, like the
+points ledger, because a decision you can quietly edit afterwards isn't
+an audit trail. Undoing is a new row.
+
+Staff can't suspend staff or themselves: two people arguing with the
+suspend button is not a moderation process.
+
 ## Knowledge base
 
 Community guides — printing, cutting, card stock, design tips. A post is
@@ -1251,8 +1285,21 @@ panels (`TemplatesPanel`, `LibraryPanel`, `ProfilePanel`) that take a
 render prop: one implementation, rendered as a page by the shell and as a
 dialog by the embed.
 
-**Not done here:** the editor's own three-pane layout on a phone — the
-shell is responsive, the canvas view isn't yet. That's Phase 6.
+**The editor is responsive too.** Below 768px its three panes collapse to
+a full-bleed canvas plus a bottom sheet holding Layers *or* Properties,
+switched by a segmented control (`App.tsx`). The sheet caps at 46vh so
+the canvas never disappears behind it, and the toolbar scrolls sideways
+rather than wrapping into rows that eat the canvas.
+
+Touch targets (44px floor) key on `@media (pointer: coarse)`, not the
+viewport: a small window on a desktop still has a mouse, and a landscape
+tablet is wide but finger-driven. `useIsNarrow` lives in `hooks/`, not
+`shell/`, because an embedded editor on a phone has no shell but is just
+as narrow.
+
+Re-selecting the tab you're already on remounts the view and refetches
+(`navStore`'s `epoch`) — the behaviour every app has, and the only way to
+notice that something you're looking at changed elsewhere.
 
 ## Points, levels & badges
 

@@ -11,6 +11,7 @@ export function ListRow({
   active = false,
   dimmed = false,
   testId,
+  attrs,
   children,
 }: {
   title: ReactNode;
@@ -22,11 +23,16 @@ export function ListRow({
   /** Mid-request. */
   dimmed?: boolean;
   testId?: string;
+  /** Extra data-* attributes — e.g. the report id a moderator row stands
+   * for, so a specific row can be addressed rather than guessed at by
+   * its text. */
+  attrs?: Record<string, string | number>;
   children?: ReactNode;
 }) {
   return (
     <div
       data-testid={testId}
+      {...attrs}
       onClick={onClick}
       style={{
         display: "flex",

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CollectionController;
 use App\Http\Controllers\Api\BadgeController;
 use App\Http\Controllers\Api\FeatureController;
 use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\ModerationController;
 use App\Http\Controllers\Api\PluginController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ReactionController;
@@ -52,7 +53,9 @@ Route::get('/posts', [PostController::class, 'browse']);
 Route::get('/posts/{slug}', [PostController::class, 'show']);
 Route::get('/posts/{slug}/comments', [CommentController::class, 'index']);
 
-Route::middleware('auth:sanctum')->group(function () {
+// BlockSuspendedUsers on the whole authenticated group: a suspension has
+// to stop the account doing anything, not just hide its profile.
+Route::middleware(['auth:sanctum', \App\Http\Middleware\BlockSuspendedUsers::class])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
 
@@ -98,6 +101,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/posts/{id}/revisions', [PostController::class, 'revisions']);
     Route::post('/posts/{slug}/comments', [CommentController::class, 'store'])->middleware('throttle:30,1');
     Route::delete('/comments/{id}', [CommentController::class, 'destroy']);
+
+    // Staff only, and EnsureStaff 404s for everyone else so the surface
+    // isn't discoverable — see that middleware.
+    Route::middleware(\App\Http\Middleware\EnsureStaff::class)->prefix('moderation')->group(function () {
+        Route::get('/reports', [ModerationController::class, 'reports']);
+        Route::post('/reports/{id}', [ModerationController::class, 'resolveReport']);
+        Route::post('/takedown', [ModerationController::class, 'takedown']);
+        Route::post('/users/{id}/suspend', [ModerationController::class, 'suspend']);
+        Route::post('/users/{id}/badges', [ModerationController::class, 'badge']);
+        Route::get('/actions', [ModerationController::class, 'actions']);
+    });
 
     Route::get('/templates', [TemplateController::class, 'index']);
     Route::put('/templates/{id}', [TemplateController::class, 'upsert']);

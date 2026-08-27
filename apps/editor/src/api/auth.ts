@@ -10,6 +10,9 @@ export interface AuthUser {
   username: string;
   bio: string | null;
   avatar_url: string | null;
+  /** Staff see the moderation destination. Presentation only — the
+   * moderation API 404s for everyone else regardless. */
+  is_staff?: boolean;
 }
 
 interface AuthResponse {

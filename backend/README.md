@@ -24,7 +24,7 @@ php artisan route:list     # see every registered route
 ## Layout
 
 - `app/Models/` — `User`, `CardDesign`, `Template`, `Collection`, `Report`,
-  `Reaction`, `PointEvent`, `Badge`, `Post`, `PostRevision`, `Comment`;
+  `Reaction`, `PointEvent`, `Badge`, `Post`, `PostRevision`, `Comment`, `ModerationAction`;
   `Concerns/` holds what they share (`OwnedByUser`, `Publishable`).
 - `app/Http/Controllers/Api/` — `AuthController`, `CardDesignController`,
   `TemplateController`, `CollectionController`, `ProfileController`,
@@ -36,6 +36,8 @@ php artisan route:list     # see every registered route
 - `app/Support/` — `PointsLedger`, `Levels`, `BadgeRules`, `Reactable`.
 - `config/gamification.php` — every points/levels/badges number.
 - `config/knowledge_base.php` — knowledge-base categories.
+- `app/Http/Middleware/` — `EnsureStaff` (404s for non-staff),
+  `BlockSuspendedUsers`.
 - `config/plugins.php` — the plugin discovery registry `GET /api/plugins`
   serves.
 - `database/migrations/` — `users`/`sessions`/`cache`/`jobs` are

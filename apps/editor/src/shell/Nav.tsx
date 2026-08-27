@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import { Palette, Library, LayoutTemplate, BookOpen, User } from "lucide-react";
+import { useSyncExternalStore } from "react";
+import { Palette, Library, LayoutTemplate, BookOpen, User, ShieldAlert } from "lucide-react";
+import { getCurrentUser, subscribe } from "../api/auth";
 import { navigate, useRoute, type Tab } from "./navStore";
 
 interface Destination {
@@ -22,10 +24,20 @@ export const DESTINATIONS: Destination[] = [
   { tab: "profile", label: "Profile", icon: <User size={20} /> },
 ];
 
+/** The staff-only sixth destination — see navStore. */
+const MODERATION: Destination = { tab: "moderation", label: "Moderate", icon: <ShieldAlert size={20} /> };
+
+function useDestinations(): Destination[] {
+  const user = useSyncExternalStore(subscribe, getCurrentUser);
+
+  return user?.is_staff ? [...DESTINATIONS, MODERATION] : DESTINATIONS;
+}
+
 /** Phone: a fixed bottom bar. Thumbs reach the bottom of a phone, not the
  * top, which is why every mobile app puts primary navigation there. */
 export function BottomTabs() {
   const route = useRoute();
+  const destinations = useDestinations();
 
   return (
     <nav
@@ -39,7 +51,7 @@ export function BottomTabs() {
         flex: "none",
       }}
     >
-      {DESTINATIONS.map((d) => {
+      {destinations.map((d) => {
         const active = route.tab === d.tab;
         return (
           <button
@@ -77,6 +89,7 @@ export function BottomTabs() {
  * account on the right. */
 export function TopNav({ account }: { account: ReactNode }) {
   const route = useRoute();
+  const destinations = useDestinations();
 
   return (
     <header
@@ -96,7 +109,7 @@ export function TopNav({ account }: { account: ReactNode }) {
         Card Studio
       </span>
 
-      {DESTINATIONS.map((d) => {
+      {destinations.map((d) => {
         const active = route.tab === d.tab;
         return (
           <button

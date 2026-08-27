@@ -85,6 +85,10 @@ class AuthController extends Controller
         return $user->makeVisible('email');
     }
 
+    /** `is_staff` rides along on the account's own record so the client can
+     * show the moderation destination — it's already in the model's
+     * attributes, and is never part of a public profile. */
+
     /** A free, URL-safe handle derived from the display name — `ada-lovelace`,
      * `ada-lovelace-2`, ... Only used when the client didn't pick one. */
     private static function generateUsername(string $name): string

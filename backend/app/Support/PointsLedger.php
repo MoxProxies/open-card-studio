@@ -81,6 +81,37 @@ class PointsLedger
         );
     }
 
+    /**
+     * Cancels out everything a piece of content earned, by appending the
+     * negative of each award that names it as its source. The reversal
+     * this class's doc comment says moderation can do — used when content
+     * is taken down, so a removed template stops paying its author.
+     *
+     * Deduped like any other award: taking the same thing down twice
+     * doesn't double-subtract, and restoring then re-removing doesn't
+     * either.
+     */
+    public static function reverseFor(Model $source): void
+    {
+        $awards = PointEvent::where('source_type', $source::class)
+            ->where('source_id', $source->getKey())
+            ->where('amount', '>', 0)
+            ->get();
+
+        foreach ($awards as $award) {
+            PointEvent::firstOrCreate(
+                ['dedupe_key' => "reversal:{$award->id}"],
+                [
+                    'user_id' => $award->user_id,
+                    'amount' => -$award->amount,
+                    'reason' => $award->reason,
+                    'source_type' => $award->source_type,
+                    'source_id' => $award->source_id,
+                ],
+            );
+        }
+    }
+
     public static function total(User $user): int
     {
         return (int) $user->pointEvents()->sum('amount');

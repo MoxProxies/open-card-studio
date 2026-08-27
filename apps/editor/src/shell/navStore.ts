@@ -4,8 +4,11 @@ import { useSyncExternalStore } from "react";
  * Where you are in the app. Five destinations, the way a phone app has
  * four or five tabs — see AppShell.tsx for why the big surfaces
  * (profiles, the gallery, guides) are destinations rather than modals.
+ * Staff get a sixth; everyone else never sees it, and the API 404s for
+ * them regardless, so hiding it is presentation rather than the security
+ * boundary.
  */
-export type Tab = "design" | "library" | "templates" | "guides" | "profile";
+export type Tab = "design" | "library" | "templates" | "guides" | "profile" | "moderation";
 
 export interface Route {
   tab: Tab;
@@ -37,13 +40,21 @@ export function fromHash(hash: string): Route {
   if (parts[0] === "u" && parts[1]) return { tab: "profile", username: decodeURIComponent(parts[1]) };
   if (parts[0] === "guides") return parts[1] ? { tab: "guides", slug: decodeURIComponent(parts[1]) } : { tab: "guides" };
 
-  const tabs: Tab[] = ["design", "library", "templates", "guides", "profile"];
+  const tabs: Tab[] = ["design", "library", "templates", "guides", "profile", "moderation"];
   const tab = tabs.find((t) => t === parts[0]);
 
   return tab ? { tab } : DEFAULT;
 }
 
 let current: Route = DEFAULT;
+/**
+ * Bumped on every navigate(), including re-selecting the destination
+ * you're already on. AppShell keys the view container by it, so tapping
+ * the current tab remounts and refetches — the behaviour every app has,
+ * and the only way to see that something you're looking at changed
+ * elsewhere (a moderator removed it, a second tab published it).
+ */
+let epoch = 0;
 const listeners = new Set<() => void>();
 
 function emit(): void {
@@ -53,11 +64,13 @@ function emit(): void {
 /** Called once at startup, and again on every back/forward. */
 export function syncFromLocation(): void {
   current = fromHash(window.location.hash);
+  epoch += 1;
   emit();
 }
 
 export function navigate(route: Route, options: { replace?: boolean } = {}): void {
   current = route;
+  epoch += 1;
   const hash = toHash(route);
 
   // Only touch history when the hash actually changes, so re-selecting the
@@ -77,4 +90,9 @@ function subscribe(listener: () => void): () => void {
 
 export function useRoute(): Route {
   return useSyncExternalStore(subscribe, () => current);
+}
+
+/** See `epoch` — for keying a view so re-selecting its tab refreshes it. */
+export function useNavEpoch(): number {
+  return useSyncExternalStore(subscribe, () => epoch);
 }

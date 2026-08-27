@@ -27,6 +27,8 @@ class User extends Authenticatable
         'posts' => Post::class,
     ];
 
+    public const SUSPENDED = 'suspended';
+
     protected $fillable = [
         'name',
         'email',
@@ -50,6 +52,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_staff' => 'boolean',
         ];
     }
 
@@ -98,7 +101,7 @@ class User extends Authenticatable
     /** Route-model binding for /api/users/{username}; suspended accounts 404. */
     public function scopePubliclyVisible(Builder $query): Builder
     {
-        return $query->where('moderation_state', '!=', 'suspended');
+        return $query->where('moderation_state', '!=', self::SUSPENDED);
     }
 
     /** What anyone may see about this account. Deliberately not the model

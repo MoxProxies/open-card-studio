@@ -236,13 +236,21 @@ Build this as one generic system, not four bespoke ones:
 
 ### Phase 6 — Mobile-first UI pass & trust/safety hardening
 
-> **Partly done early.** The app is now an app: five destinations with a
-> bottom tab bar on phones and a top nav on wider screens, deep-linked in
-> the URL — see the root README's [App
-> shell](../README.md#app-shell-standalone-app). What's left of this
-> phase for the UI is the *editor's* own layout on a phone (the
-> three-pane canvas/layers/properties split), plus the moderation tooling
-> below.
+> **Shipped.** Both halves — see the root README's [App
+> shell](../README.md#app-shell-standalone-app) for the navigation and
+> the responsive editor, and [Moderation](../README.md#moderation) for
+> the report queue, takedowns, suspensions and the audit trail.
+>
+> The staffing question this document leaves open was answered as
+> **"the founders review a queue"**, because it's the shape that needs
+> the least tooling to be safe. Nothing auto-hides and there are no
+> heuristics; the queue is where automation would attach if it stops
+> scaling. Revisit that if the volume ever justifies it.
+>
+> Still not done: a real device lab pass (this was verified in an
+> emulated touch context, not on hardware), and any appeals flow — a
+> suspended account is told it's suspended and pointed at support, with
+> no in-app route to contest it.
 
 A dedicated pass rather than something assumed to have happened
 incidentally: touch-target sizing, the editor's pan/zoom/toolbar layout
