@@ -1662,6 +1662,30 @@ attributed, never presented as first-party.
 template changes (`version` is a human marker, nothing reads it), and
 fork/remix lineage.
 
+### Remixing
+
+A published template can be **remixed** — your own editable copy, credited
+to whoever made the original (`POST /api/templates/{id}/fork`). It's the
+last thing `docs/PRODUCT_VISION.md` defers out of Phase 1.
+
+Three decisions in it:
+
+- **A full copy, not a reference.** The design blob is duplicated, so
+  editing a remix can't reach into the original, and deleting the
+  original doesn't break the remix — the lineage link nulls out and the
+  credit simply disappears.
+- **It arrives private.** Publishing someone else's layout under your own
+  name the instant you press a button is the failure mode worth designing
+  out; going public is a separate, deliberate step.
+- **Credit is shown, not stored as a favour.** A remix names its source
+  and its source's author wherever it's listed, on the same footing as
+  the author line — the liability section's attribution rule has two
+  people to name once a layout is a remix. The original's remix count is
+  derived from the rows, never a counter that can drift.
+
+Distinct from "new design from template": that produces a one-off design,
+a remix produces a template you can keep working on and publish in turn.
+
 ## AI art generation
 
 Toolbar.tsx's "AI Art" button opens `AiArtModal.tsx` — a free-text prompt
@@ -2247,7 +2271,7 @@ on the `.sh`) — override either if your layout differs.
 
 ## Tests
 
-581 end-to-end checks in `tests/e2e/` — curl against a running backend,
+601 end-to-end checks in `tests/e2e/` — curl against a running backend,
 Playwright against the running editor. That's the default here: every bug
 that actually shipped was one reading the diff missed and running the app
 caught.

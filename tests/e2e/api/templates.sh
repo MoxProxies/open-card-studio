@@ -106,6 +106,44 @@ check "Bo can't delete Ana's" 1 "$(curl -s -o /dev/null -X DELETE $BASE/api/temp
 check "Ana's delete 204s" 204 "$(curl -s -o /dev/null -w '%{http_code}' -X DELETE $BASE/api/templates/$TID -H "Authorization: Bearer $TOKA" -H 'Accept: application/json')"
 check "gone from browse" 404 "$(curl -s -o /dev/null -w '%{http_code}' $BASE/api/templates/$TID -H 'Accept: application/json')"
 
+echo "== remixing =="
+# Its own published template: the one above is deleted by the delete
+# section, and a remix needs something that still exists to credit.
+JH=(-H 'Content-Type: application/json' -H 'Accept: application/json')
+SRC=$(python3 -c "import uuid;print(uuid.uuid4())")
+curl -s -o /dev/null -X PUT $BASE/api/templates/$SRC -H "Authorization: Bearer $TOKA" "${JH[@]}" \
+  -d "{\"name\":\"Remixable layout\",\"visibility\":\"published\",\"design\":$DESIGN}"
+HIDDEN=$(python3 -c "import uuid;print(uuid.uuid4())")
+curl -s -o /dev/null -X PUT $BASE/api/templates/$HIDDEN -H "Authorization: Bearer $TOKA" "${JH[@]}" \
+  -d "{\"name\":\"Kept back\",\"visibility\":\"private\",\"design\":$DESIGN}"
+TOKF=$(curl -s -X POST $BASE/api/auth/register "${JH[@]}" \
+  -d "{\"name\":\"For Ker\",\"email\":\"fork$STAMP@example.com\",\"password\":\"password123\"}" | jqr "d['token']")
+AF=(-H "Authorization: Bearer $TOKF")
+
+check "remixing needs an account" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/templates/$SRC/fork "${JH[@]}")"
+FORK=$(curl -s -X POST $BASE/api/templates/$SRC/fork "${AF[@]}" "${JH[@]}")
+FID=$(echo "$FORK" | jqr "d['id']")
+check "a remix is a new template" "True" "$([ -n "$FID" ] && [ "$FID" != "$SRC" ] && echo True || echo False)"
+check "owned by whoever remixed it" "For Ker" "$(echo "$FORK" | jqr "d['author']['name']")"
+check "named after the original" "True" "$(echo "$FORK" | jqr "str(d['name'].endswith('(remix)'))")"
+check "carrying the layout, not a reference to it" 3 "$(echo "$FORK" | jqr "len(d['design']['layers'])")"
+# Publishing someone else's layout under your own name the instant you
+# press a button is the failure mode this designs out.
+check "and private until published deliberately" "private" "$(echo "$FORK" | jqr "d['visibility']")"
+check "it credits the original" "$SRC" "$(echo "$FORK" | jqr "d['forked_from']['id']")"
+check "by name and author" "Remixable layout Ana Author" "$(echo "$FORK" | jqr "d['forked_from']['name'] + ' ' + d['forked_from']['author']")"
+check "the original counts its remixes" 1 "$(curl -s $BASE/api/templates/$SRC -H 'Accept: application/json' | jqr "d['fork_count']")"
+check "and is otherwise untouched" "published" "$(curl -s $BASE/api/templates/$SRC -H 'Accept: application/json' | jqr "d['visibility']")"
+check "a private template can't be remixed by a stranger" 404 "$(curl -s -o /dev/null -w '%{http_code}' -X POST $BASE/api/templates/$HIDDEN/fork "${AF[@]}" "${JH[@]}")"
+# Editing a remix must not reach back into what it came from.
+curl -s -o /dev/null -X PUT $BASE/api/templates/$FID "${AF[@]}" "${JH[@]}" -d "{\"name\":\"Changed remix\",\"visibility\":\"private\",\"design\":$DESIGN}"
+check "editing the remix leaves the original alone" "Remixable layout" "$(curl -s $BASE/api/templates/$SRC -H 'Accept: application/json' | jqr "d['name']")"
+# Credit outlives nothing else: deleting the original leaves the remix
+# working, with the lineage nulled rather than dangling.
+curl -s -o /dev/null -X DELETE $BASE/api/templates/$SRC -H "Authorization: Bearer $TOKA" -H 'Accept: application/json'
+check "deleting the original leaves the remix intact" 200 "$(curl -s -o /dev/null -w '%{http_code}' $BASE/api/templates/$FID "${AF[@]}" -H 'Accept: application/json')"
+check "with its lineage cleared, not dangling" "None" "$(curl -s $BASE/api/templates/$FID "${AF[@]}" -H 'Accept: application/json' | jqr "str(d['forked_from'])")"
+
 echo
 echo "== $pass passed, $fail failed =="
 [ "$fail" -eq 0 ]

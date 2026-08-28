@@ -32,6 +32,12 @@ export interface TemplateSummary {
   reactionCount: number;
   reacted: boolean;
   featured: boolean;
+  /** What this was remixed from, when it was. Null once the original is
+   * deleted — the remix keeps working, it just stops naming a parent. */
+  forkedFrom: { id: string; name: string | null; author: string | null; username: string | null } | null;
+  /** How many remixes exist of this one. Only counted where the endpoint
+   * asked for it, so absent reads as zero rather than unknown. */
+  forkCount: number;
 }
 
 export interface TemplateDetail extends TemplateSummary {
@@ -51,12 +57,16 @@ interface TemplateRow {
   version: number;
   updated_at: string;
   author: { id: number; name: string | null; username: string | null };
+  forked_from?: { id: string; name: string | null; author: string | null; username: string | null } | null;
+  fork_count?: number | null;
   design?: unknown;
 }
 
 type ReactionRow = Partial<ReactionState>;
 
-const toSummary = (row: TemplateRow & ReactionRow): TemplateSummary => ({
+/** Exported because a profile page carries template rows too, and two
+ * copies of this mapper is how one of them ends up missing a field. */
+export const toTemplateSummary = (row: TemplateRow & ReactionRow): TemplateSummary => ({
   id: row.id,
   name: row.name,
   description: row.description,
@@ -69,6 +79,8 @@ const toSummary = (row: TemplateRow & ReactionRow): TemplateSummary => ({
   reactionCount: row.reaction_count ?? 0,
   reacted: row.reacted ?? false,
   featured: row.featured ?? false,
+  forkedFrom: row.forked_from ?? null,
+  forkCount: row.fork_count ?? 0,
 });
 
 export interface BrowseParams {
@@ -93,20 +105,20 @@ export async function browseTemplates(params: BrowseParams = {}): Promise<Templa
   const queryString = query.toString();
   const rows = await api.get<TemplateRow[]>(`/api/templates/browse${queryString ? `?${queryString}` : ""}`);
 
-  return rows.map(toSummary);
+  return rows.map(toTemplateSummary);
 }
 
 /** "My templates" — every visibility, auth required. */
 export async function listMyTemplates(): Promise<TemplateSummary[]> {
   const rows = await api.get<TemplateRow[]>("/api/templates");
 
-  return rows.map(toSummary);
+  return rows.map(toTemplateSummary);
 }
 
 export async function loadTemplate(id: string): Promise<TemplateDetail> {
   const row = await api.get<TemplateRow>(`/api/templates/${id}`);
 
-  return { ...toSummary(row), design: Design.parse(row.design) };
+  return { ...toTemplateSummary(row), design: Design.parse(row.design) };
 }
 
 export interface SaveTemplateInput {
@@ -130,7 +142,7 @@ export async function saveTemplate(input: SaveTemplateInput): Promise<TemplateSu
     design: input.design,
   });
 
-  return toSummary(row);
+  return toTemplateSummary(row);
 }
 
 /** Visibility on its own — flipping a template between private and
@@ -138,7 +150,7 @@ export async function saveTemplate(input: SaveTemplateInput): Promise<TemplateSu
 export async function setTemplateVisibility(id: string, visibility: TemplateVisibility): Promise<TemplateSummary> {
   const row = await api.post<TemplateRow>(`/api/templates/${id}/publish`, { visibility });
 
-  return toSummary(row);
+  return toTemplateSummary(row);
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
@@ -150,6 +162,19 @@ export async function deleteTemplate(id: string): Promise<void> {
  * call site: a counter failing to increment must never be the reason a
  * user doesn't get the design they just asked to start.
  */
+/**
+ * Remix: your own editable copy of someone else's layout, credited to
+ * them. Different from "new design from template" — that produces a
+ * one-off design, this produces a template you can keep working on and
+ * publish in turn. It arrives private; publishing is a separate,
+ * deliberate step.
+ */
+export async function forkTemplate(id: string): Promise<TemplateDetail> {
+  const row = await api.post<TemplateRow & { design: unknown }>(`/api/templates/${id}/fork`);
+
+  return { ...toTemplateSummary(row), design: Design.parse(row.design) };
+}
+
 export async function markTemplateUsed(id: string): Promise<void> {
   await api.post(`/api/templates/${id}/use`);
 }

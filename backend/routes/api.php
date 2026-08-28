@@ -206,5 +206,8 @@ Route::middleware(['auth:sanctum', BlockSuspendedUsers::class])->group(function 
     Route::get('/templates', [TemplateController::class, 'index']);
     Route::put('/templates/{id}', [TemplateController::class, 'upsert']);
     Route::post('/templates/{id}/publish', [TemplateController::class, 'publish']);
+    // Remixing needs an account (unlike `use`, which is deliberately
+    // open): the copy has to belong to someone.
+    Route::post('/templates/{id}/fork', [TemplateController::class, 'fork'])->middleware('throttle:30,1');
     Route::delete('/templates/{id}', [TemplateController::class, 'destroy']);
 });

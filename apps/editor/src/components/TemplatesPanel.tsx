@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
-import { Search, Loader2, Trash2, LayoutTemplate, Upload, Users, Flag } from "lucide-react";
+import { Search, Loader2, Trash2, LayoutTemplate, Upload, Users, Flag, GitFork } from "lucide-react";
 import type { Design } from "@card-studio/scene-schema";
 import { apiErrorMessage } from "../api/client";
 import { getCurrentUser, subscribe } from "../api/auth";
 import {
   browseTemplates,
   deleteTemplate,
+  forkTemplate,
   listMyTemplates,
   loadTemplate,
   markTemplateUsed,
@@ -71,6 +72,9 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
   // while already on the "My templates" tab still has to show up.
   const [reloadToken, setReloadToken] = useState(0);
   const [reportingTemplate, setReportingTemplate] = useState<TemplateSummary | null>(null);
+  // Remixing lands the copy on a different tab, so it needs to say what
+  // just happened — a list quietly changing under you isn't feedback.
+  const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     setListLoading(true);
@@ -98,6 +102,29 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
     const timer = setTimeout(refresh, 200);
     return () => clearTimeout(timer);
   }, [refresh, canList, reloadToken]);
+
+  /**
+   * Remix: your own copy of someone else's layout, to keep editing.
+   *
+   * Deliberately different from Use, which produces a one-off design.
+   * The copy arrives private and lands in "My templates", so publishing
+   * someone else's work under your own name stays a second, deliberate
+   * step rather than a side effect of pressing this.
+   */
+  const handleFork = async (summary: TemplateSummary) => {
+    setBusyId(summary.id);
+    setActionError(null);
+    try {
+      const fork = await forkTemplate(summary.id);
+      setTab("mine");
+      setReloadToken((token) => token + 1);
+      setNotice(`Remixed as "${fork.name}" — it's private until you publish it.`);
+    } catch (e) {
+      setActionError(apiErrorMessage(e, "Couldn't remix that template — check your connection and try again."));
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const handleUse = async (summary: TemplateSummary) => {
     if (!window.confirm(`Start a new design from "${summary.name}"? Any unsaved changes to the current one will be lost.`)) return;
@@ -194,189 +221,219 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
         ),
         body: (
           <>
-        {actionError && (
-          <p
-            style={{
-              color: "var(--cs-danger)",
-              fontSize: 13,
-              padding: "8px 16px",
-              margin: 0,
-            }}
-          >
-            {actionError}
-          </p>
-        )}
+            {notice && (
+              <p style={{ color: "var(--cs-accent)", fontSize: 13, padding: "6px 8px", margin: 0 }} data-testid="template-remix-notice">
+                {notice}
+              </p>
+            )}
 
-        <div style={{ padding: 8, overflowY: "auto", flex: 1 }}>
-          {!canList ? (
-            <p
-              style={{
-                color: "var(--cs-text-muted)",
-                fontSize: 13,
-                padding: "6px 8px",
-              }}
-            >
-              Sign in to see the templates you've saved.
-            </p>
-          ) : listLoading ? (
-            <p
-              style={{
-                color: "var(--cs-text-muted)",
-                fontSize: 13,
-                padding: "6px 8px",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <Loader2 size={14} className="cs-spin" /> Loading…
-            </p>
-          ) : listError ? (
-            <p
-              style={{
-                color: "var(--cs-danger)",
-                fontSize: 13,
-                padding: "6px 8px",
-              }}
-            >
-              {listError}
-            </p>
-          ) : templates.length === 0 ? (
-            <p
-              style={{
-                color: "var(--cs-text-muted)",
-                fontSize: 13,
-                padding: "6px 8px",
-              }}
-            >
-              {tab === "mine"
-                ? "You haven't saved any templates yet — lock the layers you want fixed, then use the button above."
-                : "No published templates match that search yet."}
-            </p>
-          ) : (
-            templates.map((t) => (
-              <div
-                key={t.id}
-                data-testid="template-row"
+            {actionError && (
+              <p
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "10px 8px",
-                  borderRadius: 6,
-                  marginBottom: 2,
-                  opacity: busyId === t.id ? 0.6 : 1,
+                  color: "var(--cs-danger)",
+                  fontSize: 13,
+                  padding: "8px 16px",
+                  margin: 0,
                 }}
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
+                {actionError}
+              </p>
+            )}
+
+            <div style={{ padding: 8, overflowY: "auto", flex: 1 }}>
+              {!canList ? (
+                <p
+                  style={{
+                    color: "var(--cs-text-muted)",
+                    fontSize: 13,
+                    padding: "6px 8px",
+                  }}
+                >
+                  Sign in to see the templates you've saved.
+                </p>
+              ) : listLoading ? (
+                <p
+                  style={{
+                    color: "var(--cs-text-muted)",
+                    fontSize: 13,
+                    padding: "6px 8px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <Loader2 size={14} className="cs-spin" /> Loading…
+                </p>
+              ) : listError ? (
+                <p
+                  style={{
+                    color: "var(--cs-danger)",
+                    fontSize: 13,
+                    padding: "6px 8px",
+                  }}
+                >
+                  {listError}
+                </p>
+              ) : templates.length === 0 ? (
+                <p
+                  style={{
+                    color: "var(--cs-text-muted)",
+                    fontSize: 13,
+                    padding: "6px 8px",
+                  }}
+                >
+                  {tab === "mine"
+                    ? "You haven't saved any templates yet — lock the layers you want fixed, then use the button above."
+                    : "No published templates match that search yet."}
+                </p>
+              ) : (
+                templates.map((t) => (
                   <div
+                    key={t.id}
+                    data-testid="template-row"
                     style={{
-                      fontSize: 13,
-                      fontWeight: 600,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "10px 8px",
+                      borderRadius: 6,
+                      marginBottom: 2,
+                      opacity: busyId === t.id ? 0.6 : 1,
                     }}
                   >
-                    {t.name}
-                  </div>
-                  {t.description && (
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "var(--cs-text-muted)",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {t.description}
-                    </div>
-                  )}
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: "var(--cs-text-muted)",
-                      marginTop: 2,
-                    }}
-                  >
-                    {/* Attribution is deliberately always shown, never
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {t.name}
+                      </div>
+                      {t.description && (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "var(--cs-text-muted)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {t.description}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "var(--cs-text-muted)",
+                          marginTop: 2,
+                        }}
+                      >
+                        {/* Attribution is deliberately always shown, never
                       conditional on a hover or a detail view — see this
                       component's doc comment. */}
-                    by{" "}
-                    {t.author.username ? (
-                      <button
-                        onClick={() => onViewProfile(t.author.username!)}
-                        data-testid="template-author"
-                        style={{ background: "none", border: "none", padding: 0, font: "inherit", color: "var(--cs-accent)", cursor: "pointer" }}
-                        title={`See everything ${t.author.name ?? "this author"} has published`}
-                      >
-                        {t.author.name ?? t.author.username}
+                        by{" "}
+                        {t.author.username ? (
+                          <button
+                            onClick={() => onViewProfile(t.author.username!)}
+                            data-testid="template-author"
+                            style={{ background: "none", border: "none", padding: 0, font: "inherit", color: "var(--cs-accent)", cursor: "pointer" }}
+                            title={`See everything ${t.author.name ?? "this author"} has published`}
+                          >
+                            {t.author.name ?? t.author.username}
+                          </button>
+                        ) : (
+                          (t.author.name ?? "a community member")
+                        )}{" "}
+                        · used {t.usageCount}×{t.version > 1 ? ` · v${t.version}` : ""}
+                        {t.forkCount > 0 && ` · remixed ${t.forkCount}×`}
+                        {t.tags.length > 0 && ` · ${t.tags.join(", ")}`}
+                      </div>
+                      {/* A remix has two people to credit, and the second one
+                      is the one a viewer can't otherwise work out. Shown
+                      on the same footing as the author line above, for
+                      the same reason. */}
+                      {t.forkedFrom && (
+                        <div style={{ fontSize: 11, color: "var(--cs-text-muted)", marginTop: 2 }} data-testid="template-lineage">
+                          remixed from {t.forkedFrom.name ?? "a template"}
+                          {t.forkedFrom.author ? ` by ${t.forkedFrom.author}` : ""}
+                        </div>
+                      )}
+                    </div>
+
+                    {tab === "mine" && (
+                      <>
+                        <select
+                          className="cs-input"
+                          value={t.visibility}
+                          onChange={(e) => void handleVisibility(t.id, e.target.value as TemplateVisibility)}
+                          style={{ width: 110 }}
+                          title="Who can see this template"
+                          data-testid="template-row-visibility"
+                        >
+                          {VISIBILITIES.map((v) => (
+                            <option key={v} value={v}>
+                              {VISIBILITY_LABELS[v]}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          className="cs-btn"
+                          title="Replace this template's layout with the design you're editing"
+                          onClick={() => {
+                            setEditing(t);
+                            setShowSaveModal(true);
+                          }}
+                        >
+                          Update
+                        </button>
+                      </>
+                    )}
+
+                    <ReactionButton
+                      type="template"
+                      id={t.id}
+                      count={t.reactionCount}
+                      reacted={t.reacted}
+                      onChange={(r) =>
+                        setTemplates((list) => list.map((x) => (x.id === t.id ? { ...x, reactionCount: r.reaction_count, reacted: r.reacted } : x)))
+                      }
+                    />
+
+                    {tab === "browse" && user && t.author.id !== user.id && (
+                      <button className="cs-icon-btn" title="Report this template" data-testid="template-report" onClick={() => setReportingTemplate(t)}>
+                        <Flag size={13} />
                       </button>
-                    ) : (
-                      (t.author.name ?? "a community member")
-                    )}{" "}
-                    · used {t.usageCount}×{t.version > 1 ? ` · v${t.version}` : ""}
-                    {t.tags.length > 0 && ` · ${t.tags.join(", ")}`}
-                  </div>
-                </div>
+                    )}
 
-                {tab === "mine" && (
-                  <>
-                    <select
-                      className="cs-input"
-                      value={t.visibility}
-                      onChange={(e) => void handleVisibility(t.id, e.target.value as TemplateVisibility)}
-                      style={{ width: 110 }}
-                      title="Who can see this template"
-                      data-testid="template-row-visibility"
-                    >
-                      {VISIBILITIES.map((v) => (
-                        <option key={v} value={v}>
-                          {VISIBILITY_LABELS[v]}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      className="cs-btn"
-                      title="Replace this template's layout with the design you're editing"
-                      onClick={() => {
-                        setEditing(t);
-                        setShowSaveModal(true);
-                      }}
-                    >
-                      Update
+                    {tab !== "mine" && user && (
+                      <button
+                        className="cs-btn"
+                        onClick={() => void handleFork(t)}
+                        disabled={busyId === t.id}
+                        data-testid="template-remix"
+                        title="Make your own editable copy of this layout, credited to its author"
+                      >
+                        <GitFork size={14} /> Remix
+                      </button>
+                    )}
+                    <button className="cs-btn" onClick={() => void handleUse(t)} disabled={busyId === t.id} data-testid="template-use">
+                      {busyId === t.id ? <Loader2 size={14} className="cs-spin" /> : <LayoutTemplate size={14} />} Use
                     </button>
-                  </>
-                )}
 
-                <ReactionButton
-                  type="template"
-                  id={t.id}
-                  count={t.reactionCount}
-                  reacted={t.reacted}
-                  onChange={(r) => setTemplates((list) => list.map((x) => (x.id === t.id ? { ...x, reactionCount: r.reaction_count, reacted: r.reacted } : x)))}
-                />
-
-                {tab === "browse" && user && t.author.id !== user.id && (
-                  <button className="cs-icon-btn" title="Report this template" data-testid="template-report" onClick={() => setReportingTemplate(t)}>
-                    <Flag size={13} />
-                  </button>
-                )}
-
-                <button className="cs-btn" onClick={() => void handleUse(t)} disabled={busyId === t.id} data-testid="template-use">
-                  {busyId === t.id ? <Loader2 size={14} className="cs-spin" /> : <LayoutTemplate size={14} />} Use
-                </button>
-
-                {tab === "mine" && (
-                  <button className="cs-icon-btn" title="Delete" onClick={(e) => void handleDelete(t, e)} data-testid="template-delete">
-                    <Trash2 size={13} />
-                  </button>
-                )}
-              </div>
-            ))
-          )}
-        </div>
+                    {tab === "mine" && (
+                      <button className="cs-icon-btn" title="Delete" onClick={(e) => void handleDelete(t, e)} data-testid="template-delete">
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
           </>
         ),
       })}
