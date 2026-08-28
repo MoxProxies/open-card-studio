@@ -1115,6 +1115,13 @@ and re-encoded from scratch (`App\Support\ImageIngest`), which is what a
 SVG is deliberately not accepted: it's a document that can carry script,
 and it's the one image format where re-encoding isn't a defence.
 
+Everything uploaded is kept in an **art library** — the Library tab's
+third pane, and what the editor's Image button opens once you're signed
+in. Art uploaded once can go into any number of designs, and picking it
+there costs nothing; the same file uploaded twice dedupes to one row
+anyway, but the library is what makes that unnecessary. Signed out there
+is no library, so the Image button stays a plain file picker.
+
 The longest edge is capped (2400px by default — a 300dpi card is about
 750×1050), uploads are deduplicated by checksum so the same file twice
 costs one row, and each account has a byte quota. Serving is public and
@@ -2240,7 +2247,7 @@ on the `.sh`) — override either if your layout differs.
 
 ## Tests
 
-573 end-to-end checks in `tests/e2e/` — curl against a running backend,
+581 end-to-end checks in `tests/e2e/` — curl against a running backend,
 Playwright against the running editor. That's the default here: every bug
 that actually shipped was one reading the diff missed and running the app
 caught.

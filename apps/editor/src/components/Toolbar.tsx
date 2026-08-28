@@ -34,6 +34,7 @@ import { PublicProfileModal } from "./PublicProfileModal";
 import { AccountButton } from "./AccountButton";
 import { getCurrentUser } from "../api/auth";
 import { uploadImage } from "../api/uploads";
+import { ArtPickerModal } from "./ArtPickerModal";
 import { getTextTemplates, type TextFieldTemplate } from "../textTemplates";
 import { RARITY_ASSETS, getRarityAssetUrl } from "../rarityAssets";
 import { RARITY_DISPLAY_ORDER, RARITY_LAYER_ID, RARITY_SYMBOL_BOX, RARITY_DEFAULT_LOCKED, RARITY_DEFAULT_CONTENT_LOCKED } from "../rarityConfig";
@@ -97,6 +98,7 @@ export function Toolbar({
   // Whose public profile is open, if any — set from an author's name in the
   // template gallery or from your own profile editor.
   const [viewingProfile, setViewingProfile] = useState<string | null>(null);
+  const [pickingArt, setPickingArt] = useState(false);
   // Whichever ImportSourcePlugin the host app registered as active (see
   // src/plugins.ts) — undefined when none is installed, in which case the
   // Import button below doesn't render at all rather than doing nothing.
@@ -388,7 +390,11 @@ export function Toolbar({
   };
 
   const addImage = async (file: File) => {
-    const src = await sourceFor(file);
+    addImageLayer(await sourceFor(file), file.name);
+  };
+
+  /** The layer half, shared by the file picker and the art library. */
+  const addImageLayer = (src: string, name: string) => {
     // Default to the full-bleed canvas, edge to edge, same as "Add Frame"
     // — not a box aspect-fit to the image's own shape. Aspect-fitting used
     // to be the default (see git history) to stop random art crops from
@@ -405,7 +411,7 @@ export function Toolbar({
     // afterward, same as always.
     addLayer({
       id: newId(),
-      name: file.name,
+      name,
       type: "image",
       src,
       fit: "cover",
@@ -683,19 +689,29 @@ export function Toolbar({
       <button className="cs-btn" onClick={addShape}>
         <Shapes size={16} /> Shape
       </button>
-      <label className="cs-btn" style={{ cursor: "pointer" }}>
-        <ImageUp size={16} /> Image
-        <input
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void addImage(file);
-            e.target.value = "";
-          }}
-        />
-      </label>
+      {/* Signed in, this opens the art library — where uploading is one
+          of the things you can do, and reusing something already there is
+          the other. Signed out there's no library to open, so it stays a
+          plain file picker. */}
+      {getCurrentUser() ? (
+        <button className="cs-btn" onClick={() => setPickingArt(true)} data-testid="toolbar-image">
+          <ImageUp size={16} /> Image
+        </button>
+      ) : (
+        <label className="cs-btn" style={{ cursor: "pointer" }} data-testid="toolbar-image">
+          <ImageUp size={16} /> Image
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void addImage(file);
+              e.target.value = "";
+            }}
+          />
+        </label>
+      )}
       <select
         className="cs-input"
         style={{ width: 130 }}
@@ -836,6 +852,10 @@ export function Toolbar({
           onViewProfile={setViewingProfile}
           onClose={() => setShowTemplateBrowser(false)}
         />
+      )}
+
+      {pickingArt && (
+        <ArtPickerModal onUse={(upload) => addImageLayer(upload.url, `Art ${upload.width}×${upload.height}`)} onClose={() => setPickingArt(false)} />
       )}
 
       {viewingProfile && (
