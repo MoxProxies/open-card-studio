@@ -3,7 +3,25 @@ import { useIsNarrow } from "../hooks/useIsNarrow";
 import type Konva from "konva";
 import type { RefObject } from "react";
 import type { Layer } from "@card-studio/scene-schema";
-import { Frame, Type, Shapes, ImageUp, Undo2, Redo2, Copy, Trash2, Download, Ruler, Search, Sparkles, Scissors, Save, Maximize2, Minimize2, LayoutTemplate } from "lucide-react";
+import {
+  Frame,
+  Type,
+  Shapes,
+  ImageUp,
+  Undo2,
+  Redo2,
+  Copy,
+  Trash2,
+  Download,
+  Ruler,
+  Search,
+  Sparkles,
+  Scissors,
+  Save,
+  Maximize2,
+  Minimize2,
+  LayoutTemplate,
+} from "lucide-react";
 import { useDesignStore } from "../store/DesignProvider";
 import { PRINT_DPI, createEmptyDesign, STANDARD_CARD_SIZE_MM } from "@card-studio/scene-schema";
 import { exportStageToPngDataUrl } from "../export";
@@ -14,6 +32,8 @@ import { DesignLibraryModal } from "./DesignLibraryModal";
 import { TemplateBrowserModal } from "./TemplateBrowserModal";
 import { PublicProfileModal } from "./PublicProfileModal";
 import { AccountButton } from "./AccountButton";
+import { getCurrentUser } from "../api/auth";
+import { uploadImage } from "../api/uploads";
 import { getTextTemplates, type TextFieldTemplate } from "../textTemplates";
 import { RARITY_ASSETS, getRarityAssetUrl } from "../rarityAssets";
 import { RARITY_DISPLAY_ORDER, RARITY_LAYER_ID, RARITY_SYMBOL_BOX, RARITY_DEFAULT_LOCKED, RARITY_DEFAULT_CONTENT_LOCKED } from "../rarityConfig";
@@ -319,20 +339,24 @@ export function Toolbar({
     addLayer(buildRarityLayer(rarityId, url));
   };
 
-  // Reads the file as a data: URI rather than URL.createObjectURL's blob:
-  // URL — a blob: URL is only a live reference into this tab's memory: it
-  // stops resolving the moment the tab closes (or, in practice, far
-  // sooner — nothing in this app ever explicitly keeps the underlying
-  // Blob alive), so a design saved with one appears fine right up until
-  // the next reload, at which point that layer's image silently
-  // disappears, and services/render's server-side print export (which
-  // fetches each layer's `src` from a separate process entirely) could
-  // never have loaded it to begin with. A data: URI has neither problem
-  // — it's the design's own data, same as an AI-generated art layer's
-  // src (see AiArtModal.tsx / aiArtBridge.ts, which never had a blob:
-  // URL option to begin with) — at the cost of bloating the saved design
-  // JSON by the image's full encoded size, an accepted tradeoff here
-  // since there's no S3/CORS story to solve for either origin otherwise.
+  // The signed-out fallback, and the reason it's a data: URI rather than
+  // URL.createObjectURL's blob: URL — a blob: URL is only a live
+  // reference into this tab's memory: it stops resolving the moment the
+  // tab closes (or, in practice, far sooner — nothing in this app ever
+  // explicitly keeps the underlying Blob alive), so a design saved with
+  // one appears fine right up until the next reload, at which point that
+  // layer's image silently disappears, and services/render's server-side
+  // print export (which fetches each layer's `src` from a separate
+  // process entirely) could never have loaded it to begin with. A data:
+  // URI has neither problem — it's the design's own data, same as an
+  // AI-generated art layer's src (see AiArtModal.tsx / aiArtBridge.ts,
+  // which never had a blob: URL option to begin with).
+  //
+  // Its cost is the design JSON growing by the image's full encoded size
+  // — which is what the uploads API now avoids for anyone signed in (see
+  // sourceFor below). Anonymous use has nowhere to put a file, so it
+  // keeps paying that cost, which is the same tradeoff anonymous
+  // localStorage persistence already makes.
   const readFileAsDataUrl = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -341,8 +365,30 @@ export function Toolbar({
       reader.readAsDataURL(file);
     });
 
+  /**
+   * Where an image layer's `src` comes from.
+   *
+   * Signed in, the file goes to storage and the layer carries its URL —
+   * the design JSON stays small, the same art in five designs is stored
+   * once, and a published card doesn't ship a megabyte of base64 to
+   * every visitor. Signed out there's nowhere to put it, so it stays a
+   * data: URI exactly as before, which keeps anonymous use working on
+   * its own (the same split localStorage-vs-account persistence already
+   * has). An upload that fails falls back rather than losing the image
+   * the person just picked.
+   */
+  const sourceFor = async (file: File): Promise<string> => {
+    if (!getCurrentUser()) return readFileAsDataUrl(file);
+
+    try {
+      return (await uploadImage(file, "art")).url;
+    } catch {
+      return readFileAsDataUrl(file);
+    }
+  };
+
   const addImage = async (file: File) => {
-    const src = await readFileAsDataUrl(file);
+    const src = await sourceFor(file);
     // Default to the full-bleed canvas, edge to edge, same as "Add Frame"
     // — not a box aspect-fit to the image's own shape. Aspect-fitting used
     // to be the default (see git history) to stop random art crops from
@@ -670,7 +716,11 @@ export function Toolbar({
         ))}
       </select>
       {activeImportSource && (
-        <button className="cs-btn" onClick={() => setShowImportSearch(true)} title={activeImportSource.description ?? `Import from ${activeImportSource.label}`}>
+        <button
+          className="cs-btn"
+          onClick={() => setShowImportSearch(true)}
+          title={activeImportSource.description ?? `Import from ${activeImportSource.label}`}
+        >
           <Search size={16} /> Import
         </button>
       )}
@@ -678,11 +728,7 @@ export function Toolbar({
         className="cs-btn"
         onClick={() => setShowAiArtModal(true)}
         disabled={!entitlements.canGenerateAiArt}
-        title={
-          entitlements.canGenerateAiArt
-            ? "Generate an illustration from a text prompt"
-            : "Premium feature — upgrade for AI art generation"
-        }
+        title={entitlements.canGenerateAiArt ? "Generate an illustration from a text prompt" : "Premium feature — upgrade for AI art generation"}
       >
         <Sparkles size={16} /> AI Art
       </button>
@@ -695,20 +741,10 @@ export function Toolbar({
       <button className="cs-icon-btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl/Cmd+Shift+Z)">
         <Redo2 size={16} />
       </button>
-      <button
-        className="cs-icon-btn"
-        onClick={() => duplicateLayers(selectedLayerIds)}
-        disabled={selectedLayerIds.length === 0}
-        title="Duplicate (Ctrl/Cmd+D)"
-      >
+      <button className="cs-icon-btn" onClick={() => duplicateLayers(selectedLayerIds)} disabled={selectedLayerIds.length === 0} title="Duplicate (Ctrl/Cmd+D)">
         <Copy size={16} />
       </button>
-      <button
-        className="cs-icon-btn"
-        onClick={() => removeLayers(selectedLayerIds)}
-        disabled={selectedLayerIds.length === 0}
-        title="Delete (Del)"
-      >
+      <button className="cs-icon-btn" onClick={() => removeLayers(selectedLayerIds)} disabled={selectedLayerIds.length === 0} title="Delete (Del)">
         <Trash2 size={16} />
       </button>
 
@@ -744,8 +780,7 @@ export function Toolbar({
           `Safe area (toggle above): ${fmt(design.size.safeWidthMm)}×${fmt(design.size.safeHeightMm)}mm`
         }
       >
-        Cut {fmt(design.size.cutWidthMm)}×{fmt(design.size.cutHeightMm)}mm · bleed to {fmt(design.size.widthMm)}×
-        {fmt(design.size.heightMm)}mm
+        Cut {fmt(design.size.cutWidthMm)}×{fmt(design.size.cutHeightMm)}mm · bleed to {fmt(design.size.widthMm)}×{fmt(design.size.heightMm)}mm
       </span>
       {!hideLocalDesignLibrary && (
         <button className="cs-btn" onClick={() => setShowDesignLibrary(true)} title="Save or load a design">
@@ -757,7 +792,11 @@ export function Toolbar({
           persistence (moxproxies-website) manages its own content and has
           no use for this app's community template gallery either. */}
       {!hideLocalDesignLibrary && (
-        <button className="cs-btn" onClick={() => setShowTemplateBrowser(true)} title="Start a design from a community template, or publish this one as a template">
+        <button
+          className="cs-btn"
+          onClick={() => setShowTemplateBrowser(true)}
+          title="Start a design from a community template, or publish this one as a template"
+        >
           <LayoutTemplate size={16} /> Templates
         </button>
       )}

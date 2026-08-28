@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Loader2, LogOut, MailWarning, ShieldCheck, Trash2 } from "lucide-react";
+import { Download, Loader2, LogOut, MailWarning, ShieldCheck, Trash2, Upload } from "lucide-react";
 import { apiErrorMessage } from "../api/client";
 import { logoutEverywhere, resendVerification, setCurrentUser, type AuthUser } from "../api/auth";
 import { updateProfile } from "../api/profiles";
@@ -9,6 +9,7 @@ import { TwoFactorSetupModal } from "./TwoFactorSetupModal";
 import { ReauthModal } from "./ReauthModal";
 import { disableTwoFactor, regenerateRecoveryCodes } from "../api/twoFactor";
 import { downloadMyData } from "../api/account";
+import { uploadImage } from "../api/uploads";
 import { Modal } from "./Modal";
 
 interface ProfileModalProps {
@@ -38,6 +39,7 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
   // Which protected 2FA change is waiting on a password/code, if any.
   const [reauthFor, setReauthFor] = useState<"disable" | "recovery-codes" | null>(null);
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   const submit = async () => {
     setSaving(true);
@@ -130,9 +132,43 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
         </label>
 
         <label style={field}>
-          Avatar URL
-          <input className="cs-input" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://…" data-testid="profile-avatar" />
-          <span style={{ fontSize: 11 }}>An https link to an image — there's no upload yet.</span>
+          Avatar
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {avatarUrl && (
+              <img
+                src={avatarUrl}
+                alt=""
+                width={40}
+                height={40}
+                style={{ borderRadius: "50%", objectFit: "cover", flex: "none", background: "var(--cs-surface-soft)" }}
+                data-testid="avatar-preview"
+              />
+            )}
+            <input className="cs-input" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://…" data-testid="profile-avatar" />
+            {/* Uploading fills the same field an https link goes in, so
+                there's still one source of truth for what the avatar is
+                — the upload just happens to produce the URL for you. */}
+            <label className="cs-btn" style={{ cursor: "pointer", flex: "none" }} data-testid="avatar-upload">
+              {avatarBusy ? <Loader2 size={14} className="cs-spin" /> : <Upload size={14} />}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file) return;
+                  setAvatarBusy(true);
+                  setError(null);
+                  void uploadImage(file, "avatar")
+                    .then((image) => setAvatarUrl(image.url))
+                    .catch((problem: Error) => setError(problem.message))
+                    .finally(() => setAvatarBusy(false));
+                }}
+              />
+            </label>
+          </div>
+          <span style={{ fontSize: 11 }}>Upload an image, or paste an https link to one. Uploads are resized and stripped of camera metadata.</span>
         </label>
 
         <hr style={{ border: "none", borderTop: "1px solid var(--cs-border)", margin: "4px 0" }} />

@@ -17,8 +17,15 @@ auth.json
 /storage/framework/testing/*
 /storage/framework/views/*
 /storage/logs/*
+# Uploaded images (config/uploads.php). The directories are kept so a
+# fresh checkout has somewhere to write; what people upload is never
+# repository content.
+/storage/app/private/*
+/storage/app/public/*
 !/storage/framework/cache/data/.gitkeep
 !/storage/framework/sessions/.gitkeep
 !/storage/framework/testing/.gitkeep
 !/storage/framework/views/.gitkeep
 !/storage/logs/.gitkeep
+!/storage/app/private/.gitkeep
+!/storage/app/public/.gitkeep

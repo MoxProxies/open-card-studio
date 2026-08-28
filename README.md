@@ -1090,6 +1090,45 @@ hide-local-design-library>` (embed.ts) does that, defaulting to shown
 (unchanged) for the standalone dev entry point, which has nothing else
 to defer to.
 
+## Images and uploads
+
+Card art used to live *inside* the design: the editor read the file as a
+base64 `data:` URI and put it in the layer's `src`, so a design with a
+photo in it was a multi-megabyte JSON row that every save rewrote and
+every gallery visitor downloaded. Signed in, art now goes to
+`POST /api/uploads` and the layer carries a URL instead. Signed out
+there's nowhere to put a file, so the `data:` URI path stays — the same
+split anonymous `localStorage` persistence already makes.
+
+**Nothing is stored as it arrived.** Every upload is decoded to a bitmap
+and re-encoded from scratch (`App\Support\ImageIngest`), which is what a
+`mimes:` rule can't do:
+
+- **Metadata is gone.** Phone photos carry EXIF, and EXIF carries GPS.
+  Publishing a card shouldn't publish where its art was taken.
+- **Polyglots stop working.** A file can be a valid JPEG *and* a valid
+  PHP script; that's how "image upload" becomes "arbitrary code". A
+  re-encoded bitmap is only pixels.
+- **The declared type has to prove itself** — GD decodes it or it's
+  refused.
+
+SVG is deliberately not accepted: it's a document that can carry script,
+and it's the one image format where re-encoding isn't a defence.
+
+The longest edge is capped (2400px by default — a 300dpi card is about
+750×1050), uploads are deduplicated by checksum so the same file twice
+costs one row, and each account has a byte quota. Serving is public and
+unauthenticated by id: art in a published design has to load for
+signed-out visitors, so the UUID is the access control, exactly as it is
+for unlisted templates. Uploads are reportable and takeable-down like any
+other content, they're in the account export, and closing an account
+deletes the files as well as the rows.
+
+Everything is tunable in `backend/config/uploads.php`. `UPLOAD_MAX_BYTES`
+has to fit inside PHP's own `upload_max_filesize` and `post_max_size` —
+a file over *those* never reaches Laravel and arrives as a confusing
+empty upload.
+
 ## Field locking
 
 Every layer carries two independent booleans (`LayerBase.locked` /
@@ -2199,15 +2238,16 @@ on the `.sh`) — override either if your layout differs.
 
 ## Tests
 
-536 end-to-end checks in `tests/e2e/` — curl against a running backend,
+573 end-to-end checks in `tests/e2e/` — curl against a running backend,
 Playwright against the running editor. That's the default here: every bug
 that actually shipped was one reading the diff missed and running the app
 caught.
 
-The exception is `backend/tests/Feature/` (48 PHPUnit tests), for the
+The exception is `backend/tests/Feature/` (54 PHPUnit tests), for the
 handful of things a live run can't honestly prove — an OAuth provider
 lying about a verified email, an email actually being queued, a token
-expiring thirty days from now, or a column being ciphertext on disk.
+expiring thirty days from now, a column being ciphertext on disk, or a
+deleted account's files actually leaving it.
 
 ```sh
 pnpm test:e2e            # boots its own backend + editor, runs everything
@@ -2225,8 +2265,10 @@ full e2e suite as three jobs on every PR.
 
 ## Not built yet
 
-- In-app frame/font/rarity-symbol/text-template upload (adding any of
-  these is a file-drop + `pnpm sync-*` + commit workflow today — see
+- In-app frame/font/rarity-symbol/text-template upload. *Card art* is
+  uploadable now (see [Images and uploads](#images-and-uploads)); the
+  first-party asset libraries are still a file-drop + `pnpm sync-*` +
+  commit workflow — see
   [Adding frames](#adding-frames) / [Adding fonts](#adding-fonts) /
   [Adding/changing rarity symbols](#addingchanging-rarity-symbols) — not
   a button in the UI; there's also no way yet for a running deployment
