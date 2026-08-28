@@ -1124,10 +1124,12 @@ for unlisted templates. Uploads are reportable and takeable-down like any
 other content, they're in the account export, and closing an account
 deletes the files as well as the rows.
 
-Everything is tunable in `backend/config/uploads.php`. `UPLOAD_MAX_BYTES`
-has to fit inside PHP's own `upload_max_filesize` and `post_max_size` —
-a file over *those* never reaches Laravel and arrives as a confusing
-empty upload.
+Everything is tunable in `backend/config/uploads.php`. Two deployment
+notes: the backend needs **`ext-gd`** (declared in `composer.json`, so a
+host without it fails at install rather than accepting uploads and then
+refusing every one), and `UPLOAD_MAX_BYTES` has to fit inside PHP's own
+`upload_max_filesize` and `post_max_size` — a file over *those* never
+reaches Laravel and arrives as a confusing empty upload.
 
 ## Field locking
 
