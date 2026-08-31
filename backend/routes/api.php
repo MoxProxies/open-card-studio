@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\EmailController;
 use App\Http\Controllers\Api\FeatureController;
 use App\Http\Controllers\Api\ModerationController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PluginController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ProfileController;
@@ -161,6 +162,11 @@ Route::middleware(['auth:sanctum', BlockSuspendedUsers::class])->group(function 
     Route::get('/uploads', [UploadController::class, 'index']);
     Route::delete('/uploads/{id}', [UploadController::class, 'destroy']);
 
+    // What happened to you while you were away. Nothing here creates a
+    // notification — see NotificationController.
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/read', [NotificationController::class, 'read']);
+
     Route::get('/card-designs', [CardDesignController::class, 'index']);
     Route::get('/card-designs/{id}', [CardDesignController::class, 'show']);
     Route::put('/card-designs/{id}', [CardDesignController::class, 'upsert']);
@@ -206,5 +212,8 @@ Route::middleware(['auth:sanctum', BlockSuspendedUsers::class])->group(function 
     Route::get('/templates', [TemplateController::class, 'index']);
     Route::put('/templates/{id}', [TemplateController::class, 'upsert']);
     Route::post('/templates/{id}/publish', [TemplateController::class, 'publish']);
+    // Remixing needs an account (unlike `use`, which is deliberately
+    // open): the copy has to belong to someone.
+    Route::post('/templates/{id}/fork', [TemplateController::class, 'fork'])->middleware('throttle:30,1');
     Route::delete('/templates/{id}', [TemplateController::class, 'destroy']);
 });

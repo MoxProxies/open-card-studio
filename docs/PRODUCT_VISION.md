@@ -162,6 +162,8 @@ requirement wearing two hats. Scope:
   above, template versioning/migration of already-made cards when a
   template changes, template forking/remixing lineage. Note these as
   future work rather than building them speculatively.
+  *(Remixing shipped later — see the root README's
+  [Remixing](../README.md#remixing). The other two are still open.)*
 
 ### Phase 2 — Accounts & public profiles
 

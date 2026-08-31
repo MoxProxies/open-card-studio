@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Template;
+use App\Support\BadgeRules;
+use App\Support\Notifier;
+use App\Support\PointsLedger;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
-use App\Support\BadgeRules;
-use App\Support\PointsLedger;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -50,8 +52,8 @@ class TemplateController extends OwnedContentController
     {
         $templates = $this->owned($request)
             ->visibleToPublic()
-            ->with('user:id,name,username')
-            ->withCount('reactions')
+            ->with(['user:id,name,username', 'forkedFrom.user:id,name,username'])
+            ->withCount(['reactions', 'forks'])
             ->latest('updated_at')
             ->get();
 
@@ -75,7 +77,7 @@ class TemplateController extends OwnedContentController
             'limit' => ['sometimes', 'integer', 'min:1', 'max:'.self::MAX_BROWSE_LIMIT],
         ]);
 
-        $query = Template::query()->published()->with('user:id,name,username');
+        $query = Template::query()->published()->with(['user:id,name,username', 'forkedFrom.user:id,name,username']);
 
         if ($search = trim((string) ($params['q'] ?? ''))) {
             // escape LIKE wildcards so a literal % or _ in a search box
@@ -100,7 +102,7 @@ class TemplateController extends OwnedContentController
             ? $query->orderByDesc('usage_count')->orderByDesc('reactions_count')->orderByDesc('updated_at')
             : $query->latest('updated_at');
 
-        $templates = $query->withCount('reactions')->limit($params['limit'] ?? 50)->get();
+        $templates = $query->withCount(['reactions', 'forks'])->limit($params['limit'] ?? 50)->get();
         $viewer = $request->user('sanctum');
 
         return response()->json($templates->map(fn ($template) => $template->toSummary() + $template->reactionState($viewer)));
@@ -114,7 +116,7 @@ class TemplateController extends OwnedContentController
      */
     public function show(Request $request, string $id)
     {
-        $template = Template::visibleToPublic()->with('user:id,name,username')->find($id);
+        $template = Template::visibleToPublic()->with(['user:id,name,username', 'forkedFrom.user:id,name,username'])->withCount('forks')->find($id);
 
         // ->user('sanctum') rather than ->user(): this route sits outside
         // the auth:sanctum group (published templates are public), so
@@ -199,6 +201,56 @@ class TemplateController extends OwnedContentController
         }
 
         return response()->json(['id' => $template->id, 'usage_count' => $template->usage_count]);
+    }
+
+    /**
+     * Remix: a copy of someone else's layout, owned by you, credited to
+     * them.
+     *
+     * A full copy, not a reference — the design blob is duplicated, so
+     * editing a remix can't reach back into the original and deleting the
+     * original can't break the remix (the lineage link nulls out instead;
+     * see the migration). That's also why this is a different thing from
+     * "new design from template": a remix is a *template* you can keep
+     * editing and publish in turn, while `use` produces a one-off design.
+     *
+     * It lands **private**. Publishing someone else's layout under your
+     * own name the instant you press a button is the failure mode worth
+     * designing out; making it public is a second, deliberate step.
+     */
+    public function fork(Request $request, string $id)
+    {
+        $source = Template::publiclyReadable()->with('user:id,name,username')->findOrFail($id);
+        $user = $request->user();
+
+        // Forking your own template is just duplicating it, which is a
+        // reasonable thing to want and needs no special case.
+        $fork = Template::create([
+            'id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'name' => Str::limit($source->name.' (remix)', 255, ''),
+            'description' => $source->description,
+            'tags' => $source->tags,
+            // Template::, not Publishable:: — a trait constant is
+            // reached through the class that uses the trait.
+            'visibility' => Template::PRIVATE,
+            'design' => $source->design,
+            'version' => 1,
+        ]);
+
+        // Assigned rather than mass-assigned: lineage is the app's to
+        // state, not something a request payload gets to claim — the
+        // same rule usage_count and moderation_state follow.
+        $fork->forked_from_id = $source->id;
+        $fork->save();
+
+        // Deduped per (source, remixer): remixing the same template twice
+        // is one piece of news about one person's interest.
+        Notifier::notify($source->user, 'remix', $user, $source, ['title' => $source->name], "remix:{$source->id}:{$user->id}");
+
+        // refresh() so database defaults (usage_count, moderation_state)
+        // are in the response — a just-created model doesn't carry them.
+        return response()->json($fork->refresh()->load('user:id,name,username', 'forkedFrom.user:id,name,username')->toDetail(), 201);
     }
 
     /**

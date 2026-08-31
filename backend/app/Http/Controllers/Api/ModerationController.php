@@ -14,6 +14,7 @@ use App\Models\Report;
 use App\Models\Template;
 use App\Models\Upload;
 use App\Models\User;
+use App\Support\Notifier;
 use App\Support\PointsLedger;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -120,6 +121,14 @@ class ModerationController extends Controller
 
         if ($data['removed']) {
             PointsLedger::reverseFor($content);
+            // Content vanishing with no explanation is the black box the
+            // appeals flow exists to avoid; the same applies one level
+            // down, to a single takedown.
+            Notifier::notify($content->user ?? null, 'moderation', null, $content, [
+                'action' => 'takedown',
+                'reason' => $data['reason'],
+                'title' => $content->name ?? $content->title ?? null,
+            ]);
         }
 
         $this->record($request, $data['removed'] ? 'takedown' : 'restore', $model, (string) $content->getKey(), $data['reason'] ?? null);
@@ -216,6 +225,11 @@ class ModerationController extends Controller
             $appeal->user->save();
             $this->record($request, 'reinstate', User::class, (string) $appeal->user_id, 'Appeal granted: '.$data['response']);
         }
+
+        Notifier::notify($appeal->user, 'appeal', null, $appeal, [
+            'state' => $data['state'],
+            'response' => $data['response'],
+        ]);
 
         $this->record($request, 'appeal_'.$data['state'], Appeal::class, (string) $appeal->id, $data['response']);
 

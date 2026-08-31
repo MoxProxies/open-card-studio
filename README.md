@@ -1115,6 +1115,13 @@ and re-encoded from scratch (`App\Support\ImageIngest`), which is what a
 SVG is deliberately not accepted: it's a document that can carry script,
 and it's the one image format where re-encoding isn't a defence.
 
+Everything uploaded is kept in an **art library** — the Library tab's
+third pane, and what the editor's Image button opens once you're signed
+in. Art uploaded once can go into any number of designs, and picking it
+there costs nothing; the same file uploaded twice dedupes to one row
+anyway, but the library is what makes that unnecessary. Signed out there
+is no library, so the Image button stays a plain file picker.
+
 The longest edge is capped (2400px by default — a 300dpi card is about
 750×1050), uploads are deduplicated by checksum so the same file twice
 costs one row, and each account has a byte quota. Serving is public and
@@ -1124,10 +1131,12 @@ for unlisted templates. Uploads are reportable and takeable-down like any
 other content, they're in the account export, and closing an account
 deletes the files as well as the rows.
 
-Everything is tunable in `backend/config/uploads.php`. `UPLOAD_MAX_BYTES`
-has to fit inside PHP's own `upload_max_filesize` and `post_max_size` —
-a file over *those* never reaches Laravel and arrives as a confusing
-empty upload.
+Everything is tunable in `backend/config/uploads.php`. Two deployment
+notes: the backend needs **`ext-gd`** (declared in `composer.json`, so a
+host without it fails at install rather than accepting uploads and then
+refusing every one), and `UPLOAD_MAX_BYTES` has to fit inside PHP's own
+`upload_max_filesize` and `post_max_size` — a file over *those* never
+reaches Laravel and arrives as a confusing empty upload.
 
 ## Field locking
 
@@ -1215,6 +1224,32 @@ rotate handles stayed active even though drag was already correctly
 blocked; and the properties panel's X/Y/Width/Height/Rotation inputs had
 no `disabled` gating on `locked` at all, so retyping coordinates by hand
 always worked regardless of the lock.
+
+## Notifications
+
+Everything the community half of this app does — likes, comments,
+remixes, badges, takedowns, appeal decisions — used to happen silently to
+the person it happened to. `App\Support\Notifier` is the only thing that
+writes a notification, and it's called from wherever the thing actually
+occurred, so a client can never manufacture news about itself.
+
+Two rules, both borrowed from the points ledger because they turned out
+to be the same problems:
+
+- **Exactly-once, via a dedupe key.** Unliking and re-liking must not
+  produce a second notification. Two *comments*, though, deliberately do
+  — so those are written without a key.
+- **Never about your own action.** Liking your own template or remixing
+  your own layout is legitimate and isn't news.
+
+Each row carries enough in `data` to render itself: a notification
+outlives the template it points at and the account that caused it, and a
+feed of rows that can't say what they were about is worse than no feed.
+The bell shows an unread count, fetched once per sign-in rather than
+polled — a self-refreshing count needs polling or a socket, and neither
+is worth it before anyone is waiting on second-by-second news. Opening
+the list doesn't mark everything read: "seen" and "dealt with" aren't the
+same thing when one of the rows is a moderation decision.
 
 ## Moderation
 
@@ -1652,6 +1687,30 @@ attributed, never presented as first-party.
 **Deferred:** visual slot-constraint authoring, migrating designs when a
 template changes (`version` is a human marker, nothing reads it), and
 fork/remix lineage.
+
+### Remixing
+
+A published template can be **remixed** — your own editable copy, credited
+to whoever made the original (`POST /api/templates/{id}/fork`). It's the
+last thing `docs/PRODUCT_VISION.md` defers out of Phase 1.
+
+Three decisions in it:
+
+- **A full copy, not a reference.** The design blob is duplicated, so
+  editing a remix can't reach into the original, and deleting the
+  original doesn't break the remix — the lineage link nulls out and the
+  credit simply disappears.
+- **It arrives private.** Publishing someone else's layout under your own
+  name the instant you press a button is the failure mode worth designing
+  out; going public is a separate, deliberate step.
+- **Credit is shown, not stored as a favour.** A remix names its source
+  and its source's author wherever it's listed, on the same footing as
+  the author line — the liability section's attribution rule has two
+  people to name once a layout is a remix. The original's remix count is
+  derived from the rows, never a counter that can drift.
+
+Distinct from "new design from template": that produces a one-off design,
+a remix produces a template you can keep working on and publish in turn.
 
 ## AI art generation
 
@@ -2238,12 +2297,12 @@ on the `.sh`) — override either if your layout differs.
 
 ## Tests
 
-573 end-to-end checks in `tests/e2e/` — curl against a running backend,
+632 end-to-end checks in `tests/e2e/` — curl against a running backend,
 Playwright against the running editor. That's the default here: every bug
 that actually shipped was one reading the diff missed and running the app
 caught.
 
-The exception is `backend/tests/Feature/` (54 PHPUnit tests), for the
+The exception is `backend/tests/Feature/` (60 PHPUnit tests), for the
 handful of things a live run can't honestly prove — an OAuth provider
 lying about a verified email, an email actually being queued, a token
 expiring thirty days from now, a column being ciphertext on disk, or a

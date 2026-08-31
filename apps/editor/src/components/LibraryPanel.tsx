@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
-import { Save, FilePlus, FolderOpen, Trash2, Loader2, Library, FileImage } from "lucide-react";
+import { Save, FilePlus, FolderOpen, Trash2, Loader2, Library, FileImage, Palette } from "lucide-react";
 import type { Design } from "@card-studio/scene-schema";
 import { designStorage, type DesignSummary } from "../designStorage";
 import { apiErrorMessage } from "../api/client";
@@ -9,6 +9,7 @@ import { type Visibility } from "../visibility";
 import { ListRow } from "./ListRow";
 import { VisibilitySelect } from "./VisibilitySelect";
 import { CollectionsPanel } from "./CollectionsPanel";
+import { ArtPanel } from "./ArtPanel";
 
 export interface LibraryPanelProps {
   design: Design;
@@ -39,7 +40,7 @@ export function LibraryPanel({ design, onRename, onSave, onNew, onLoad, children
   const [saving, setSaving] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"designs" | "collections">("designs");
+  const [tab, setTab] = useState<"designs" | "collections" | "art">("designs");
   const user = useSyncExternalStore(subscribe, getCurrentUser);
 
   const refresh = () => {
@@ -114,76 +115,105 @@ export function LibraryPanel({ design, onRename, onSave, onNew, onLoad, children
     onNew();
   };
 
+  const tabs = (
+    <>
+      <button className={`cs-btn${tab === "designs" ? " cs-active" : ""}`} onClick={() => setTab("designs")} data-testid="tab-designs">
+        <FileImage size={14} /> Designs
+      </button>
+      <button className={`cs-btn${tab === "collections" ? " cs-active" : ""}`} onClick={() => setTab("collections")} data-testid="tab-collections">
+        <Library size={14} /> Collections
+      </button>
+      <button className={`cs-btn${tab === "art" ? " cs-active" : ""}`} onClick={() => setTab("art")} data-testid="tab-art">
+        <Palette size={14} /> Art
+      </button>
+    </>
+  );
+
+  // The art tab hands its own toolbar (upload, storage used) up alongside
+  // the tab buttons, and has no use for the design name/save row — so it
+  // renders through ArtPanel rather than being another branch inside the
+  // body below.
+  if (tab === "art") {
+    return (
+      <ArtPanel>
+        {({ toolbar, body }) =>
+          children({
+            toolbar: (
+              <>
+                {tabs}
+                {toolbar}
+              </>
+            ),
+            body,
+          })
+        }
+      </ArtPanel>
+    );
+  }
+
   return (
     <>
       {children({
         toolbar: (
-        <>
-          <button className={`cs-btn${tab === "designs" ? " cs-active" : ""}`} onClick={() => setTab("designs")} data-testid="tab-designs">
-            <FileImage size={14} /> Designs
-          </button>
-          <button className={`cs-btn${tab === "collections" ? " cs-active" : ""}`} onClick={() => setTab("collections")} data-testid="tab-collections">
-            <Library size={14} /> Collections
-          </button>
-          <div style={{ display: "flex", gap: 8, width: "100%" }}>
-            <input className="cs-input" value={design.name} onChange={(e) => onRename(e.target.value)} placeholder="Design name" style={{ flex: 1 }} />
-            <button className="cs-btn" onClick={() => void handleSave()} disabled={saving} title="Save this design">
-              {saving ? <Loader2 size={14} className="cs-spin" /> : <Save size={14} />} Save
-            </button>
-            <button className="cs-btn" onClick={handleNew} title="Start a new blank design">
-              <FilePlus size={14} /> New
-            </button>
-          </div>
-        </>
+          <>
+            {tabs}
+            <div style={{ display: "flex", gap: 8, width: "100%" }}>
+              <input className="cs-input" value={design.name} onChange={(e) => onRename(e.target.value)} placeholder="Design name" style={{ flex: 1 }} />
+              <button className="cs-btn" onClick={() => void handleSave()} disabled={saving} title="Save this design">
+                {saving ? <Loader2 size={14} className="cs-spin" /> : <Save size={14} />} Save
+              </button>
+              <button className="cs-btn" onClick={handleNew} title="Start a new blank design">
+                <FilePlus size={14} /> New
+              </button>
+            </div>
+          </>
         ),
         body: (
           <>
-      {tab === "collections" ? (
-        <CollectionsPanel currentDesignId={design.id} currentDesignName={design.name} signedIn={Boolean(user)} />
-      ) : (
-        <>
-          {actionError && <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "8px 16px", margin: 0 }}>{actionError}</p>}
-
-          <div style={{ padding: 8 }}>
-            {listLoading ? (
-              <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
-                <Loader2 size={14} className="cs-spin" /> Loading…
-              </p>
-            ) : listError ? (
-              <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "6px 8px" }}>{listError}</p>
-            ) : summaries.length === 0 ? (
-              <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>No saved designs yet — click Save above.</p>
+            {tab === "collections" ? (
+              <CollectionsPanel currentDesignId={design.id} currentDesignName={design.name} signedIn={Boolean(user)} />
             ) : (
-              summaries.map((s) => (
-                <ListRow
-                  key={s.id}
-                  testId="saved-design-row"
-                  icon={loadingId === s.id ? <Loader2 size={15} className="cs-spin" /> : <FolderOpen size={15} />}
-                  title={
-                    <>
-                      {s.name}
-                      {s.id === design.id && <span style={{ color: "var(--cs-text-muted)" }}> (current)</span>}
-                    </>
-                  }
-                  subtitle={new Date(s.updatedAt).toLocaleString()}
-                  onClick={() => void handleLoad(s.id)}
-                  active={s.id === design.id}
-                  dimmed={loadingId === s.id}
-                >
-                  {/* Only when signed in: a localStorage design has nowhere
+              <>
+                {actionError && <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "8px 16px", margin: 0 }}>{actionError}</p>}
+
+                <div style={{ padding: 8 }}>
+                  {listLoading ? (
+                    <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+                      <Loader2 size={14} className="cs-spin" /> Loading…
+                    </p>
+                  ) : listError ? (
+                    <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "6px 8px" }}>{listError}</p>
+                  ) : summaries.length === 0 ? (
+                    <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>No saved designs yet — click Save above.</p>
+                  ) : (
+                    summaries.map((s) => (
+                      <ListRow
+                        key={s.id}
+                        testId="saved-design-row"
+                        icon={loadingId === s.id ? <Loader2 size={15} className="cs-spin" /> : <FolderOpen size={15} />}
+                        title={
+                          <>
+                            {s.name}
+                            {s.id === design.id && <span style={{ color: "var(--cs-text-muted)" }}> (current)</span>}
+                          </>
+                        }
+                        subtitle={new Date(s.updatedAt).toLocaleString()}
+                        onClick={() => void handleLoad(s.id)}
+                        active={s.id === design.id}
+                        dimmed={loadingId === s.id}
+                      >
+                        {/* Only when signed in: a localStorage design has nowhere
                       to be published to (see DesignSummary.visibility). */}
-                  {s.visibility && (
-                    <VisibilitySelect value={s.visibility} onChange={(v) => void handleVisibility(s.id, v)} testId="design-visibility" />
+                        {s.visibility && <VisibilitySelect value={s.visibility} onChange={(v) => void handleVisibility(s.id, v)} testId="design-visibility" />}
+                        <button className="cs-icon-btn" title="Delete" onClick={(e) => void handleDelete(s.id, s.name, e)}>
+                          <Trash2 size={13} />
+                        </button>
+                      </ListRow>
+                    ))
                   )}
-                  <button className="cs-icon-btn" title="Delete" onClick={(e) => void handleDelete(s.id, s.name, e)}>
-                    <Trash2 size={13} />
-                  </button>
-                </ListRow>
-              ))
+                </div>
+              </>
             )}
-          </div>
-        </>
-      )}
           </>
         ),
       })}

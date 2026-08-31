@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Comment;
 use App\Models\Post;
+use App\Support\Notifier;
 use Illuminate\Http\Request;
 
 /**
@@ -30,6 +31,10 @@ class CommentController extends Controller
         $post = Post::publiclyReadable()->where('slug', $slug)->firstOrFail();
 
         $comment = $post->comments()->create(['user_id' => $request->user()->id, 'body' => $data['body']]);
+
+        // No dedupe key: two comments from the same person on the same
+        // post really are two things to hear about, unlike two likes.
+        Notifier::notify($post->user, 'comment', $request->user(), $post, ['title' => $post->title]);
 
         return response()->json($comment->load('user:id,name,username')->toArray(), 201);
     }

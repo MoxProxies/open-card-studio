@@ -27,18 +27,21 @@ php artisan auth:reset-link me@example.com   # a reset link, no mail sent
 
 - `app/Models/` — `User`, `CardDesign`, `Template`, `Collection`, `Report`,
   `Reaction`, `PointEvent`, `Badge`, `Post`, `PostRevision`, `Comment`,
-  `ModerationAction`, `Appeal`, `Upload`;
+  `ModerationAction`, `Appeal`, `Upload`, `Notification`;
   `Concerns/` holds what they share (`OwnedByUser`, `Publishable`).
 - `app/Http/Controllers/Api/` — `AuthController`, `CardDesignController`,
   `TemplateController`, `CollectionController`, `ProfileController`,
   `ReportController`, `SocialAuthController`, `EmailController`,
   `AppealController`, `AccountController` (export/delete),
-  `TwoFactorController`, `UploadController`, `PluginController`. The owned-content controllers share
+  `TwoFactorController`, `UploadController`, `NotificationController`,
+  `PluginController`. The owned-content controllers share
   `OwnedContentController` (publish/delete).
 - `routes/api.php` — the entire route list; there is no `web.php`, see
   `bootstrap/app.php`'s doc comment for why.
 - `app/Support/` — `PointsLedger`, `Levels`, `BadgeRules`, `Reactable`,
-  `TwoFactor` (TOTP, recovery codes, sign-in challenges), `DeviceName`.
+  `TwoFactor` (TOTP, recovery codes, sign-in challenges), `DeviceName`,
+  `Notifier` (the only writer of notifications), `DuplicateKey` (shared by
+  the two things that write exactly-once rows).
 - `config/gamification.php` — every points/levels/badges number.
 - `config/security.php` — rate limits that differ between a deployment
   and a test run; `app/Support/DeviceName.php` labels a session's device.

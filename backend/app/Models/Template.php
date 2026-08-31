@@ -8,6 +8,7 @@ use App\Models\Concerns\Reactable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A community-authored card layout: a scene-schema Design (the same JSON
@@ -53,6 +54,21 @@ class Template extends Model
         return $this->belongsTo(User::class);
     }
 
+    /** The template this one was remixed from, if any. Null once the
+     * original is deleted — see the migration for why that's credit
+     * disappearing rather than the fork breaking. */
+    public function forkedFrom(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'forked_from_id');
+    }
+
+    /** Templates remixed from this one. Counted rather than stored, so
+     * the number can't drift away from the rows it describes. */
+    public function forks(): HasMany
+    {
+        return $this->hasMany(self::class, 'forked_from_id');
+    }
+
     public function publishPointReason(): string
     {
         return 'template_published';
@@ -81,6 +97,18 @@ class Template extends Model
                 'name' => $this->relationLoaded('user') ? $this->user?->name : null,
                 'username' => $this->relationLoaded('user') ? $this->user?->username : null,
             ],
+            // Attribution for a remix, on the same footing as the author's
+            // own: PRODUCT_VISION's liability section is about a
+            // community layout always naming who made it, and a remix has
+            // two people to name.
+            'forked_from' => $this->forked_from_id === null ? null : [
+                'id' => $this->forked_from_id,
+                'name' => $this->relationLoaded('forkedFrom') ? $this->forkedFrom?->name : null,
+                'author' => $this->relationLoaded('forkedFrom') ? $this->forkedFrom?->user?->name : null,
+                'username' => $this->relationLoaded('forkedFrom') ? $this->forkedFrom?->user?->username : null,
+            ],
+            // Only present where the caller asked for it (withCount).
+            'fork_count' => $this->forks_count,
         ];
     }
 

@@ -52,6 +52,7 @@ class AccountController extends Controller
             'badges' => $user->badges()->get(),
             'reports_you_filed' => $user->reports()->get(),
             'appeals' => $user->appeals()->get(),
+            'notifications' => $user->notifications()->get(),
             // Decisions taken *about* this account. The moderator's
             // identity isn't part of it — what was done and why is the
             // account's business; who did it is staff's.

@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Reaction;
-use App\Support\Reactable;
 use App\Support\BadgeRules;
+use App\Support\Notifier;
 use App\Support\PointsLedger;
+use App\Support\Reactable;
 use Illuminate\Http\Request;
 
 /**
@@ -41,6 +42,17 @@ class ReactionController extends Controller
         } else {
             $content->reactions()->create(['user_id' => $request->user()->id, 'type' => Reaction::LIKE]);
             PointsLedger::awardForReaction($content, $request->user());
+
+            // Deduped on (content, reactor) exactly like the point award
+            // above: unliking and re-liking is not a second piece of news.
+            Notifier::notify(
+                $content->user,
+                'reaction',
+                $request->user(),
+                $content,
+                ['title' => $content->name ?? $content->title ?? null],
+                "reaction:{$data['type']}:{$data['id']}:{$request->user()->id}",
+            );
 
             if ($content->user) {
                 BadgeRules::evaluate($content->user);

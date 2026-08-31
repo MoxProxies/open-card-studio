@@ -1,6 +1,6 @@
 import { api } from "./client";
 import type { AuthUser } from "./auth";
-import type { TemplateSummary } from "./templates";
+import { toTemplateSummary, type TemplateSummary } from "./templates";
 import type { CollectionSummary } from "./collections";
 import type { BadgeInfo, LevelProgress, ReactableType } from "./gamification";
 
@@ -69,20 +69,9 @@ export async function loadProfile(username: string): Promise<ProfilePage> {
       updatedAt: c.updated_at as string,
       author: c.author as CollectionSummary["author"],
     })),
-    templates: row.templates.map((t) => ({
-      id: t.id as string,
-      name: t.name as string,
-      description: (t.description ?? null) as string | null,
-      tags: (t.tags ?? []) as string[],
-      visibility: t.visibility as TemplateSummary["visibility"],
-      usageCount: t.usage_count as number,
-      version: t.version as number,
-      updatedAt: t.updated_at as string,
-      author: t.author as TemplateSummary["author"],
-      reactionCount: (t.reaction_count ?? 0) as number,
-      reacted: (t.reacted ?? false) as boolean,
-      featured: (t.featured ?? false) as boolean,
-    })),
+    // One mapper, shared with api/templates.ts — this was a second
+    // copy, and it silently lost every field added there since.
+    templates: row.templates.map((t) => toTemplateSummary(t as never)),
   };
 }
 

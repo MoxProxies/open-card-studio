@@ -133,6 +133,44 @@ try {
   check("deleting removes it from My templates", 0, await page.locator("[data-testid='template-row']").count());
   await go(page, "design");
   check("the design made from it is untouched", 2, await layerRows().count());
+  console.log("== remixing someone else's template ==");
+  // Its own published template: the one above is deleted by the section
+  // before this, and a remix needs something that still exists to credit.
+  const REMIXABLE = `E2E Remixable ${stamp}`;
+  await publishTemplate(page, REMIXABLE);
+
+  const remixer = await openApp(browser);
+  await signUp(remixer, "Re Mixer", `remix${stamp}@example.com`);
+  await go(remixer, "templates");
+  await remixer.getByTestId("template-search").fill(REMIXABLE);
+  const published = remixer.locator(`[data-testid='template-row']:has-text("${REMIXABLE}")`);
+  await published.waitFor();
+  await published.getByTestId("template-remix").click();
+  await remixer.getByTestId("template-remix-notice").waitFor();
+  check("remixing says what happened", true, (await remixer.getByTestId("template-remix-notice").innerText()).includes("private until you publish"));
+
+  // It lands in My templates, private — publishing someone else's layout
+  // under your own name stays a deliberate second step.
+  const remix = remixer.locator("[data-testid='template-row']:has-text(\"(remix)\")");
+  await remix.waitFor();
+  check("the copy is yours", 1, await remix.count());
+  check("and private", "private", await remix.getByTestId("template-row-visibility").inputValue());
+  check("crediting the original", true, (await remix.getByTestId("template-lineage").innerText()).includes("remixed from"));
+  check("by author", true, (await remix.getByTestId("template-lineage").innerText()).includes("Eve Endtoend"));
+  await remixer.screenshot({ path: `${SHOT_DIR}/t5-remix.png` });
+
+  // The original is untouched, and now says it has been remixed.
+  await go(page, "templates");
+  await page.getByTestId("template-search").fill(REMIXABLE);
+  const original = page.locator(`[data-testid='template-row']:has-text("${REMIXABLE}")`).first();
+  await original.waitFor();
+  await page.waitForFunction(
+    (name) =>
+      [...document.querySelectorAll("[data-testid='template-row']")].some((row) => row.textContent?.includes(name) && row.textContent?.includes("remixed 1×")),
+    REMIXABLE
+  );
+  check("the original counts the remix", true, (await original.innerText()).includes("remixed 1×"));
+
 } catch (e) {
   fail(`threw: ${e.message}`);
   await shot("99-failure").catch(() => {});

@@ -96,6 +96,12 @@ class User extends Authenticatable
         return $this->hasMany(SocialAccount::class);
     }
 
+    /** Things that happened to this account — see the Notifier. */
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
+
     /** Images this account has stored — card art and avatars. */
     public function uploads(): HasMany
     {
