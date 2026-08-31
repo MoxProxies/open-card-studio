@@ -53,6 +53,13 @@ Route::post('/auth/password/reset', [EmailController::class, 'resetPassword'])->
 // so a script can't work through challenges in bulk.
 Route::post('/auth/2fa/challenge', [TwoFactorController::class, 'challenge'])->middleware('throttle:two-factor');
 
+// The digest's unsubscribe link. Signed rather than authenticated, for
+// the same reason the confirmation link below is: it has to work from an
+// email client in one click.
+Route::get('/notifications/unsubscribe/{id}/{hash}', [NotificationController::class, 'unsubscribe'])
+    ->middleware('signed')
+    ->name('notifications.unsubscribe');
+
 // The confirmation link's target. Signed by Laravel rather than carrying
 // a token of ours, so clicking it is the whole interaction.
 Route::get('/auth/email/verify/{id}/{hash}', [EmailController::class, 'verify'])

@@ -56,6 +56,19 @@ try {
   await author.keyboard.press("Escape");
   check("and the bell's badge goes", 0, await author.getByTestId("notifications-badge").count());
 
+  console.log("== and they can be emailed, or not ==");
+  await author.getByTestId("account-button").click();
+  check("the digest is on by default", true, await author.getByTestId("profile-email-digest").isChecked());
+  await author.getByTestId("profile-email-digest").uncheck();
+  await author.getByTestId("profile-save").click();
+  await author.getByTestId("profile-saved").waitFor();
+  await author.keyboard.press("Escape");
+  await author.reload();
+  await author.getByTestId("account-button").waitFor();
+  await author.getByTestId("account-button").click();
+  check("and the choice survives a reload", false, await author.getByTestId("profile-email-digest").isChecked());
+  await author.keyboard.press("Escape");
+
   console.log("== your own actions are not news ==");
   await go(fan, "templates");
   const fanNotifications = await fan.evaluate(async () => {

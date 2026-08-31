@@ -101,6 +101,7 @@ class ProfileController extends Controller
                 Rule::notIn(self::RESERVED_USERNAMES),
             ],
             'bio' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'notification_emails' => ['sometimes', 'boolean'],
             // Either an https link somewhere else, or one of this
             // deployment's own uploads (UploadController). https-only for
             // the former, because an http image on an https page is a

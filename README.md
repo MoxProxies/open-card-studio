@@ -1245,6 +1245,27 @@ to be the same problems:
 Each row carries enough in `data` to render itself: a notification
 outlives the template it points at and the account that caused it, and a
 feed of rows that can't say what they were about is worse than no feed.
+### The email digest
+
+A bell only helps people who come back, so `notifications:digest` (daily,
+`routes/console.php`) emails each account one summary of what it hasn't
+read. Four rules decide who gets one, and each exists because breaking it
+loses a reader's trust in the mail rather than merely their attention:
+
+- **Only unread** — someone who saw it in the app doesn't need it again.
+- **Only newer than their last digest.** A watermark on the account, not
+  a flag per notification, so a second run can't repeat the first.
+- **Only confirmed addresses.** Mailing an address nobody proved is how a
+  sending domain earns a bounce rate and stops being delivered at all.
+  This is also the first thing confirming an address actually buys.
+- **Only people who want them.** On by default — an opt-in nobody sees is
+  the same as the feature not existing — but every digest carries a
+  **one-click unsubscribe**: a signed URL that works from the email with
+  no sign-in, which is what makes defaulting it on defensible.
+
+One email covering everything, not one per event: ten likes on a template
+should not be ten emails.
+
 The bell shows an unread count, fetched once per sign-in rather than
 polled — a self-refreshing count needs polling or a socket, and neither
 is worth it before anyone is waiting on second-by-second news. Opening
@@ -2297,12 +2318,12 @@ on the `.sh`) — override either if your layout differs.
 
 ## Tests
 
-632 end-to-end checks in `tests/e2e/` — curl against a running backend,
+639 end-to-end checks in `tests/e2e/` — curl against a running backend,
 Playwright against the running editor. That's the default here: every bug
 that actually shipped was one reading the diff missed and running the app
 caught.
 
-The exception is `backend/tests/Feature/` (60 PHPUnit tests), for the
+The exception is `backend/tests/Feature/` (69 PHPUnit tests), for the
 handful of things a live run can't honestly prove — an OAuth provider
 lying about a verified email, an email actually being queued, a token
 expiring thirty days from now, a column being ciphertext on disk, or a

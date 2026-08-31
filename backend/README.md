@@ -21,6 +21,7 @@ php artisan route:list     # see every registered route
 ./vendor/bin/phpunit       # PHP tests (tests/Feature)
 
 php artisan auth:reset-link me@example.com   # a reset link, no mail sent
+php artisan notifications:digest --user=me@example.com  # one account's digest
 ```
 
 ## Layout

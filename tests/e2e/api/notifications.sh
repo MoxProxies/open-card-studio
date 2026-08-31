@@ -77,6 +77,17 @@ TD=$(curl -s $BASE/api/notifications "${AA[@]}" "${A[@]}" | jqr "[n for n in d['
 check "the owner is told their content went" 1 "$(echo "$TD" | python3 -c "import sys;print(len(eval(sys.stdin.read())))")"
 check "with the stated reason" "True" "$(curl -s $BASE/api/notifications "${AA[@]}" "${A[@]}" | jqr "str([n for n in d['notifications'] if n['type']=='moderation'][0]['data']['reason'] == 'Not your artwork.')")"
 
+echo "== the email digest preference =="
+ARTISAN="${E2E_ARTISAN:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../backend" && pwd)/artisan}"
+check "it's on by default" "True" "$(curl -s $BASE/api/auth/me "${AA[@]}" "${A[@]}" | jqr "str(d['notification_emails'])")"
+check "and can be turned off from the profile" "False" "$(curl -s -X PATCH $BASE/api/profile "${AA[@]}" "${J[@]}" -d '{"notification_emails":false}' | jqr "str(d['notification_emails'])")"
+check "an unsigned unsubscribe link is refused" 403 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/notifications/unsubscribe/1/deadbeef" "${A[@]}")"
+# The digest itself is proven in PHPUnit (who gets one, and never twice);
+# what matters over HTTP is that the command runs against a real database
+# without blowing up on the way through.
+check "the digest command runs" 0 "$("$ARTISAN" notifications:digest >/dev/null 2>&1; echo $?)"
+check "turning it back on works" "True" "$(curl -s -X PATCH $BASE/api/profile "${AA[@]}" "${J[@]}" -d '{"notification_emails":true}' | jqr "str(d['notification_emails'])")"
+
 echo
 echo "== $pass passed, $fail failed =="
 [ "$fail" -eq 0 ]

@@ -24,6 +24,9 @@ export interface AuthUser {
   /** Whether a TOTP second factor is on. The secret and recovery codes
    * are never served to anyone, this account included. */
   has_two_factor?: boolean;
+  /** Whether the daily digest of unread notifications is sent. On by
+   * default; one click from the email itself turns it off. */
+  notification_emails?: boolean;
 }
 
 interface AuthResponse {

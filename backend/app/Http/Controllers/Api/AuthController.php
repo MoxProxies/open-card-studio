@@ -250,6 +250,7 @@ class AuthController extends Controller
         return $user->makeVisible('email')->toArray() + [
             'has_password' => $user->hasPassword(),
             'has_two_factor' => $user->hasTwoFactor(),
+            'notification_emails' => (bool) $user->notification_emails,
         ];
     }
 
