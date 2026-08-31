@@ -43,6 +43,7 @@ class AccountController extends Controller
                 'design_ids' => $collection->cardDesigns->pluck('id'),
             ]),
             'posts' => $user->posts()->get(),
+            'social_accounts' => $user->socialAccounts()->get(['provider', 'provider_user_id', 'email', 'avatar', 'last_used_at']),
             // The rows, not the bytes: an export is JSON, and the images
             // are already downloadable one URL at a time.
             'uploads' => $user->uploads()->get(),

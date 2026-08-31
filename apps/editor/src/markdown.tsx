@@ -18,7 +18,11 @@ import type { ReactNode } from "react";
  * failure mode for a guide.
  */
 
-const SAFE_SCHEME = /^(https?:\/\/|mailto:|#|\/)/i;
+// The trailing `/` alternative is for same-site links like `/guides/x` —
+// it must not also match a protocol-relative URL like `//evil.example.com`,
+// which starts with a slash too but resolves off-site. Requiring the `/`
+// not be followed by a second `/` keeps the former and rejects the latter.
+const SAFE_SCHEME = /^(https?:\/\/|mailto:|#|\/(?!\/))/i;
 
 /** Inline spans: bold, italic, code, links. Order matters — code wins, so
  * `**not bold**` inside backticks stays literal. */

@@ -34,7 +34,21 @@ class ImageIngest
     /** @return array{binary: string, mime: string, width: int, height: int} */
     public static function process(UploadedFile $file): array
     {
-        $source = @imagecreatefromstring((string) file_get_contents($file->getRealPath()));
+        $bytes = (string) file_get_contents($file->getRealPath());
+
+        // Header only, no pixel data decoded — the one way to learn how
+        // big a bitmap this file would inflate to before asking GD to
+        // actually allocate it. A small, flat-color image can compress a
+        // multi-gigabyte bitmap into a few hundred bytes, so this has to
+        // run before imagecreatefromstring, not after.
+        $size = @getimagesizefromstring($bytes);
+        $max = (int) config('uploads.max_source_dimension');
+
+        if ($size !== false && ($size[0] > $max || $size[1] > $max)) {
+            throw new RuntimeException('That image is too large to process.');
+        }
+
+        $source = @imagecreatefromstring($bytes);
 
         if ($source === false) {
             // Reached when the bytes aren't a format GD can decode at all,

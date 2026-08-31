@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\DeviceName;
 use App\Support\SocialProviders;
 use App\Support\TwoFactor;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -46,12 +47,7 @@ class AuthController extends Controller
             'username' => ['sometimes', 'string', ...ProfileController::USERNAME_RULES],
         ]);
 
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
-            'username' => $data['username'] ?? static::generateUsername($data['name']),
-        ]);
+        $user = static::createWithUniqueUsername($data);
 
         // Best-effort — see EmailController::dispatchVerification for why
         // a mail outage must not fail the registration.
@@ -265,5 +261,51 @@ class AuthController extends Controller
         }
 
         return $candidate;
+    }
+
+    /**
+     * Creates the account, retrying past a username collision a
+     * concurrent registration won underneath it.
+     *
+     * generateUsername()'s exists() check and the eventual INSERT aren't
+     * atomic, so two people registering at the same instant (with the
+     * same name, or — since a client-picked username carries no
+     * uniqueness check of its own at validation time — the same chosen
+     * handle) can both pass the check before either row commits. The
+     * database is the only thing that actually knows which one wins, so
+     * this catches *that* failure specifically and either regenerates a
+     * fresh candidate (for a generated username, where any free handle
+     * will do) or reports it cleanly (for one the client asked for by
+     * name, where substituting a different one without saying so would
+     * be its own kind of surprise) — rather than letting the unique
+     * index's rejection surface as an unhandled 500.
+     */
+    private static function createWithUniqueUsername(array $data, int $maxAttempts = 5): User
+    {
+        $requested = array_key_exists('username', $data);
+        $username = $data['username'] ?? static::generateUsername($data['name']);
+
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                return User::create([
+                    'name' => $data['name'],
+                    'email' => $data['email'],
+                    'password' => Hash::make($data['password']),
+                    'username' => $username,
+                ]);
+            } catch (UniqueConstraintViolationException $e) {
+                if (! str_contains($e->getMessage(), 'username')) {
+                    throw $e;
+                }
+
+                if ($requested) {
+                    throw ValidationException::withMessages(['username' => ['That username was just taken. Try another.']]);
+                }
+
+                $username = static::generateUsername($data['name']);
+            }
+        }
+
+        throw ValidationException::withMessages(['username' => ['Could not find a free username. Try again.']]);
     }
 }

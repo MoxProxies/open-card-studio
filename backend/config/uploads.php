@@ -22,6 +22,19 @@ return [
     'max_dimension' => (int) env('UPLOAD_MAX_DIMENSION', 2400),
 
     /*
+     * The largest width or height a *source* file may declare before
+     * it's decoded at all. `max_dimension` above only bounds what's kept
+     * after resizing — GD has already allocated the full uncompressed
+     * bitmap for the original by then. A tiny, highly-compressible file
+     * can declare dimensions large enough to make that allocation itself
+     * the attack, so this is checked against the file's header (which
+     * `getimagesize()` reads without decoding pixel data) before
+     * anything is decoded. Generous enough for a real camera's largest
+     * output, far short of what a decompression bomb declares.
+     */
+    'max_source_dimension' => (int) env('UPLOAD_MAX_SOURCE_DIMENSION', 10000),
+
+    /*
      * Total bytes one account may hold. Counted from what's stored after
      * re-encoding, not from what was sent.
      */

@@ -48,6 +48,25 @@ class UploadTest extends TestCase
         return new UploadedFile($path, 'art.png', 'image/png', null, true);
     }
 
+    /**
+     * A PNG that is only its signature and an IHDR chunk claiming
+     * extreme dimensions — no IDAT pixel data at all. `getimagesize()`
+     * (and libmagic's MIME sniffing) only ever look at these first few
+     * bytes, so this is enough to pose as a decompression bomb without
+     * actually costing anything to build.
+     */
+    private function bombPng(int $width, int $height): UploadedFile
+    {
+        $ihdrData = pack('NNCCCCC', $width, $height, 8, 6, 0, 0, 0);
+        $ihdr = pack('N', strlen($ihdrData)).'IHDR'.$ihdrData.pack('N', crc32('IHDR'.$ihdrData));
+        $binary = "\x89PNG\r\n\x1a\n".$ihdr;
+
+        $path = tempnam(sys_get_temp_dir(), 'bomb').'.png';
+        file_put_contents($path, $binary);
+
+        return new UploadedFile($path, 'bomb.png', 'image/png', null, true);
+    }
+
     public function test_the_bytes_land_on_disk_and_the_row_points_at_them(): void
     {
         $user = $this->account();
@@ -115,6 +134,19 @@ class UploadTest extends TestCase
 
         $this->assertDatabaseCount('uploads', 0);
         $this->assertEmpty(Storage::disk('local')->allFiles('uploads'));
+    }
+
+    public function test_a_file_declaring_extreme_dimensions_is_rejected_before_decoding(): void
+    {
+        // 60000x60000 at 4 bytes/pixel is a ~14GB bitmap GD would have to
+        // allocate to decode this — a request that should fail fast on
+        // the header, not hang or exhaust memory trying to honour it.
+        $this->actingAs($this->account())
+            ->postJson('/api/uploads', ['file' => $this->bombPng(60000, 60000)])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('file');
+
+        $this->assertDatabaseCount('uploads', 0);
     }
 
     public function test_one_account_cannot_read_anothers_upload_listing(): void

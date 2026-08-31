@@ -20,6 +20,8 @@ const BODY = [
   "Use `bleed` of 3mm. See [the wiki](https://example.com/wiki).",
   "",
   "[not a link](javascript:alert(1))",
+  "",
+  "[not same-site either](//evil.example.com/steal)",
 ].join("\n");
 
 const browser = await chromium.launch();
@@ -53,6 +55,8 @@ try {
   check("a safe link becomes an anchor", 1, await preview.locator('a[href="https://example.com/wiki"]').count());
   check("a javascript: link does NOT", 0, await preview.locator('a[href^="javascript:"]').count());
   check("and shows as inert text instead", true, (await preview.innerText()).includes("[not a link](javascript:alert(1))"));
+  check("a protocol-relative link does NOT become an anchor either", 0, await preview.locator('a[href^="//"]').count());
+  check("and also shows as inert text", true, (await preview.innerText()).includes("[not same-site either](//evil.example.com/steal)"));
   await shot("k1-preview");
 
   await author.getByTestId("post-visibility").selectOption("published");

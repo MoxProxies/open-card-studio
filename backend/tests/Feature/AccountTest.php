@@ -70,6 +70,19 @@ class AccountTest extends TestCase
         $this->assertDatabaseCount('moderation_actions', 1);
     }
 
+    public function test_the_export_includes_linked_social_accounts(): void
+    {
+        $user = $this->socialOnlyAccount();
+        $user->socialAccounts()->first()->update(['email' => 'social@example.com', 'avatar' => 'https://example.com/a.png']);
+
+        $body = $this->actingAs($user)->getJson('/api/account/export')->assertOk()->json();
+
+        $this->assertCount(1, $body['social_accounts']);
+        $this->assertSame('google', $body['social_accounts'][0]['provider']);
+        $this->assertSame('g-1', $body['social_accounts'][0]['provider_user_id']);
+        $this->assertSame('social@example.com', $body['social_accounts'][0]['email']);
+    }
+
     public function test_deleting_takes_the_accounts_content_with_it(): void
     {
         $user = User::create([
