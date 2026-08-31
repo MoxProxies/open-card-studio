@@ -385,6 +385,37 @@ export function CanvasStage({ stageRef }: { stageRef: RefObject<Konva.Stage> }) 
     setSelection(start.additive ? Array.from(new Set([...selectedLayerIds, ...hitIds])) : hitIds);
   };
 
+  // Touch's stand-in for space+drag: there's no modifier key on a touch
+  // device, so a single-finger drag that starts on empty canvas space (the
+  // same `e.target === stage` distinction handleStageMouseDown uses to
+  // separate a layer drag from an empty-space one) always pans, once
+  // zoomed in past the viewport is otherwise unreachable on a phone or
+  // tablet. A second finger joining mid-drag (the start of a pinch) isn't
+  // handled here — it's left alone rather than fought over.
+  const handleStageTouchStart = (e: Konva.KonvaEventObject<TouchEvent>) => {
+    const stage = e.target.getStage();
+    if (e.evt.touches.length !== 1 || !stage || e.target !== stage) return; // a shape handles its own drag
+    const touch = e.evt.touches[0];
+    if (!touch) return;
+    panDragRef.current = { startClientX: touch.clientX, startClientY: touch.clientY, startPanX: panX, startPanY: panY };
+    setIsPanning(true);
+  };
+
+  const handleStageTouchMove = (e: Konva.KonvaEventObject<TouchEvent>) => {
+    const drag = panDragRef.current;
+    if (!drag) return;
+    const touch = e.evt.touches[0];
+    if (!touch) return;
+    e.evt.preventDefault();
+    setPan(drag.startPanX + (touch.clientX - drag.startClientX), drag.startPanY + (touch.clientY - drag.startClientY));
+  };
+
+  const handleStageTouchEnd = () => {
+    if (!panDragRef.current) return;
+    panDragRef.current = null;
+    setIsPanning(false);
+  };
+
   const zoomFocal = () => ({ x: viewport.width / 2, y: viewport.height / 2 });
   const cursor = isPanning ? "grabbing" : spaceHeld ? "grab" : "default";
 
@@ -392,7 +423,7 @@ export function CanvasStage({ stageRef }: { stageRef: RefObject<Konva.Stage> }) 
     <div
       ref={containerRef}
       className="cs-root"
-      style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", background: "#e3d9c0", cursor }}
+      style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", background: "#e3d9c0", cursor, touchAction: "none" }}
     >
       <Stage
         ref={stageRef}
@@ -402,6 +433,9 @@ export function CanvasStage({ stageRef }: { stageRef: RefObject<Konva.Stage> }) 
         onMouseDown={handleStageMouseDown}
         onMouseMove={handleStageMouseMove}
         onMouseUp={handleStageMouseUp}
+        onTouchStart={handleStageTouchStart}
+        onTouchMove={handleStageTouchMove}
+        onTouchEnd={handleStageTouchEnd}
       >
         <KonvaLayer>
           <Group ref={contentGroupRef} x={panX} y={panY} scaleX={zoom} scaleY={zoom}>
