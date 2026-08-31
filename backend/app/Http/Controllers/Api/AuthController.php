@@ -44,7 +44,7 @@ class AuthController extends Controller
             // Optional at signup: an account is usable immediately with a
             // generated handle, and the profile editor is where most people
             // will pick a real one.
-            'username' => ['sometimes', 'string', ...ProfileController::USERNAME_RULES],
+            'username' => ['sometimes', 'string', ...ProfileController::USERNAME_RULES, 'unique:users,username'],
         ]);
 
         $user = static::createWithUniqueUsername($data);
