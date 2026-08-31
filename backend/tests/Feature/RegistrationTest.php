@@ -90,6 +90,28 @@ class RegistrationTest extends TestCase
         $this->assertDatabaseCount('users', 1);
     }
 
+    /**
+     * The explicit-username check above (Rule::notIn) never runs when no
+     * username is submitted at all — generateUsername() has to refuse the
+     * reserved word on its own, or signing up as "Admin" with a blank
+     * username field is a way around the very check this class already
+     * tests for the explicit-username path.
+     */
+    public function test_a_blank_username_never_generates_a_reserved_handle(): void
+    {
+        $reserved = ProfileController::RESERVED_USERNAMES[0];
+
+        $response = $this->postJson('/api/auth/register', [
+            'name' => ucfirst($reserved),
+            'email' => 'generated-reserved@example.com',
+            'password' => 'password123',
+        ])->assertCreated();
+
+        $username = $response->json('user.username');
+        $this->assertNotContains($username, ProfileController::RESERVED_USERNAMES);
+        $this->assertSame($reserved.'-2', $username);
+    }
+
     public function test_a_generated_username_that_loses_the_race_retries_onto_a_free_one(): void
     {
         $hijacked = false;

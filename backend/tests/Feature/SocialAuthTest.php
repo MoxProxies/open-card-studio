@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Api\ProfileController;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -217,6 +218,41 @@ class SocialAuthTest extends TestCase
         $this->assertSame('race-runner-2', $user->username);
         $this->assertNull($user->password);
         $this->assertDatabaseCount('users', 2);
+    }
+
+    /**
+     * createFromProvider() always goes through generateUsername() — an
+     * OAuth signup never submits a username at all — so this is the third
+     * path (alongside an explicit and a blank register() username) that
+     * has to be covered by generateUsername() refusing a reserved
+     * candidate on its own rather than by a validation rule.
+     */
+    public function test_a_first_sign_in_never_generates_a_reserved_username(): void
+    {
+        $reserved = ProfileController::RESERVED_USERNAMES[0];
+
+        $providerUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
+        $providerUser->id = 'provider-reserved';
+        $providerUser->name = ucfirst($reserved);
+        $providerUser->email = 'reserved-oauth@example.com';
+        $providerUser->avatar = 'https://example.com/a.png';
+
+        $provider = Mockery::mock(Provider::class);
+        $provider->shouldReceive('stateless')->andReturnSelf();
+        $provider->shouldReceive('with')->andReturnSelf();
+        $provider->shouldReceive('redirect')->andReturn(
+            new RedirectResponse('https://accounts.google.com/o/oauth2/auth?client_id=test-client-id&state=nonce')
+        );
+        $provider->shouldReceive('user')->andReturn($providerUser);
+
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $state = $this->startAndGetState();
+        $this->get("/api/auth/google/callback?state={$state}")->assertRedirect();
+
+        $user = User::where('email', 'reserved-oauth@example.com')->firstOrFail();
+        $this->assertNotContains($user->username, ProfileController::RESERVED_USERNAMES);
+        $this->assertSame($reserved.'-2', $user->username);
     }
 
     public function test_signing_in_again_reuses_the_same_account(): void

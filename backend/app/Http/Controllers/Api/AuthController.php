@@ -250,14 +250,25 @@ class AuthController extends Controller
         ];
     }
 
-    /** A free, URL-safe handle derived from the display name — `ada-lovelace`,
-     * `ada-lovelace-2`, ... Only used when the client didn't pick one. */
+    /**
+     * A free, URL-safe handle derived from the display name — `ada-lovelace`,
+     * `ada-lovelace-2`, ... Only used when the client didn't pick one, which
+     * includes every OAuth signup (SocialAuthController::createFromProvider
+     * always goes through this).
+     *
+     * Skips past a reserved handle exactly like it skips past a taken one —
+     * someone named "Admin" or "Support" lands on "admin-2"/"support-2"
+     * rather than the bare reserved word. Doing it here, rather than as a
+     * separate check on the generated result, is what keeps the explicit-
+     * username, blank-username, and OAuth-signup paths covered by one rule
+     * instead of three.
+     */
     public static function generateUsername(string $name): string
     {
         $base = Str::limit(Str::slug($name, '-'), 24, '') ?: 'user';
         $candidate = $base;
 
-        for ($suffix = 2; User::where('username', $candidate)->exists(); $suffix++) {
+        for ($suffix = 2; in_array($candidate, ProfileController::RESERVED_USERNAMES, true) || User::where('username', $candidate)->exists(); $suffix++) {
             $candidate = $base.'-'.$suffix;
         }
 
