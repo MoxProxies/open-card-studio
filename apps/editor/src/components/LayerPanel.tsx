@@ -136,6 +136,20 @@ export function LayerPanel({ width }: { width: number | string }) {
         : { boxShadow: "inset 0 -2px 0 var(--cs-accent)" }
       : {};
 
+  // The button fallback for top-level reordering (touch browsers don't fire
+  // HTML5 drag events without a polyfill, so dragHandleProps below is
+  // mouse-only) — mirrors moveMemberWithinGroup's swap-and-flatten shape,
+  // just over `entries` instead of one group's `members`.
+  const moveEntry = (rowId: string, direction: "up" | "down") => {
+    const idx = entries.findIndex((e) => entryRowId(e) === rowId);
+    const swapWith = direction === "up" ? idx - 1 : idx + 1;
+    if (idx === -1 || swapWith < 0 || swapWith >= entries.length) return;
+    const next = [...entries];
+    [next[idx], next[swapWith]] = [next[swapWith]!, next[idx]!];
+    const displayIds = next.flatMap((e) => (e.kind === "layer" ? [e.layer.id] : e.members.map((m) => m.id)));
+    reorderLayers([...displayIds].reverse());
+  };
+
   const moveMemberWithinGroup = (members: Layer[], layerId: string, direction: "up" | "down") => {
     const idx = members.findIndex((m) => m.id === layerId);
     const swapWith = direction === "up" ? idx - 1 : idx + 1;
@@ -160,8 +174,10 @@ export function LayerPanel({ width }: { width: number | string }) {
       style={{ width, flex: "none", minWidth: 0, borderLeft: "1px solid var(--cs-border)", padding: 8, overflowY: "auto", overflowX: "hidden" }}
     >
       <h3 className="cs-heading" style={{ fontSize: 14, fontWeight: 600, margin: "4px 0 8px" }}>Layers</h3>
-      {entries.map((entry) => {
+      {entries.map((entry, entryIndex) => {
         const rowId = entryRowId(entry);
+        const isFirstEntry = entryIndex === 0;
+        const isLastEntry = entryIndex === entries.length - 1;
 
         if (entry.kind === "layer") {
           const layer = entry.layer;
@@ -192,6 +208,30 @@ export function LayerPanel({ width }: { width: number | string }) {
               </span>
               <TypeIcon size={14} color="var(--cs-text-muted)" style={{ flex: "none" }} />
               <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{layer.name}</span>
+              <button
+                className="cs-icon-btn"
+                style={iconBtnStyle}
+                title="Move up"
+                disabled={isFirstEntry}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  moveEntry(rowId, "up");
+                }}
+              >
+                <ChevronUp size={14} />
+              </button>
+              <button
+                className="cs-icon-btn"
+                style={iconBtnStyle}
+                title="Move down"
+                disabled={isLastEntry}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  moveEntry(rowId, "down");
+                }}
+              >
+                <ChevronDown size={14} />
+              </button>
               <button
                 className="cs-icon-btn"
                 style={iconBtnStyle}
@@ -303,6 +343,30 @@ export function LayerPanel({ width }: { width: number | string }) {
                   {name}
                 </span>
               )}
+              <button
+                className="cs-icon-btn"
+                style={iconBtnStyle}
+                title="Move up"
+                disabled={isFirstEntry}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  moveEntry(rowId, "up");
+                }}
+              >
+                <ChevronUp size={14} />
+              </button>
+              <button
+                className="cs-icon-btn"
+                style={iconBtnStyle}
+                title="Move down"
+                disabled={isLastEntry}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  moveEntry(rowId, "down");
+                }}
+              >
+                <ChevronDown size={14} />
+              </button>
               <button
                 className="cs-icon-btn"
                 style={iconBtnStyle}
