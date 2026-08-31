@@ -1,11 +1,13 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { LogIn, LogOut, User } from "lucide-react";
+import { Bell, LogIn, LogOut, User } from "lucide-react";
 import { App } from "../App";
 import { AccountModal } from "../components/AccountModal";
 import { ProfileModal } from "../components/ProfileModal";
 import { ResetPasswordModal } from "../components/ResetPasswordModal";
 import { SuspendedNotice } from "../components/SuspendedNotice";
 import { TwoFactorPrompt } from "../components/TwoFactorPrompt";
+import { NotificationsModal } from "../components/NotificationsModal";
+import { loadNotifications } from "../api/notifications";
 import { consumeSocialRedirect, getCurrentUser, getSuspended, logout, restoreSession, subscribe } from "../api/auth";
 import { apiDesignStorage } from "../api/apiDesignStorage";
 import { localStorageDesignStorage, setActiveDesignStorage } from "../designStorage";
@@ -50,6 +52,8 @@ export function AppShell() {
   // Set when a password (or a provider round-trip) came back with a
   // second-factor challenge instead of a session.
   const [challenge, setChallenge] = useState<string | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     syncFromLocation();
@@ -118,6 +122,19 @@ export function AppShell() {
     restoreSession();
   }, []);
 
+  // The unread count, fetched once when an account appears (a sign-in, or
+  // a restored session). Deliberately not polled: a count that refreshes
+  // on its own would need either polling every account into the backend
+  // or a socket, and neither is worth it before anyone is waiting on
+  // second-by-second news.
+  useEffect(() => {
+    if (!user) return setUnread(0);
+
+    loadNotifications()
+      .then(({ unread: count }) => setUnread(count))
+      .catch(() => setUnread(0));
+  }, [user]);
+
   // A suspended account is signed in as far as the API is concerned, but
   // every feature 403s — so the shell says so and offers the appeal
   // instead of leaving a working-looking app that refuses everything.
@@ -133,6 +150,36 @@ export function AppShell() {
   // so "Sign in" would be a lie, and the notice below is the whole story.
   const account = suspended ? null : user ? (
     <div style={{ display: "flex", gap: 4 }}>
+      <button
+        className="cs-btn"
+        onClick={() => setShowNotifications(true)}
+        data-testid="notifications-button"
+        title={unread > 0 ? `${unread} unread` : "Notifications"}
+        style={{ position: "relative" }}
+      >
+        <Bell size={16} />
+        {unread > 0 && (
+          <span
+            data-testid="notifications-badge"
+            style={{
+              position: "absolute",
+              top: -4,
+              right: -4,
+              minWidth: 16,
+              height: 16,
+              padding: "0 4px",
+              borderRadius: 8,
+              background: "var(--cs-accent)",
+              color: "var(--cs-surface)",
+              fontSize: 10,
+              lineHeight: "16px",
+              textAlign: "center",
+            }}
+          >
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </button>
       <button className="cs-btn" onClick={() => setShowProfileEditor(true)} data-testid="account-button" title={`Signed in as ${user.email}`}>
         <User size={16} /> {user.name}
       </button>
@@ -231,6 +278,8 @@ export function AppShell() {
           </button>
         </div>
       )}
+
+      {showNotifications && <NotificationsModal onClose={() => setShowNotifications(false)} onRead={setUnread} />}
 
       {suspended && <SuspendedNotice />}
 

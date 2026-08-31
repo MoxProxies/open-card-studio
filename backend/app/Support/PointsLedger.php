@@ -52,7 +52,7 @@ class PointsLedger
             // read-then-write check: two concurrent requests would both
             // pass the read. Losing the race means the award already
             // exists, which is the desired end state either way.
-            if ($dedupeKey && static::isDuplicateKey($e)) {
+            if ($dedupeKey && DuplicateKey::matches($e)) {
                 return null;
             }
 
@@ -115,12 +115,5 @@ class PointsLedger
     public static function total(User $user): int
     {
         return (int) $user->pointEvents()->sum('amount');
-    }
-
-    private static function isDuplicateKey(QueryException $e): bool
-    {
-        return str_contains($e->getMessage(), 'UNIQUE constraint failed')
-            || str_contains($e->getMessage(), 'Duplicate entry')
-            || $e->getCode() === '23000';
     }
 }

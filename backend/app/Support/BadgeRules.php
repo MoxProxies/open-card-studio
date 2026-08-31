@@ -5,7 +5,6 @@ namespace App\Support;
 use App\Models\Badge;
 use App\Models\Reaction;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 
 /**
  * The rule-based half of badges: a map of `badges.rule` value → a check
@@ -55,6 +54,10 @@ class BadgeRules
             if ($rule && $rule($user)) {
                 $user->badges()->syncWithoutDetaching([$badge->id => []]);
                 $awarded[] = $badge->id;
+
+                // Earning something you're never told about is the same
+                // as not earning it. No actor: the system did this.
+                Notifier::notify($user, 'badge', null, $badge, ['badge' => $badge->name], "badge:{$badge->id}:{$user->id}");
             }
         }
 

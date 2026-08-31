@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\EmailController;
 use App\Http\Controllers\Api\FeatureController;
 use App\Http\Controllers\Api\ModerationController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PluginController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ProfileController;
@@ -160,6 +161,11 @@ Route::middleware(['auth:sanctum', BlockSuspendedUsers::class])->group(function 
     Route::post('/uploads', [UploadController::class, 'store'])->middleware('throttle:60,1');
     Route::get('/uploads', [UploadController::class, 'index']);
     Route::delete('/uploads/{id}', [UploadController::class, 'destroy']);
+
+    // What happened to you while you were away. Nothing here creates a
+    // notification — see NotificationController.
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/read', [NotificationController::class, 'read']);
 
     Route::get('/card-designs', [CardDesignController::class, 'index']);
     Route::get('/card-designs/{id}', [CardDesignController::class, 'show']);

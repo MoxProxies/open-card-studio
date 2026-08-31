@@ -1225,6 +1225,32 @@ blocked; and the properties panel's X/Y/Width/Height/Rotation inputs had
 no `disabled` gating on `locked` at all, so retyping coordinates by hand
 always worked regardless of the lock.
 
+## Notifications
+
+Everything the community half of this app does — likes, comments,
+remixes, badges, takedowns, appeal decisions — used to happen silently to
+the person it happened to. `App\Support\Notifier` is the only thing that
+writes a notification, and it's called from wherever the thing actually
+occurred, so a client can never manufacture news about itself.
+
+Two rules, both borrowed from the points ledger because they turned out
+to be the same problems:
+
+- **Exactly-once, via a dedupe key.** Unliking and re-liking must not
+  produce a second notification. Two *comments*, though, deliberately do
+  — so those are written without a key.
+- **Never about your own action.** Liking your own template or remixing
+  your own layout is legitimate and isn't news.
+
+Each row carries enough in `data` to render itself: a notification
+outlives the template it points at and the account that caused it, and a
+feed of rows that can't say what they were about is worse than no feed.
+The bell shows an unread count, fetched once per sign-in rather than
+polled — a self-refreshing count needs polling or a socket, and neither
+is worth it before anyone is waiting on second-by-second news. Opening
+the list doesn't mark everything read: "seen" and "dealt with" aren't the
+same thing when one of the rows is a moderation decision.
+
 ## Moderation
 
 Staff-only tooling, built as **"the founders review a queue"** — the
@@ -2271,12 +2297,12 @@ on the `.sh`) — override either if your layout differs.
 
 ## Tests
 
-601 end-to-end checks in `tests/e2e/` — curl against a running backend,
+632 end-to-end checks in `tests/e2e/` — curl against a running backend,
 Playwright against the running editor. That's the default here: every bug
 that actually shipped was one reading the diff missed and running the app
 caught.
 
-The exception is `backend/tests/Feature/` (54 PHPUnit tests), for the
+The exception is `backend/tests/Feature/` (60 PHPUnit tests), for the
 handful of things a live run can't honestly prove — an OAuth provider
 lying about a verified email, an email actually being queued, a token
 expiring thirty days from now, a column being ciphertext on disk, or a

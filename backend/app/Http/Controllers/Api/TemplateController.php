@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Template;
 use App\Support\BadgeRules;
+use App\Support\Notifier;
 use App\Support\PointsLedger;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
@@ -242,6 +243,10 @@ class TemplateController extends OwnedContentController
         // same rule usage_count and moderation_state follow.
         $fork->forked_from_id = $source->id;
         $fork->save();
+
+        // Deduped per (source, remixer): remixing the same template twice
+        // is one piece of news about one person's interest.
+        Notifier::notify($source->user, 'remix', $user, $source, ['title' => $source->name], "remix:{$source->id}:{$user->id}");
 
         // refresh() so database defaults (usage_count, moderation_state)
         // are in the response — a just-created model doesn't carry them.
