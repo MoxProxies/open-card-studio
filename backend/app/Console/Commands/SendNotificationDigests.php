@@ -49,12 +49,19 @@ class SendNotificationDigests extends Command
         // problem that only appears once it's too late to notice.
         $query->chunkById(200, function ($users) use (&$sent) {
             foreach ($users as $user) {
+                // Oldest-first, not latest(): the watermark below only
+                // advances up to the newest item actually sent, so
+                // anything past the cap has to be *newer* than that
+                // boundary for it to survive to the next run. Capping a
+                // newest-first list instead would drop the oldest items
+                // beyond the 20, which are older than everything sent —
+                // already behind any watermark that batch could produce.
                 $pending = Notification::query()
                     ->where('user_id', $user->id)
                     ->unread()
                     ->when($user->notifications_emailed_at, fn ($q) => $q->where('created_at', '>', $user->notifications_emailed_at))
                     ->with('actor:id,name,username')
-                    ->latest()
+                    ->oldest()
                     ->limit(20)
                     ->get();
 
@@ -67,7 +74,14 @@ class SendNotificationDigests extends Command
                 // Moved *after* a successful queue/send: leaving it until
                 // afterwards means a failure re-sends tomorrow rather
                 // than silently swallowing the whole batch.
-                $user->notifications_emailed_at = now();
+                //
+                // The watermark is the newest notification actually *in*
+                // this batch — not `now()`. Someone with more than 20
+                // unread since their last digest has leftovers newer than
+                // that boundary; advancing to `now()` would put them
+                // behind the watermark forever, unread in the app but
+                // permanently excluded from every future digest.
+                $user->notifications_emailed_at = $pending->last()->created_at;
                 $user->save();
                 $sent++;
             }

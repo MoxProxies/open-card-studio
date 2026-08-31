@@ -79,6 +79,46 @@ class NotificationDigestTest extends TestCase
         NotificationFacade::assertSentToTimes($user, NotificationDigest::class, 2);
     }
 
+    public function test_more_than_twenty_unread_are_not_lost_to_the_watermark(): void
+    {
+        NotificationFacade::fake();
+        $user = $this->account('overflowed@example.com');
+
+        // 25 unread notifications, a minute apart so each has a distinct
+        // created_at and `oldest()->limit(20)` keeps a predictable
+        // oldest-20 (leaving the 5 *newest* as this run's leftovers).
+        // Absolute timestamps rather than repeated relative travel()
+        // calls, which compound against each other.
+        $base = now();
+        for ($i = 0; $i < 25; $i++) {
+            $this->travelTo($base->copy()->addMinutes($i));
+            $this->newsFor($user, "n{$i}");
+        }
+        $this->travelTo($base->copy()->addMinutes(30)); // run the digest after all 25 exist
+
+        $this->artisan('notifications:digest');
+
+        // The watermark must land on the newest notification actually
+        // *sent* (the 20th-oldest), not on `now()` — otherwise the 5
+        // leftover (newest, beyond the 20-item cap) would need to be
+        // newer than `now()` to ever qualify, which is impossible, so
+        // they'd be excluded from every future digest despite still
+        // being unread.
+        $newestIncluded = $user->notifications()->oldest()->limit(20)->get()->last();
+        $this->assertSame(
+            $newestIncluded->created_at->toDateTimeString(),
+            $user->fresh()->notifications_emailed_at->toDateTimeString()
+        );
+
+        $this->travelTo($base->copy()->addDay());
+        $this->artisan('notifications:digest');
+
+        // The 5 leftover notifications — newer than the watermark, so
+        // still ahead of it — are picked up on the next run rather than
+        // silently dropped.
+        NotificationFacade::assertSentToTimes($user, NotificationDigest::class, 2);
+    }
+
     public function test_it_skips_news_already_read_in_the_app(): void
     {
         NotificationFacade::fake();

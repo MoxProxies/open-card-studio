@@ -15,25 +15,26 @@ export function ResizeHandle({ onDrag }: { onDrag: (deltaX: number) => void }) {
       onDrag(ev.clientX - lastX);
       lastX = ev.clientX;
     };
-    const handleMouseUp = () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-
     const handleTouchMove = (ev: TouchEvent) => {
       const touch = ev.touches[0];
       if (!touch) return;
       onDrag(touch.clientX - lastX);
       lastX = touch.clientX;
     };
-    const handleTouchEnd = () => {
+    // Both pairs are attached on every drag start regardless of which input
+    // began it, so both must come off on either end event — otherwise the
+    // input type that *didn't* end the drag leaks its listener on `window`
+    // forever, holding a stale `lastX` that later fires on unrelated input.
+    const stopTracking = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", stopTracking);
       window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchend", stopTracking);
     };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", stopTracking);
     window.addEventListener("touchmove", handleTouchMove);
-    window.addEventListener("touchend", handleTouchEnd);
+    window.addEventListener("touchend", stopTracking);
   };
 
   const handleMouseDown = (e: ReactMouseEvent) => {
