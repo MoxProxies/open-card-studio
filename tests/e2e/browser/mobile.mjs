@@ -166,6 +166,19 @@ try {
   const canvasAfter = await tablet.locator("canvas").first().boundingBox();
   check("dragging the divider by touch resizes the panes", true, canvasAfter.width > canvasBefore.width + 50);
   await tablet.screenshot({ path: `${SHOT_DIR}/m4-tablet-touch-resize.png` });
+
+  // Regression for the leaked-listener bug: trackDrag() used to attach both
+  // the mouse and touch listener pairs on every drag start, but each end
+  // handler only tore down its own pair — so ending a touch-drag left a
+  // stale `mousemove` listener on `window` forever, holding a stale
+  // reference point that later fired on unrelated mouse movement and
+  // resized the panes with no user intent. Move the (virtual) mouse well
+  // away from the handle, with no mousedown, and the canvas must not budge.
+  console.log("== ending a touch-drag doesn't leave a stale mousemove listener behind ==");
+  await tabletCdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: hx + 300, y: hy + 100, button: "none" });
+  await tabletCdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: hx + 400, y: hy + 150, button: "none" });
+  const canvasAfterStrayMouse = await tablet.locator("canvas").first().boundingBox();
+  check("unrelated mouse movement after a touch-drag leaves the panes alone", canvasAfter.width, canvasAfterStrayMouse.width);
   await tabletCtx.close();
 } catch (e) {
   fail(`threw: ${e.message}`);
