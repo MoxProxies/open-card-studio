@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Reaction;
 use App\Support\BadgeRules;
+use App\Support\DuplicateKey;
 use App\Support\Notifier;
 use App\Support\PointsLedger;
 use App\Support\Reactable;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 /**
@@ -39,28 +41,54 @@ class ReactionController extends Controller
 
         if ($existing) {
             $existing->delete();
-        } else {
+
+            return response()->json([
+                'reacted' => false,
+                'reaction_count' => $content->reactions()->count(),
+            ]);
+        }
+
+        try {
             $content->reactions()->create(['user_id' => $request->user()->id, 'type' => Reaction::LIKE]);
-            PointsLedger::awardForReaction($content, $request->user());
-
-            // Deduped on (content, reactor) exactly like the point award
-            // above: unliking and re-liking is not a second piece of news.
-            Notifier::notify(
-                $content->user,
-                'reaction',
-                $request->user(),
-                $content,
-                ['title' => $content->name ?? $content->title ?? null],
-                "reaction:{$data['type']}:{$data['id']}:{$request->user()->id}",
-            );
-
-            if ($content->user) {
-                BadgeRules::evaluate($content->user);
+        } catch (QueryException $e) {
+            // The read above and this create aren't atomic, so a
+            // double-tap (or a retried request) can send two of these in
+            // before either row lands — both pass the read as "no
+            // existing reaction". The unique (reactable, user) index is
+            // the real guard; losing that race just means we're already
+            // reacted, which this endpoint promises is a harmless no-op,
+            // not a 500 — and the request that won the race already ran
+            // the effects below, so this one skips them rather than
+            // double-firing.
+            if (! DuplicateKey::matches($e)) {
+                throw $e;
             }
+
+            return response()->json([
+                'reacted' => true,
+                'reaction_count' => $content->reactions()->count(),
+            ]);
+        }
+
+        PointsLedger::awardForReaction($content, $request->user());
+
+        // Deduped on (content, reactor) exactly like the point award
+        // above: unliking and re-liking is not a second piece of news.
+        Notifier::notify(
+            $content->user,
+            'reaction',
+            $request->user(),
+            $content,
+            ['title' => $content->name ?? $content->title ?? null],
+            "reaction:{$data['type']}:{$data['id']}:{$request->user()->id}",
+        );
+
+        if ($content->user) {
+            BadgeRules::evaluate($content->user);
         }
 
         return response()->json([
-            'reacted' => ! $existing,
+            'reacted' => true,
             'reaction_count' => $content->reactions()->count(),
         ]);
     }

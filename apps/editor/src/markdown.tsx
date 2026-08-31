@@ -20,9 +20,13 @@ import type { ReactNode } from "react";
 
 // The trailing `/` alternative is for same-site links like `/guides/x` —
 // it must not also match a protocol-relative URL like `//evil.example.com`,
-// which starts with a slash too but resolves off-site. Requiring the `/`
-// not be followed by a second `/` keeps the former and rejects the latter.
-const SAFE_SCHEME = /^(https?:\/\/|mailto:|#|\/(?!\/))/i;
+// which starts with a slash too but resolves off-site. Nor a backslash
+// variant like `/\evil.example.com`: browsers normalize a leading `\` to
+// `/` at the start of a URL's path per the WHATWG URL spec, so that's
+// browser-equivalent to `//evil.example.com` too, just spelled to look
+// same-site. Requiring the `/` not be followed by a second `/` or a `\`
+// keeps genuine same-site links and rejects both off-site spellings.
+const SAFE_SCHEME = /^(https?:\/\/|mailto:|#|\/(?!\/|\\))/i;
 
 /** Inline spans: bold, italic, code, links. Order matters — code wins, so
  * `**not bold**` inside backticks stays literal. */

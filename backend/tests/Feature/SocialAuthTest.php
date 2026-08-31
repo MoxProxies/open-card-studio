@@ -162,6 +162,63 @@ class SocialAuthTest extends TestCase
         $this->assertDatabaseHas('social_accounts', ['user_id' => $user->id, 'provider' => 'google', 'provider_user_id' => 'provider-123']);
     }
 
+    /**
+     * The same username-collision race RegistrationTest proves against
+     * register() — createFromProvider() shares the exact same
+     * generate-then-insert gap, and shares the fix: reproduced the same
+     * way, by taking the generated handle out from under this request
+     * inside its own User::create() call.
+     */
+    public function test_a_first_sign_in_that_loses_the_username_race_retries_onto_a_free_one(): void
+    {
+        $hijacked = false;
+
+        User::creating(function (User $user) use (&$hijacked) {
+            if ($hijacked || $user->username !== 'race-runner') {
+                return;
+            }
+
+            $hijacked = true;
+            User::create([
+                'name' => 'Other Runner',
+                'email' => 'other-racer@example.com',
+                'username' => 'race-runner',
+                'password' => 'password123',
+            ]);
+        });
+
+        // Built directly rather than through fakeProviderUser(), which
+        // hard-codes the provider name to "Provider Person" — this needs
+        // a name that generates the same "race-runner" handle
+        // RegistrationTest's version of this race uses.
+        $providerUser = (new SocialiteUser)->setRaw(['email_verified' => true]);
+        $providerUser->id = 'provider-123';
+        $providerUser->name = 'Race Runner';
+        $providerUser->email = 'racer@example.com';
+        $providerUser->avatar = 'https://example.com/a.png';
+
+        $provider = Mockery::mock(Provider::class);
+        $provider->shouldReceive('stateless')->andReturnSelf();
+        $provider->shouldReceive('with')->andReturnSelf();
+        $provider->shouldReceive('redirect')->andReturn(
+            new RedirectResponse('https://accounts.google.com/o/oauth2/auth?client_id=test-client-id&state=nonce')
+        );
+        $provider->shouldReceive('user')->andReturn($providerUser);
+
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $state = $this->startAndGetState();
+        $location = $this->get("/api/auth/google/callback?state={$state}")->headers->get('Location');
+
+        $this->assertTrue($hijacked);
+        $this->assertStringContainsString('#token=', $location);
+
+        $user = User::where('email', 'racer@example.com')->firstOrFail();
+        $this->assertSame('race-runner-2', $user->username);
+        $this->assertNull($user->password);
+        $this->assertDatabaseCount('users', 2);
+    }
+
     public function test_signing_in_again_reuses_the_same_account(): void
     {
         $this->fakeProviderUser(email: 'repeat@example.com');

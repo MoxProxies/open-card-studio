@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Api\ProfileController;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -35,6 +36,23 @@ class RegistrationTest extends TestCase
         ])->assertStatus(422)->assertJsonValidationErrors('username');
 
         $this->assertDatabaseCount('users', 1);
+    }
+
+    /**
+     * ProfileController already refuses a reserved handle on profile
+     * *update* — register() must apply the same list, or self-registering
+     * as "admin" is one signup form away, unique constraint notwithstanding.
+     */
+    public function test_registering_with_a_reserved_username_is_rejected(): void
+    {
+        $this->postJson('/api/auth/register', [
+            'name' => 'Someone',
+            'email' => 'someone@example.com',
+            'password' => 'password123',
+            'username' => ProfileController::RESERVED_USERNAMES[0],
+        ])->assertStatus(422)->assertJsonValidationErrors('username');
+
+        $this->assertDatabaseCount('users', 0);
     }
 
     public function test_a_requested_username_that_loses_the_race_fails_cleanly_instead_of_500ing(): void

@@ -22,6 +22,8 @@ const BODY = [
   "[not a link](javascript:alert(1))",
   "",
   "[not same-site either](//evil.example.com/steal)",
+  "",
+  "[not same-site via backslash either](/\\evil.example.com/steal)",
 ].join("\n");
 
 const browser = await chromium.launch();
@@ -57,6 +59,16 @@ try {
   check("and shows as inert text instead", true, (await preview.innerText()).includes("[not a link](javascript:alert(1))"));
   check("a protocol-relative link does NOT become an anchor either", 0, await preview.locator('a[href^="//"]').count());
   check("and also shows as inert text", true, (await preview.innerText()).includes("[not same-site either](//evil.example.com/steal)"));
+  // Browsers normalize a leading backslash to a forward slash at the
+  // start of a URL's path, so `/\evil.example.com` is browser-equivalent
+  // to `//evil.example.com` while looking same-site — must be rejected too.
+  check(
+    "a same-site-looking link with a backslash does NOT become an anchor either",
+    0,
+    await preview.locator("a").filter({ hasText: "not same-site via backslash either" }).count(),
+  );
+  check("and it also shows as inert text", true, (await preview.innerText()).includes("[not same-site via backslash either](/\\evil.example.com/steal)"));
+  check("only the one safe link became an anchor", 1, await preview.locator("a").count());
   await shot("k1-preview");
 
   await author.getByTestId("post-visibility").selectOption("published");

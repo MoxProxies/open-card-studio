@@ -164,26 +164,40 @@ class SocialAuthController extends Controller
         });
     }
 
+    /**
+     * Same username-collision race AuthController::register() has, and the
+     * same fix: AuthController::saveWithUniqueUsername() retries past a
+     * concurrent sign-in taking the generated handle first, instead of
+     * this letting the unique index's rejection surface as an unhandled 500.
+     */
     private function createFromProvider(ProviderUser $providerUser, ?string $email): User
     {
         $name = $providerUser->getName() ?: ($providerUser->getNickname() ?: 'New member');
+        $accountEmail = $email ?: Str::uuid().'@social.invalid';
+        $emailVerifiedAt = $email ? now() : null;
 
-        $user = new User([
-            'name' => $name,
-            'email' => $email ?: Str::uuid().'@social.invalid',
-            'username' => AuthController::generateUsername($name),
-        ]);
+        return AuthController::saveWithUniqueUsername(
+            $name,
+            false,
+            AuthController::generateUsername($name),
+            function (string $username) use ($name, $accountEmail, $emailVerifiedAt) {
+                $user = new User([
+                    'name' => $name,
+                    'email' => $accountEmail,
+                    'username' => $username,
+                ]);
 
-        // No password: this account signs in through its provider. See
-        // User::hasPassword and AuthController::login.
-        $user->password = null;
-        // Reaching here means the provider vouched for the address (the
-        // caller refuses to link an unverified one), so there's nothing
-        // for our own verification email to add.
-        $user->email_verified_at = $email ? now() : null;
-        $user->save();
+                // No password: this account signs in through its provider.
+                // See User::hasPassword and AuthController::login.
+                $user->password = null;
+                // Reaching here means the provider vouched for the address
+                // (the caller refuses to link an unverified one), so
+                // there's nothing for our own verification email to add.
+                $user->email_verified_at = $emailVerifiedAt;
 
-        return $user;
+                return $user;
+            },
+        );
     }
 
     /**

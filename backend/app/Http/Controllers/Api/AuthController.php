@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -44,7 +45,7 @@ class AuthController extends Controller
             // Optional at signup: an account is usable immediately with a
             // generated handle, and the profile editor is where most people
             // will pick a real one.
-            'username' => ['sometimes', 'string', ...ProfileController::USERNAME_RULES, 'unique:users,username'],
+            'username' => ['sometimes', 'string', ...ProfileController::USERNAME_RULES, 'unique:users,username', Rule::notIn(ProfileController::RESERVED_USERNAMES)],
         ]);
 
         $user = static::createWithUniqueUsername($data);
@@ -285,14 +286,30 @@ class AuthController extends Controller
         $requested = array_key_exists('username', $data);
         $username = $data['username'] ?? static::generateUsername($data['name']);
 
+        return static::saveWithUniqueUsername($data['name'], $requested, $username, fn (string $username) => new User([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+            'username' => $username,
+        ]), $maxAttempts);
+    }
+
+    /**
+     * The retry loop behind createWithUniqueUsername() above, generalised
+     * so SocialAuthController::createFromProvider() can hit the identical
+     * race without duplicating the handling: `$build` gets the candidate
+     * username and returns an unsaved User for it, which this saves and
+     * retries past a collision exactly as above.
+     */
+    public static function saveWithUniqueUsername(string $name, bool $requested, string $username, \Closure $build, int $maxAttempts = 5): User
+    {
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $user = $build($username);
+
             try {
-                return User::create([
-                    'name' => $data['name'],
-                    'email' => $data['email'],
-                    'password' => Hash::make($data['password']),
-                    'username' => $username,
-                ]);
+                $user->save();
+
+                return $user;
             } catch (UniqueConstraintViolationException $e) {
                 if (! str_contains($e->getMessage(), 'username')) {
                     throw $e;
@@ -302,7 +319,7 @@ class AuthController extends Controller
                     throw ValidationException::withMessages(['username' => ['That username was just taken. Try another.']]);
                 }
 
-                $username = static::generateUsername($data['name']);
+                $username = static::generateUsername($name);
             }
         }
 
