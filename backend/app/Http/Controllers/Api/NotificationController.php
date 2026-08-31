@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 /**
@@ -30,6 +31,27 @@ class NotificationController extends Controller
             // to be right even when the unread ones fall outside it.
             'unread' => $user->notifications()->unread()->count(),
         ]);
+    }
+
+    /**
+     * One-click unsubscribe from the email digest.
+     *
+     * Signed, unauthenticated and a plain GET, because that's what makes
+     * it work from an email client in one click — the thing that makes
+     * defaulting the digest on defensible. The address is hashed into the
+     * signature so a forwarded link stops working once the address
+     * changes.
+     */
+    public function unsubscribe(Request $request, int $id, string $hash)
+    {
+        $user = User::findOrFail($id);
+
+        abort_unless(hash_equals(sha1($user->email), $hash), 403);
+
+        $user->notification_emails = false;
+        $user->save();
+
+        return response()->json(['message' => 'You will not get notification emails. You can turn them back on in your profile.']);
     }
 
     /** Marks everything read, or one row when `id` is given. Scoped to the

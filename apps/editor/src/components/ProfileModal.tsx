@@ -40,12 +40,20 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
   const [reauthFor, setReauthFor] = useState<"disable" | "recovery-codes" | null>(null);
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  // Defaults to on for an account whose record predates the column.
+  const [emailDigest, setEmailDigest] = useState(user.notification_emails !== false);
 
   const submit = async () => {
     setSaving(true);
     setError(null);
     try {
-      const updated = await updateProfile({ name: name.trim(), username: username.trim(), bio: bio.trim(), avatar_url: avatarUrl.trim() || null });
+      const updated = await updateProfile({
+        name: name.trim(),
+        username: username.trim(),
+        bio: bio.trim(),
+        avatar_url: avatarUrl.trim() || null,
+        notification_emails: emailDigest,
+      });
       setCurrentUser(updated);
       setSaved(true);
     } catch (e) {
@@ -169,6 +177,22 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
             </label>
           </div>
           <span style={{ fontSize: 11 }}>Upload an image, or paste an https link to one. Uploads are resized and stripped of camera metadata.</span>
+        </label>
+
+        <hr style={{ border: "none", borderTop: "1px solid var(--cs-border)", margin: "4px 0" }} />
+
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "var(--cs-text-muted)" }}>
+          <input
+            type="checkbox"
+            checked={emailDigest}
+            onChange={(e) => setEmailDigest(e.target.checked)}
+            data-testid="profile-email-digest"
+            style={{ marginTop: 2 }}
+          />
+          <span>
+            Email me when something happens to my work — one summary a day at most, never for things I've already seen in the app. Every one of those emails can
+            turn this off in a click.
+          </span>
         </label>
 
         <hr style={{ border: "none", borderTop: "1px solid var(--cs-border)", margin: "4px 0" }} />

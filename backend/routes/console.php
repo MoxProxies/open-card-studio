@@ -13,3 +13,7 @@ Artisan::command('inspire', function () {
 // dead entries. --hours=24 keeps a day's grace so a just-expired session
 // is still visible as "expired" rather than vanishing unexplained.
 Schedule::command('sanctum:prune-expired --hours=24')->daily();
+
+// One email a day at most, covering everything unread since the last one
+// — see SendNotificationDigests for the four rules deciding who gets one.
+Schedule::command('notifications:digest')->dailyAt('09:00');

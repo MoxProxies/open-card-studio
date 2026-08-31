@@ -80,6 +80,7 @@ export interface ProfileEdit {
   username?: string;
   bio?: string;
   avatar_url?: string | null;
+  notification_emails?: boolean;
 }
 
 export async function updateProfile(edit: ProfileEdit): Promise<AuthUser> {
