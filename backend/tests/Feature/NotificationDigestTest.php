@@ -104,10 +104,10 @@ class NotificationDigestTest extends TestCase
         // newer than `now()` to ever qualify, which is impossible, so
         // they'd be excluded from every future digest despite still
         // being unread.
-        $newestIncluded = $user->notifications()->oldest()->limit(20)->get()->last();
+        $newestIncluded = $user->notifications()->orderBy('id')->limit(20)->get()->last();
         $this->assertSame(
-            $newestIncluded->created_at->toDateTimeString(),
-            $user->fresh()->notifications_emailed_at->toDateTimeString()
+            $newestIncluded->id,
+            $user->fresh()->notifications_emailed_id
         );
 
         $this->travelTo($base->copy()->addDay());
@@ -117,6 +117,57 @@ class NotificationDigestTest extends TestCase
         // still ahead of it — are picked up on the next run rather than
         // silently dropped.
         NotificationFacade::assertSentToTimes($user, NotificationDigest::class, 2);
+    }
+
+    public function test_tied_created_at_at_the_boundary_are_never_dropped(): void
+    {
+        NotificationFacade::fake();
+        $user = $this->account('tied@example.com');
+
+        // 15 notifications a minute apart, then 10 more that all land in
+        // the exact same second — created_at only has whole-second
+        // precision, and this is realistic: several badges from one
+        // BadgeRules::evaluate() call, or a burst of reactions, can all
+        // be notified within the same request. Ordered by id (insertion
+        // order), the tied group is n15..n24 — ids 16..25 — which
+        // straddles the 20-item cap: n15..n19 (ids 16..20) land in the
+        // first digest, n20..n24 (ids 21..25) are leftovers for the
+        // next one. A watermark on created_at alone would advance to the
+        // shared second and then exclude every leftover with that exact
+        // timestamp forever, even though they're still unread.
+        $base = now();
+        for ($i = 0; $i < 15; $i++) {
+            $this->travelTo($base->copy()->addMinutes($i));
+            $this->newsFor($user, "n{$i}");
+        }
+        $this->travelTo($base->copy()->addMinutes(20));
+        for ($i = 15; $i < 25; $i++) {
+            $this->newsFor($user, "n{$i}");
+        }
+        $this->travelTo($base->copy()->addMinutes(30));
+
+        $this->artisan('notifications:digest');
+        $this->travelTo($base->copy()->addDay());
+        $this->artisan('notifications:digest');
+        $this->travelTo($base->copy()->addDays(2));
+        $this->artisan('notifications:digest');
+
+        // Two runs to clear the backlog (20 then 5), a third with
+        // nothing left to send.
+        NotificationFacade::assertSentToTimes($user, NotificationDigest::class, 2);
+
+        // Every one of the 25 notifications — including every tied-second
+        // one on either side of the boundary — reached an email exactly
+        // once. Reading the digest's private $lines is the only way to
+        // see what a run actually included; count() alone can't tell a
+        // dropped notification from one that was simply never queued.
+        $reachedInbox = NotificationFacade::sent($user, NotificationDigest::class)
+            ->flatMap(fn ($notification) => (function () {
+                return $this->lines;
+            })->call($notification));
+
+        $this->assertCount(25, $reachedInbox);
+        $this->assertCount(25, $reachedInbox->unique());
     }
 
     public function test_it_skips_news_already_read_in_the_app(): void

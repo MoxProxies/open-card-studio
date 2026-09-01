@@ -65,7 +65,6 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_staff' => 'boolean',
             'notification_emails' => 'boolean',
-            'notifications_emailed_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
             // Encrypted at rest: a leaked database dump otherwise hands
             // over the second factor for every account in it.

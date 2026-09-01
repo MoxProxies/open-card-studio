@@ -56,12 +56,26 @@ class SendNotificationDigests extends Command
                 // newest-first list instead would drop the oldest items
                 // beyond the 20, which are older than everything sent —
                 // already behind any watermark that batch could produce.
+                //
+                // The cursor is the notification's own id, not
+                // created_at: id is a strict, unique, monotonically
+                // increasing order (insertion order already matches id
+                // order here), so it can never tie the way a
+                // whole-second timestamp can. A tie on created_at at the
+                // 20-item boundary — several badges from one
+                // BadgeRules::evaluate() call, a burst of reactions —
+                // would let limit(20) split the tied rows, advance the
+                // watermark to that shared second, and have
+                // `created_at > watermark` exclude the rest of the tie
+                // forever even though they're still unread. Ordering and
+                // filtering on id instead removes that failure mode
+                // entirely rather than narrowing the window for it.
                 $pending = Notification::query()
                     ->where('user_id', $user->id)
                     ->unread()
-                    ->when($user->notifications_emailed_at, fn ($q) => $q->where('created_at', '>', $user->notifications_emailed_at))
+                    ->when($user->notifications_emailed_id, fn ($q) => $q->where('id', '>', $user->notifications_emailed_id))
                     ->with('actor:id,name,username')
-                    ->oldest()
+                    ->orderBy('id')
                     ->limit(20)
                     ->get();
 
@@ -75,13 +89,14 @@ class SendNotificationDigests extends Command
                 // afterwards means a failure re-sends tomorrow rather
                 // than silently swallowing the whole batch.
                 //
-                // The watermark is the newest notification actually *in*
-                // this batch — not `now()`. Someone with more than 20
-                // unread since their last digest has leftovers newer than
-                // that boundary; advancing to `now()` would put them
-                // behind the watermark forever, unread in the app but
-                // permanently excluded from every future digest.
-                $user->notifications_emailed_at = $pending->last()->created_at;
+                // The watermark is the id of the newest notification
+                // actually *in* this batch — not `now()`. Someone with
+                // more than 20 unread since their last digest has
+                // leftovers newer than that boundary; advancing to
+                // `now()` would put them behind the watermark forever,
+                // unread in the app but permanently excluded from every
+                // future digest.
+                $user->notifications_emailed_id = $pending->last()->id;
                 $user->save();
                 $sent++;
             }
