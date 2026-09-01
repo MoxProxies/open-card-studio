@@ -28,22 +28,49 @@ return new class extends Migration
                 ->constrained('notifications')->nullOnDelete();
         });
 
-        // Carry existing watermarks forward: for anyone who already has a
-        // notifications_emailed_at, the equivalent id-cursor is the id of
-        // the newest notification at or before that second — the same
-        // notification the old watermark was already pointing past.
+        $this->backfillNotificationsEmailedId();
+
+        Schema::table('users', fn (Blueprint $table) => $table->dropColumn('notifications_emailed_at'));
+    }
+
+    // Carry existing watermarks forward: for anyone who already has a
+    // notifications_emailed_at, the equivalent id-cursor is the id of the
+    // newest notification strictly before that second.
+    //
+    // Deliberately strict `<`, not `<=`: Laravel never recorded which
+    // notifications a past digest actually included, only the watermark
+    // second itself. If that second is tied across several notifications,
+    // some of them may have been sent under the old bug this migration
+    // exists to fix, and others may have been the very ones the old bug
+    // stranded (see the note above `up()`). Stored data alone can't tell
+    // those two groups apart, so `<=` would silently and permanently
+    // re-strand the already-lost ones under the new cursor too. `<` leaves
+    // every tied notification — sent or stranded — ahead of the new
+    // cursor, so the very next digest run picks all of them back up. The
+    // only cost is that a tied one that really was already sent may be
+    // emailed one extra, redundant time, which is a minor, one-time
+    // annoyance rather than permanent data loss.
+    //
+    // Split out from up() so a test can exercise this exact statement
+    // against a seeded notifications_emailed_at without also having to
+    // drop and re-add the notifications_emailed_id foreign key column —
+    // rebuilding that column on a populated `users` table triggers
+    // SQLite's implicit "DROP TABLE performs a DELETE first" behavior,
+    // which cascades through notifications.user_id's cascadeOnDelete and
+    // wipes every notification, an artifact of the test environment
+    // rather than anything about this backfill.
+    public function backfillNotificationsEmailedId(): void
+    {
         DB::statement(<<<'SQL'
             UPDATE users
             SET notifications_emailed_id = (
                 SELECT MAX(notifications.id)
                 FROM notifications
                 WHERE notifications.user_id = users.id
-                AND notifications.created_at <= users.notifications_emailed_at
+                AND notifications.created_at < users.notifications_emailed_at
             )
             WHERE users.notifications_emailed_at IS NOT NULL
         SQL);
-
-        Schema::table('users', fn (Blueprint $table) => $table->dropColumn('notifications_emailed_at'));
     }
 
     public function down(): void

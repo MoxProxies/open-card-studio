@@ -5,8 +5,11 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Notifications\NotificationDigest;
 use App\Support\Notifier;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
@@ -168,6 +171,74 @@ class NotificationDigestTest extends TestCase
 
         $this->assertCount(25, $reachedInbox);
         $this->assertCount(25, $reachedInbox->unique());
+    }
+
+    public function test_the_backfill_never_strands_notifications_tied_with_the_old_watermark(): void
+    {
+        $user = $this->account('backfilled@example.com');
+
+        // n0 is safely before the watermark second — its old-cursor
+        // equivalent is unambiguous. n1 and n2 land in the exact same
+        // second as the pre-existing notifications_emailed_at: under the
+        // old bug this migration exists to fix, one of a tied pair could
+        // have been actually sent while the other was stranded by the
+        // digest's batch cap, and stored data alone can't tell which is
+        // which.
+        $this->newsFor($user, 'n0');
+        $before = $user->notifications()->sole();
+
+        $tiedAt = now()->addMinute();
+        $this->travelTo($tiedAt);
+        $this->newsFor($user, 'n1');
+        $this->newsFor($user, 'n2');
+
+        // Seed a pre-existing notifications_emailed_at sitting exactly on
+        // the tie boundary, as a pre-migration production row would have
+        // had, then run the migration's actual backfill statement against
+        // it — exercising the same SQL this migration ran during the
+        // app's real migration history, not just the fresh-null-cursor
+        // path the digest command tests above cover.
+        //
+        // This adds notifications_emailed_at back as an extra column
+        // rather than rolling the whole migration back and forward again:
+        // rebuilding the notifications_emailed_id foreign key column on a
+        // populated `users` table inside this test's wrapping transaction
+        // triggers SQLite's implicit "DROP TABLE deletes its rows first"
+        // behavior, cascading through notifications.user_id's
+        // cascadeOnDelete and silently wiping every notification — a
+        // quirk of the test environment, not of the migration itself.
+        Schema::table('users', fn (Blueprint $table) => $table->timestamp('notifications_emailed_at')->nullable());
+        DB::table('users')->where('id', $user->id)->update(['notifications_emailed_at' => $tiedAt]);
+
+        $migration = require base_path('database/migrations/2025_01_01_000017_convert_notifications_emailed_at_to_id_cursor.php');
+        $migration->backfillNotificationsEmailedId();
+
+        // Only n0, strictly before the watermark, is safe to mark
+        // covered. n1 and n2 must NOT be — advancing the cursor past
+        // them would silently and permanently repeat whichever one the
+        // old bug had already stranded.
+        $this->assertSame($before->id, $user->fresh()->notifications_emailed_id);
+
+        // Both tied notifications are therefore still reachable by the
+        // very next digest run.
+        NotificationFacade::fake();
+        $this->travelTo($tiedAt->copy()->addDay());
+        $this->artisan('notifications:digest');
+
+        NotificationFacade::assertSentTo($user, NotificationDigest::class);
+        $reachedInbox = NotificationFacade::sent($user, NotificationDigest::class)
+            ->flatMap(fn ($notification) => (function () {
+                return $this->lines;
+            })->call($notification));
+
+        // Both tied notifications (n1, distinguishable here only by its
+        // distinct random actor) reached this digest — n1 possibly as a
+        // redundant re-send if it was genuinely already mailed under the
+        // old bug, a minor, one-time annoyance the migration deliberately
+        // accepts instead of permanently losing n2, which the old bug may
+        // have stranded.
+        $this->assertCount(2, $reachedInbox);
+        $this->assertCount(2, $reachedInbox->unique());
     }
 
     public function test_it_skips_news_already_read_in_the_app(): void
