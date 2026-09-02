@@ -26,11 +26,15 @@ class PointsLedgerTest extends TestCase
 
     private function template(User $owner): Template
     {
+        // Unlisted, not published: Publishable::bootPublishable() awards
+        // a separate template_published event on publish, which would
+        // throw off these tests' point_events counts. reverseFor() only
+        // needs a content row with a source_type/source_id to key off.
         return Template::create([
             'id' => (string) Str::uuid(),
             'user_id' => $owner->id,
             'name' => 'Takedown target',
-            'visibility' => 'published',
+            'visibility' => 'unlisted',
             'tags' => [],
             'design' => ['schemaVersion' => 1],
         ]);
