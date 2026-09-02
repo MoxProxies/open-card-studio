@@ -149,6 +149,20 @@ class UploadTest extends TestCase
         $this->assertDatabaseCount('uploads', 0);
     }
 
+    public function test_a_save_failure_after_the_write_does_not_leave_an_orphaned_file(): void
+    {
+        $user = $this->account();
+
+        // Simulates the write landing on disk but the row failing to
+        // save afterward — the exact gap the fix cleans up.
+        Upload::saving(fn () => throw new \RuntimeException('simulated database failure'));
+
+        $this->actingAs($user)->postJson('/api/uploads', ['file' => $this->png()])->assertStatus(500);
+
+        $this->assertDatabaseCount('uploads', 0);
+        $this->assertEmpty(Storage::disk('local')->allFiles('uploads'));
+    }
+
     public function test_one_account_cannot_read_anothers_upload_listing(): void
     {
         $owner = $this->account();

@@ -79,10 +79,20 @@ class UploadController extends Controller
         $upload->checksum = $checksum;
 
         // The file first: a row pointing at bytes that aren't there is a
-        // broken image, while bytes with no row are invisible and get
-        // cleaned up by the next identical upload.
-        Storage::disk('local')->put($upload->path(), $image['binary']);
-        $upload->save();
+        // broken image. Bytes with no row are merely invisible, but we
+        // still don't want them to linger forever if save() fails after
+        // the write succeeds — so the file that just landed gets removed
+        // again rather than orphaned on disk.
+        $path = $upload->path();
+        Storage::disk('local')->put($path, $image['binary']);
+
+        try {
+            $upload->save();
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($path);
+
+            throw $e;
+        }
 
         return response()->json($upload, 201);
     }

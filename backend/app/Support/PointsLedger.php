@@ -99,16 +99,24 @@ class PointsLedger
             ->get();
 
         foreach ($awards as $award) {
-            PointEvent::firstOrCreate(
-                ['dedupe_key' => "reversal:{$award->id}"],
-                [
+            try {
+                PointEvent::create([
                     'user_id' => $award->user_id,
                     'amount' => -$award->amount,
                     'reason' => $award->reason,
                     'source_type' => $award->source_type,
                     'source_id' => $award->source_id,
-                ],
-            );
+                    'dedupe_key' => "reversal:{$award->id}",
+                ]);
+            } catch (QueryException $e) {
+                // Same guard as award(): the unique index on dedupe_key is
+                // the source of truth, not the read firstOrCreate() would
+                // have done — two concurrent takedowns of the same content
+                // would both pass that read.
+                if (! DuplicateKey::matches($e)) {
+                    throw $e;
+                }
+            }
         }
     }
 
