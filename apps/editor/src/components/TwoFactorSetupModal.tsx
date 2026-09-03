@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import qrcode from "qrcode-generator";
 import { Copy, Loader2, ShieldCheck } from "lucide-react";
 import { apiErrorMessage } from "../api/client";
@@ -22,7 +22,18 @@ export function TwoFactorSetupModal({ user, onClose }: { user: AuthUser; onClose
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // startSetup() isn't a plain fetch — it overwrites the account's pending
+  // secret server-side on every call. StrictMode's mount/cleanup/remount
+  // runs this effect twice, and without this guard that fires it twice too:
+  // two secrets get minted, and whichever response resolves last wins the
+  // displayed QR/key while whichever request the server *processed* last
+  // wins the stored secret — not necessarily the same one. A ref (unlike
+  // state) survives that double-invoke, so it makes the second call a
+  // no-op instead of a race.
+  const requested = useRef(false);
   useEffect(() => {
+    if (requested.current) return;
+    requested.current = true;
     startSetup()
       .then(setSetup)
       .catch((e) => setError(apiErrorMessage(e, "Couldn't start setup — try again shortly.")));
