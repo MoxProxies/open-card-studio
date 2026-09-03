@@ -169,16 +169,16 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
     <>
       {children({
         toolbar: (
-          <>
-            <button className={`cs-btn${tab === "browse" ? " cs-active" : ""}`} onClick={() => setTab("browse")} data-testid="template-tab-browse">
+          <div className="cs-tb" style={{ display: "contents" }}>
+            <button className={`cs-tb-chip${tab === "browse" ? " cs-active" : ""}`} onClick={() => setTab("browse")} data-testid="template-tab-browse">
               <Users size={14} /> Community
             </button>
-            <button className={`cs-btn${tab === "mine" ? " cs-active" : ""}`} onClick={() => setTab("mine")} data-testid="template-tab-mine">
+            <button className={`cs-tb-chip${tab === "mine" ? " cs-active" : ""}`} onClick={() => setTab("mine")} data-testid="template-tab-mine">
               <LayoutTemplate size={14} /> My templates
             </button>
             <div style={{ flex: 1 }} />
             <button
-              className="cs-btn"
+              className="cs-tb-btn-primary"
               data-testid="template-save-current"
               onClick={() => {
                 setEditing(undefined);
@@ -193,10 +193,10 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
               <div style={{ display: "flex", gap: 8, width: "100%" }}>
                 <div style={{ position: "relative", flex: 1 }}>
                   <Search
-                    size={14}
+                    size={16}
                     style={{
                       position: "absolute",
-                      left: 8,
+                      left: 12,
                       top: "50%",
                       transform: "translateY(-50%)",
                       color: "var(--cs-text-muted)",
@@ -207,20 +207,20 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
                     placeholder="Search community templates…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    style={{ width: "100%", paddingLeft: 28 }}
+                    style={{ width: "100%", paddingLeft: 36 }}
                     data-testid="template-search"
                   />
                 </div>
-                <select className="cs-input" value={sort} onChange={(e) => setSort(e.target.value as "recent" | "popular")} style={{ width: 130 }}>
+                <select className="cs-input" value={sort} onChange={(e) => setSort(e.target.value as "recent" | "popular")} style={{ width: 150 }}>
                   <option value="recent">Newest</option>
                   <option value="popular">Most used</option>
                 </select>
               </div>
             )}
-          </>
+          </div>
         ),
         body: (
-          <>
+          <div className="cs-tb cs-tb-body" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
             {notice && (
               <p style={{ color: "var(--cs-accent)", fontSize: 13, padding: "6px 8px", margin: 0 }} data-testid="template-remix-notice">
                 {notice}
@@ -240,21 +240,13 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
               </p>
             )}
 
-            <div style={{ padding: 8, overflowY: "auto", flex: 1 }}>
+            <div style={{ padding: 16, overflowY: "auto", flex: 1 }}>
               {!canList ? (
-                <p
-                  style={{
-                    color: "var(--cs-text-muted)",
-                    fontSize: 13,
-                    padding: "6px 8px",
-                  }}
-                >
-                  Sign in to see the templates you've saved.
-                </p>
+                <p style={{ color: "var(--tb-muted)", fontSize: 13, padding: "6px 8px" }}>Sign in to see the templates you've saved.</p>
               ) : listLoading ? (
                 <p
                   style={{
-                    color: "var(--cs-text-muted)",
+                    color: "var(--tb-muted)",
                     fontSize: 13,
                     padding: "6px 8px",
                     display: "flex",
@@ -265,176 +257,138 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
                   <Loader2 size={14} className="cs-spin" /> Loading…
                 </p>
               ) : listError ? (
-                <p
-                  style={{
-                    color: "var(--cs-danger)",
-                    fontSize: 13,
-                    padding: "6px 8px",
-                  }}
-                >
-                  {listError}
-                </p>
+                <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "6px 8px" }}>{listError}</p>
               ) : templates.length === 0 ? (
-                <p
-                  style={{
-                    color: "var(--cs-text-muted)",
-                    fontSize: 13,
-                    padding: "6px 8px",
-                  }}
-                >
+                <p style={{ color: "var(--tb-muted)", fontSize: 13, padding: "6px 8px" }}>
                   {tab === "mine"
                     ? "You haven't saved any templates yet — lock the layers you want fixed, then use the button above."
                     : "No published templates match that search yet."}
                 </p>
               ) : (
-                templates.map((t) => (
-                  <div
-                    key={t.id}
-                    data-testid="template-row"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "10px 8px",
-                      borderRadius: 6,
-                      marginBottom: 2,
-                      opacity: busyId === t.id ? 0.6 : 1,
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 600,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {t.name}
-                      </div>
-                      {t.description && (
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "var(--cs-text-muted)",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {t.description}
+                <div className="cs-tb-grid">
+                  {templates.map((t, i) => (
+                    <div key={t.id} data-testid="template-row" className="cs-tb-card" style={{ opacity: busyId === t.id ? 0.6 : 1 }}>
+                      <div className={`cs-tb-thumb cs-tb-thumb-${i % 5}`}>
+                        <LayoutTemplate size={36} strokeWidth={1.5} />
+                        <div className="cs-tb-thumb-fav">
+                          <ReactionButton
+                            type="template"
+                            id={t.id}
+                            count={t.reactionCount}
+                            reacted={t.reacted}
+                            onChange={(r) =>
+                              setTemplates((list) => list.map((x) => (x.id === t.id ? { ...x, reactionCount: r.reaction_count, reacted: r.reacted } : x)))
+                            }
+                          />
                         </div>
-                      )}
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "var(--cs-text-muted)",
-                          marginTop: 2,
-                        }}
-                      >
-                        {/* Attribution is deliberately always shown, never
-                      conditional on a hover or a detail view — see this
-                      component's doc comment. */}
-                        by{" "}
-                        {t.author.username ? (
-                          <button
-                            onClick={() => onViewProfile(t.author.username!)}
-                            data-testid="template-author"
-                            style={{ background: "none", border: "none", padding: 0, font: "inherit", color: "var(--cs-accent)", cursor: "pointer" }}
-                            title={`See everything ${t.author.name ?? "this author"} has published`}
-                          >
-                            {t.author.name ?? t.author.username}
+                      </div>
+
+                      <div className="cs-tb-card-body">
+                        <div className="cs-tb-title">{t.name}</div>
+                        {t.description && <div className="cs-tb-meta">{t.description}</div>}
+                        <div className="cs-tb-meta">
+                          {/* Attribution is deliberately always shown, never
+                          conditional on a hover or a detail view — see this
+                          component's doc comment. */}
+                          by{" "}
+                          {t.author.username ? (
+                            <button
+                              onClick={() => onViewProfile(t.author.username!)}
+                              data-testid="template-author"
+                              style={{ background: "none", border: "none", padding: 0, font: "inherit", color: "var(--cs-accent)", cursor: "pointer" }}
+                              title={`See everything ${t.author.name ?? "this author"} has published`}
+                            >
+                              {t.author.name ?? t.author.username}
+                            </button>
+                          ) : (
+                            (t.author.name ?? "a community member")
+                          )}{" "}
+                          · used {t.usageCount}×{t.version > 1 ? ` · v${t.version}` : ""}
+                          {t.forkCount > 0 && ` · remixed ${t.forkCount}×`}
+                          {t.tags.length > 0 && ` · ${t.tags.join(", ")}`}
+                        </div>
+                        {/* A remix has two people to credit, and the second one
+                        is the one a viewer can't otherwise work out. Shown
+                        on the same footing as the author line above, for
+                        the same reason. */}
+                        {t.forkedFrom && (
+                          <div className="cs-tb-meta" data-testid="template-lineage">
+                            remixed from {t.forkedFrom.name ?? "a template"}
+                            {t.forkedFrom.author ? ` by ${t.forkedFrom.author}` : ""}
+                          </div>
+                        )}
+
+                        <div className="cs-tb-actions">
+                          {tab === "mine" && (
+                            <select
+                              className="cs-input"
+                              value={t.visibility}
+                              onChange={(e) => void handleVisibility(t.id, e.target.value as TemplateVisibility)}
+                              title="Who can see this template"
+                              data-testid="template-row-visibility"
+                            >
+                              {VISIBILITIES.map((v) => (
+                                <option key={v} value={v}>
+                                  {VISIBILITY_LABELS[v]}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {tab === "mine" && (
+                            <button
+                              className="cs-tb-btn-ghost"
+                              title="Replace this template's layout with the design you're editing"
+                              onClick={() => {
+                                setEditing(t);
+                                setShowSaveModal(true);
+                              }}
+                            >
+                              Update
+                            </button>
+                          )}
+
+                          {tab === "browse" && user && t.author.id !== user.id && (
+                            <button
+                              className="cs-tb-icon-ghost"
+                              title="Report this template"
+                              data-testid="template-report"
+                              onClick={() => setReportingTemplate(t)}
+                            >
+                              <Flag size={13} />
+                            </button>
+                          )}
+
+                          {tab !== "mine" && user && (
+                            <button
+                              className="cs-tb-btn-ghost"
+                              onClick={() => void handleFork(t)}
+                              disabled={busyId === t.id}
+                              data-testid="template-remix"
+                              title="Make your own editable copy of this layout, credited to its author"
+                            >
+                              <GitFork size={14} /> Remix
+                            </button>
+                          )}
+
+                          <div style={{ flex: 1 }} />
+
+                          <button className="cs-tb-btn-primary" onClick={() => void handleUse(t)} disabled={busyId === t.id} data-testid="template-use">
+                            {busyId === t.id ? <Loader2 size={14} className="cs-spin" /> : <LayoutTemplate size={14} />} Use
                           </button>
-                        ) : (
-                          (t.author.name ?? "a community member")
-                        )}{" "}
-                        · used {t.usageCount}×{t.version > 1 ? ` · v${t.version}` : ""}
-                        {t.forkCount > 0 && ` · remixed ${t.forkCount}×`}
-                        {t.tags.length > 0 && ` · ${t.tags.join(", ")}`}
-                      </div>
-                      {/* A remix has two people to credit, and the second one
-                      is the one a viewer can't otherwise work out. Shown
-                      on the same footing as the author line above, for
-                      the same reason. */}
-                      {t.forkedFrom && (
-                        <div style={{ fontSize: 11, color: "var(--cs-text-muted)", marginTop: 2 }} data-testid="template-lineage">
-                          remixed from {t.forkedFrom.name ?? "a template"}
-                          {t.forkedFrom.author ? ` by ${t.forkedFrom.author}` : ""}
+
+                          {tab === "mine" && (
+                            <button className="cs-tb-icon-ghost" title="Delete" onClick={(e) => void handleDelete(t, e)} data-testid="template-delete">
+                              <Trash2 size={13} />
+                            </button>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
-
-                    {tab === "mine" && (
-                      <>
-                        <select
-                          className="cs-input"
-                          value={t.visibility}
-                          onChange={(e) => void handleVisibility(t.id, e.target.value as TemplateVisibility)}
-                          style={{ width: 110 }}
-                          title="Who can see this template"
-                          data-testid="template-row-visibility"
-                        >
-                          {VISIBILITIES.map((v) => (
-                            <option key={v} value={v}>
-                              {VISIBILITY_LABELS[v]}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          className="cs-btn"
-                          title="Replace this template's layout with the design you're editing"
-                          onClick={() => {
-                            setEditing(t);
-                            setShowSaveModal(true);
-                          }}
-                        >
-                          Update
-                        </button>
-                      </>
-                    )}
-
-                    <ReactionButton
-                      type="template"
-                      id={t.id}
-                      count={t.reactionCount}
-                      reacted={t.reacted}
-                      onChange={(r) =>
-                        setTemplates((list) => list.map((x) => (x.id === t.id ? { ...x, reactionCount: r.reaction_count, reacted: r.reacted } : x)))
-                      }
-                    />
-
-                    {tab === "browse" && user && t.author.id !== user.id && (
-                      <button className="cs-icon-btn" title="Report this template" data-testid="template-report" onClick={() => setReportingTemplate(t)}>
-                        <Flag size={13} />
-                      </button>
-                    )}
-
-                    {tab !== "mine" && user && (
-                      <button
-                        className="cs-btn"
-                        onClick={() => void handleFork(t)}
-                        disabled={busyId === t.id}
-                        data-testid="template-remix"
-                        title="Make your own editable copy of this layout, credited to its author"
-                      >
-                        <GitFork size={14} /> Remix
-                      </button>
-                    )}
-                    <button className="cs-btn" onClick={() => void handleUse(t)} disabled={busyId === t.id} data-testid="template-use">
-                      {busyId === t.id ? <Loader2 size={14} className="cs-spin" /> : <LayoutTemplate size={14} />} Use
-                    </button>
-
-                    {tab === "mine" && (
-                      <button className="cs-icon-btn" title="Delete" onClick={(e) => void handleDelete(t, e)} data-testid="template-delete">
-                        <Trash2 size={13} />
-                      </button>
-                    )}
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
-          </>
+          </div>
         ),
       })}
 
