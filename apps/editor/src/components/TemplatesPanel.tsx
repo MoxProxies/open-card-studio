@@ -193,10 +193,10 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
               <div style={{ display: "flex", gap: 8, width: "100%" }}>
                 <div style={{ position: "relative", flex: 1 }}>
                   <Search
-                    size={14}
+                    size={16}
                     style={{
                       position: "absolute",
-                      left: 8,
+                      left: 12,
                       top: "50%",
                       transform: "translateY(-50%)",
                       color: "var(--cs-text-muted)",
@@ -207,11 +207,11 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
                     placeholder="Search community templates…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    style={{ width: "100%", paddingLeft: 28 }}
+                    style={{ width: "100%", paddingLeft: 36 }}
                     data-testid="template-search"
                   />
                 </div>
-                <select className="cs-input" value={sort} onChange={(e) => setSort(e.target.value as "recent" | "popular")} style={{ width: 130 }}>
+                <select className="cs-input" value={sort} onChange={(e) => setSort(e.target.value as "recent" | "popular")} style={{ width: 150 }}>
                   <option value="recent">Newest</option>
                   <option value="popular">Most used</option>
                 </select>
