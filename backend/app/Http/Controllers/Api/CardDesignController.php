@@ -52,10 +52,7 @@ class CardDesignController extends OwnedContentController
 
         CardDesign::abortIfOwnedByAnotherUser($request, $id, 'design');
 
-        $cardDesign = CardDesign::updateOrCreate(
-            ['id' => $id, 'user_id' => $request->user()->id],
-            $data,
-        );
+        $cardDesign = CardDesign::updateOrCreateOwned($request, $id, $data, 'design');
 
         return response()->json($cardDesign);
     }

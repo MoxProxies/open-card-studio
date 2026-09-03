@@ -162,9 +162,11 @@ class TemplateController extends OwnedContentController
             $data['version'] = $existing->version + 1;
         }
 
-        $template = Template::updateOrCreate(
-            ['id' => $id, 'user_id' => $request->user()->id],
+        $template = Template::updateOrCreateOwned(
+            $request,
+            $id,
             $data + ['tags' => $existing?->tags ?? []],
+            'template',
         );
 
         // refresh() so a freshly-created row reports the columns the

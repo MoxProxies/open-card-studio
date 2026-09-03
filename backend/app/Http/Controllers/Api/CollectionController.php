@@ -64,7 +64,7 @@ class CollectionController extends OwnedContentController
 
         $existing = Collection::abortIfOwnedByAnotherUser($request, $id, 'collection');
 
-        $collection = Collection::updateOrCreate(['id' => $id, 'user_id' => $request->user()->id], $data);
+        $collection = Collection::updateOrCreateOwned($request, $id, $data, 'collection');
 
         return response()->json(
             $collection->refresh()->load(['user:id,name,username', 'cardDesigns'])->toDetail(true),

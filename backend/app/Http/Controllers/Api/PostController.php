@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Post;
+use App\Support\DuplicateKey;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The community knowledge base. publish() and destroy() come from
@@ -109,12 +112,83 @@ class PostController extends OwnedContentController
             $data['tags'] = array_values(array_unique(array_filter(array_map(fn ($t) => mb_strtolower(trim((string) $t)), $data['tags']))));
         }
 
-        $post = Post::updateOrCreate(
-            ['id' => $id, 'user_id' => $request->user()->id],
-            $data + ['tags' => $existing?->tags ?? []],
-        );
+        $post = $this->upsertPost($request, $id, $data + ['tags' => $existing?->tags ?? []], $existing, $data['title']);
 
         return response()->json($post->refresh()->load('user:id,name,username')->toDetail(), $existing ? 200 : 201);
+    }
+
+    /**
+     * The actual write behind upsert() above, guarded against two
+     * different races that both surface as the same unique-index
+     * collision on this one updateOrCreate() call:
+     *
+     *  - **The id.** abortIfOwnedByAnotherUser()'s existence check and
+     *    this write aren't atomic, so two truly-simultaneous PUTs with
+     *    the same client-generated id (a double-submit, a retried
+     *    request) can both pass it and then both try to INSERT the same
+     *    primary key — same race as OwnedByUser::updateOrCreateOwned()
+     *    guards for Collection/Template/CardDesign. Post can't just use
+     *    that helper, though: unlike those, a *new* post's write can also
+     *    collide on...
+     *  - **The slug.** Post::uniqueSlug()'s existence check has the exact
+     *    same non-atomic shape, so two new posts whose titles slugify to
+     *    the same value can both compute it as free and then both try to
+     *    insert it — a different unique index on the same table, needing
+     *    a different recovery (pick another slug, not treat it as an id
+     *    collision).
+     *
+     * Which one it was has to be told apart from the exception message,
+     * the same way saveWithUniqueUsername() tells a username collision
+     * from any other. A slug collision only happens on the create path
+     * ($existing === null); on an update, this can only be the id.
+     */
+    private function upsertPost(Request $request, string $id, array $data, ?Post $existing, string $title, int $maxAttempts = 5): Post
+    {
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                return Post::updateOrCreate(['id' => $id, 'user_id' => $request->user()->id], $data);
+            } catch (QueryException $e) {
+                if (! DuplicateKey::matches($e)) {
+                    throw $e;
+                }
+
+                // DuplicateKey::reason() strips the query Laravel appends
+                // to the message — the INSERT this came from always names
+                // every column including "slug", so checking the raw
+                // message would treat *any* collision on this table (e.g.
+                // the id, below) as a slug collision just because that
+                // column happened to be part of the same INSERT.
+                if (! $existing && str_contains(DuplicateKey::reason($e), 'slug')) {
+                    $data['slug'] = Post::uniqueSlug($title);
+
+                    continue;
+                }
+
+                // Not a slug collision, so it has to be the id: the
+                // database is what actually knows which request landed
+                // first, so the loser retries as the UPDATE it should
+                // have been all along, rather than surfacing the raw
+                // collision as a 500.
+                $row = Post::find($id);
+
+                abort_if(! $row || $row->user_id !== $request->user()->id, 409, 'That post id belongs to another account.');
+
+                // The winner's row already has its own slug, generated
+                // from *its* create — this is an update now, and
+                // Post::uniqueSlug()'s doc comment is explicit that a
+                // slug is generated once and never changed afterwards.
+                // $data may still be carrying the slug this request
+                // computed for the create it lost, which must not
+                // overwrite it.
+                unset($data['slug']);
+
+                $row->update($data);
+
+                return $row;
+            }
+        }
+
+        throw ValidationException::withMessages(['title' => ['Could not find a free URL for this post. Try again.']]);
     }
 
     /** Your own posts, every visibility. */

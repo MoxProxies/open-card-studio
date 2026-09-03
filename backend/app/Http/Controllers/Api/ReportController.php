@@ -60,6 +60,12 @@ class ReportController extends Controller
 
         // updateOrCreate against the unique index: re-reporting the same
         // thing edits your existing report instead of stacking duplicates.
+        // Two reports for the same (type, id, reporter) landing at once is
+        // already race-safe *without* a manual guard here: updateOrCreate()
+        // goes through Eloquent's firstOrCreate()/createOrFirst(), which
+        // itself catches a duplicate-key collision on the exact attributes
+        // it searched on and re-queries by them — see this class's sibling
+        // fixes' commit message for how that was verified.
         $report = Report::updateOrCreate(
             ['reportable_type' => $model, 'reportable_id' => $data['id'], 'reporter_id' => $request->user()->id],
             ['reason' => $data['reason'], 'details' => $data['details'] ?? null],
