@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Upload;
+use App\Support\DuplicateKey;
 use App\Support\ImageIngest;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -88,6 +90,25 @@ class UploadController extends Controller
 
         try {
             $upload->save();
+        } catch (QueryException $e) {
+            Storage::disk('local')->delete($path);
+
+            // The existence check above and this save() aren't atomic, so
+            // uploading the same file twice at once (a double-submit, a
+            // retried request) can send two of these in before either row
+            // lands — both pass the read as "no upload with this checksum
+            // yet". The unique (user_id, checksum) index is the real
+            // guard; losing that race means the other request's upload is
+            // what's there now, so this one serves that row instead of
+            // surfacing the collision as a 500. The bytes this request
+            // just wrote are a byte-for-byte duplicate of what's already
+            // stored (same checksum), so discarding them rather than
+            // keeping a second copy costs nothing.
+            if (DuplicateKey::matches($e) && $winner = $user->uploads()->where('checksum', $checksum)->first()) {
+                return response()->json($winner, 200);
+            }
+
+            throw $e;
         } catch (\Throwable $e) {
             Storage::disk('local')->delete($path);
 

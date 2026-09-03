@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Appeal;
 use App\Models\User;
+use App\Support\DuplicateKey;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 /**
@@ -58,7 +60,22 @@ class AppealController extends Controller
             'Your appeal is already with us. You will hear back on this account.',
         );
 
-        $appeal = Appeal::create(['user_id' => $user->id, 'message' => $data['message']]);
+        try {
+            $appeal = Appeal::create(['user_id' => $user->id, 'message' => $data['message']]);
+        } catch (QueryException $e) {
+            // The exists() check above and this create() aren't atomic,
+            // so filing from two tabs at once (or a retried request) can
+            // send two of these in before either row lands — both pass
+            // the read as "no open appeal yet". The partial unique index
+            // (see its migration) is the real guard; losing that race
+            // means an open appeal already exists, exactly what the check
+            // above would have reported had it run a moment later.
+            if (! DuplicateKey::matches($e)) {
+                throw $e;
+            }
+
+            abort(422, 'Your appeal is already with us. You will hear back on this account.');
+        }
 
         // refresh() so `state` is in the response: it's a database
         // default, and a just-created model doesn't carry one. Without

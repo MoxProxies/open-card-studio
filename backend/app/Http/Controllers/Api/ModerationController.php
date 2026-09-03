@@ -14,8 +14,10 @@ use App\Models\Report;
 use App\Models\Template;
 use App\Models\Upload;
 use App\Models\User;
+use App\Support\DuplicateKey;
 use App\Support\Notifier;
 use App\Support\PointsLedger;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -258,7 +260,21 @@ class ModerationController extends Controller
         abort_if($badge->rule !== null, 422, "“{$badge->name}” is earned automatically and can't be granted by hand.");
 
         if ($data['granted']) {
-            $user->badges()->syncWithoutDetaching([$badge->id => ['awarded_by' => $request->user()->id]]);
+            try {
+                $user->badges()->syncWithoutDetaching([$badge->id => ['awarded_by' => $request->user()->id]]);
+            } catch (QueryException $e) {
+                // Same race BadgeRules::evaluate() guards against: two
+                // grants for the same (badge, user) landing at once — here,
+                // a staff double-click, or a rule-based grant firing in
+                // the same instant this one is being hand-granted — can
+                // both pass a read of the held badges and both try to
+                // attach. Losing that race just means the badge is
+                // already attached, which is the desired end state either
+                // way, not a 500.
+                if (! DuplicateKey::matches($e)) {
+                    throw $e;
+                }
+            }
         } else {
             $user->badges()->detach($badge->id);
         }

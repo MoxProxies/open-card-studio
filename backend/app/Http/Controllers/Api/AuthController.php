@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\DeviceName;
+use App\Support\DuplicateKey;
 use App\Support\SocialProviders;
 use App\Support\TwoFactor;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -48,7 +50,22 @@ class AuthController extends Controller
             'username' => ['sometimes', 'string', ...ProfileController::USERNAME_RULES, 'unique:users,username', Rule::notIn(ProfileController::RESERVED_USERNAMES)],
         ]);
 
-        $user = static::createWithUniqueUsername($data);
+        try {
+            $user = static::createWithUniqueUsername($data);
+        } catch (QueryException $e) {
+            // The 'unique:users,email' rule above and the eventual INSERT
+            // aren't atomic, so two registrations for the same address at
+            // the same instant can both pass validation before either row
+            // commits. The unique index on email is the real guard; losing
+            // that race means the address really is taken now, which is
+            // exactly what the validation rule would have said had it run
+            // a moment later — so it's reported the same way, not as a 500.
+            if (! DuplicateKey::matches($e)) {
+                throw $e;
+            }
+
+            throw ValidationException::withMessages(['email' => ['The email has already been taken.']]);
+        }
 
         // Best-effort — see EmailController::dispatchVerification for why
         // a mail outage must not fail the registration.
@@ -323,7 +340,14 @@ class AuthController extends Controller
 
                 return $user;
             } catch (UniqueConstraintViolationException $e) {
-                if (! str_contains($e->getMessage(), 'username')) {
+                // DuplicateKey::reason() strips the query Laravel appends
+                // to the message — the INSERT this came from always names
+                // every column including "username", so checking the raw
+                // message would treat *any* collision on this table (e.g.
+                // email, in register()'s case) as a username collision
+                // just because that column happened to be part of the
+                // same INSERT.
+                if (! str_contains(DuplicateKey::reason($e), 'username')) {
                     throw $e;
                 }
 

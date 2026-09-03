@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\BadgeRules;
+use App\Support\DuplicateKey;
 use App\Support\Levels;
 use App\Support\PointsLedger;
 use App\Support\Reactable;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Public profiles, and the endpoint an account edits its own with.
@@ -118,7 +121,20 @@ class ProfileController extends Controller
             'username.regex' => 'A username can use lowercase letters, numbers, dashes and underscores, and must start and end with a letter or number.',
         ]);
 
-        $user->update($data);
+        try {
+            $user->update($data);
+        } catch (QueryException $e) {
+            // The Rule::unique() check above and this update() aren't
+            // atomic, so changing to a handle someone else grabs in the
+            // same instant can pass validation and still hit the unique
+            // index on the write. Reported the same way the validation
+            // rule would have, had it run a moment later — not a 500.
+            if (! DuplicateKey::matches($e)) {
+                throw $e;
+            }
+
+            throw ValidationException::withMessages(['username' => ['That username was just taken. Try another.']]);
+        }
 
         return response()->json($user->makeVisible('email'));
     }

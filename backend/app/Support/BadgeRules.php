@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Badge;
 use App\Models\Reaction;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 
 /**
  * The rule-based half of badges: a map of `badges.rule` value → a check
@@ -51,14 +52,32 @@ class BadgeRules
             // A badge row naming a rule this class doesn't implement is
             // skipped rather than fatal — a badge can be seeded ahead of
             // the code that grants it.
-            if ($rule && $rule($user)) {
-                $user->badges()->syncWithoutDetaching([$badge->id => []]);
-                $awarded[] = $badge->id;
-
-                // Earning something you're never told about is the same
-                // as not earning it. No actor: the system did this.
-                Notifier::notify($user, 'badge', null, $badge, ['badge' => $badge->name], "badge:{$badge->id}:{$user->id}");
+            if (! $rule || ! $rule($user)) {
+                continue;
             }
+
+            try {
+                $user->badges()->syncWithoutDetaching([$badge->id => []]);
+            } catch (QueryException $e) {
+                // The $held read above and this attach aren't atomic, so
+                // two evaluate() calls for the same user landing at the
+                // same instant (a reaction and a publish, say) can both
+                // see the badge as not-yet-held and both try to attach
+                // it. The unique (badge_id, user_id) index is the real
+                // guard; losing that race just means the badge is already
+                // attached, which is the desired end state either way.
+                if (! DuplicateKey::matches($e)) {
+                    throw $e;
+                }
+
+                continue;
+            }
+
+            $awarded[] = $badge->id;
+
+            // Earning something you're never told about is the same
+            // as not earning it. No actor: the system did this.
+            Notifier::notify($user, 'badge', null, $badge, ['badge' => $badge->name], "badge:{$badge->id}:{$user->id}");
         }
 
         return $awarded;

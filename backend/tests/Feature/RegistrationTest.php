@@ -55,6 +55,48 @@ class RegistrationTest extends TestCase
         $this->assertDatabaseCount('users', 0);
     }
 
+    /**
+     * The email counterpart to the username race below: two registrations
+     * for the same address landing at the same instant. Unlike the
+     * username race, there's nothing to retry onto — the email really is
+     * taken now — so this just has to fail cleanly instead of 500ing.
+     */
+    public function test_registering_an_email_that_loses_the_race_fails_cleanly_instead_of_500ing(): void
+    {
+        $raced = false;
+
+        // Fires inside this request's own User::create() call — after
+        // 'unique:users,email' validation already passed the address as
+        // free, but before that row exists. Creating it here reproduces
+        // exactly what a second, concurrent registration for the same
+        // address would do.
+        User::creating(function (User $user) use (&$raced) {
+            if ($raced || $user->email !== 'photo-finish@example.com') {
+                return;
+            }
+
+            $raced = true;
+            User::create([
+                'name' => 'Other Runner',
+                'email' => 'photo-finish@example.com',
+                'username' => 'other-photo-finish',
+                'password' => 'password123',
+            ]);
+        });
+
+        // Without the fix this 500s: AuthController::saveWithUniqueUsername()
+        // only retries past a *username* collision and rethrows anything
+        // else, so the email race blows straight through it.
+        $this->postJson('/api/auth/register', [
+            'name' => 'Photo Finish',
+            'email' => 'photo-finish@example.com',
+            'password' => 'password123',
+        ])->assertStatus(422)->assertJsonValidationErrors('email');
+
+        $this->assertTrue($raced);
+        $this->assertDatabaseCount('users', 1);
+    }
+
     public function test_a_requested_username_that_loses_the_race_fails_cleanly_instead_of_500ing(): void
     {
         $hijacked = false;

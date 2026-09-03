@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -161,6 +162,66 @@ class UploadTest extends TestCase
 
         $this->assertDatabaseCount('uploads', 0);
         $this->assertEmpty(Storage::disk('local')->allFiles('uploads'));
+    }
+
+    /**
+     * The race PointsLedger/Notifier/Reaction already guard against,
+     * hitting the checksum de-dupe: the existence check in store() and
+     * $upload->save() aren't atomic, so uploading the same file twice at
+     * once (a double-submit) can send two saves in before either row
+     * lands. Reproduced the same way those do — at the exact gap, via a
+     * model event.
+     */
+    public function test_a_double_submit_of_the_same_file_that_loses_the_race_serves_the_winners_row_not_a_500(): void
+    {
+        $user = $this->account();
+        $file = $this->png();
+
+        $raced = false;
+        $winnerId = null;
+
+        // Fires inside this request's own $upload->save() call — after
+        // the existence check already found no upload with this checksum,
+        // but before this request's own row lands. Creating it here
+        // reproduces exactly what a second, concurrent upload of the same
+        // file would do. The checksum isn't known ahead of time (it's of
+        // the *re-encoded* bytes ImageIngest produces, not the raw
+        // upload), so this reads it off the very row it's about to race
+        // rather than precomputing it.
+        Upload::creating(function (Upload $upload) use (&$raced, &$winnerId, $user) {
+            if ($raced) {
+                return;
+            }
+
+            $raced = true;
+            $winner = new Upload;
+            $winner->id = (string) Str::uuid();
+            $winner->user_id = $user->id;
+            $winner->kind = Upload::ART;
+            $winner->mime = $upload->mime;
+            $winner->bytes = $upload->bytes;
+            $winner->width = $upload->width;
+            $winner->height = $upload->height;
+            $winner->checksum = $upload->checksum;
+            // A real concurrent request would have written its own bytes
+            // to disk too — the losing request's own file is what gets
+            // cleaned up below, not this one.
+            Storage::disk('local')->put($winner->path(), 'winner bytes');
+            $winner->save();
+            $winnerId = $winner->id;
+        });
+
+        // Without the fix this 500s: $upload->save()'s own read-then-write
+        // hits the unique (user_id, checksum) index directly, unguarded.
+        $body = $this->actingAs($user)->postJson('/api/uploads', ['file' => $file])->assertOk()->json();
+
+        $this->assertTrue($raced);
+        $this->assertSame($winnerId, $body['id']);
+        $this->assertDatabaseCount('uploads', 1);
+        // The bytes this losing request wrote to disk are a duplicate of
+        // what the winner already stored — discarded, not left orphaned,
+        // so only the winner's file remains.
+        $this->assertCount(1, Storage::disk('local')->allFiles('uploads'));
     }
 
     public function test_one_account_cannot_read_anothers_upload_listing(): void

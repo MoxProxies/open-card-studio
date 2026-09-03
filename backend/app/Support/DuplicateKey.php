@@ -21,4 +21,21 @@ class DuplicateKey
             || str_contains($e->getMessage(), 'Duplicate entry')
             || $e->getCode() === '23000';
     }
+
+    /**
+     * Just the driver's own error text, with the query Laravel appends
+     * after it (`(Connection: ..., SQL: ...)`) stripped off. Needed
+     * whenever code has to tell *which* column or index a collision hit
+     * by checking the message for a column name: the appended SQL names
+     * every column in the statement, not just the one that actually
+     * violated a constraint, so matching against the full message risks
+     * a false positive on any other column that happens to share the
+     * INSERT (see AuthController::saveWithUniqueUsername and
+     * PostController::upsertPost, both of which register a race against
+     * one column while writing others that could equally be named there).
+     */
+    public static function reason(QueryException $e): string
+    {
+        return strstr($e->getMessage(), ' (Connection:', true) ?: $e->getMessage();
+    }
 }
