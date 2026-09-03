@@ -214,3 +214,259 @@
     min-height: 0;
   }
 }
+
+/* ---------------------------------------------------------------------
+ * Template browser (Phase 1 gallery — see docs/PRODUCT_VISION.md and
+ * TemplatesPanel.tsx). A card-forward look deliberately different from
+ * the rest of the app's parchment/ink chrome: a warm off-white page with
+ * true-white cards lifted off it by a soft shadow instead of a border,
+ * pill-shaped buttons and chips, and a near-black primary action.
+ *
+ * All of it lives under its own --tb-* custom properties on `.cs-tb`
+ * rather than touching --cs-* — `.cs-btn`/`.cs-icon-btn`/`.cs-input` are
+ * shared by every other modal and panel in the app, and this pass is
+ * scoped to one view. Extending the look to another view later means
+ * reusing these tokens there, not widening what --cs-* means everywhere.
+ * ------------------------------------------------------------------- */
+.cs-tb {
+  --tb-page-bg: #f6f4ef;
+  --tb-card-bg: #ffffff;
+  --tb-card-shadow: 0 1px 2px rgba(35, 29, 20, 0.06), 0 10px 24px rgba(35, 29, 20, 0.08);
+  --tb-card-shadow-hover: 0 2px 6px rgba(35, 29, 20, 0.08), 0 16px 32px rgba(35, 29, 20, 0.12);
+  --tb-radius-card: 18px;
+  --tb-radius-pill: 999px;
+  --tb-ink: #211c14;
+  --tb-ink-soft: #3a3327;
+  --tb-muted: #8a8378;
+  --tb-chip-border: #e2ddd2;
+}
+
+.cs-tb-body {
+  background: var(--tb-page-bg);
+}
+
+/* Slightly softer corners on the shared input inside this view, so the
+   search/sort row reads as part of the same rounded family as the pills
+   and cards around it — the input itself stays --cs-* styled otherwise. */
+.cs-tb .cs-input {
+  border-radius: 10px;
+}
+
+.cs-tb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--tb-chip-border);
+  border-radius: var(--tb-radius-pill);
+  background: var(--tb-card-bg);
+  color: var(--tb-ink-soft);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.cs-tb-chip:hover:not(:disabled) {
+  border-color: var(--tb-ink);
+}
+.cs-tb-chip.cs-active {
+  background: var(--tb-ink);
+  border-color: var(--tb-ink);
+  color: #fff;
+}
+.cs-tb-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cs-tb-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--tb-ink);
+  border-radius: var(--tb-radius-pill);
+  background: var(--tb-ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease, opacity 120ms ease;
+}
+.cs-tb-btn-primary:hover:not(:disabled) {
+  background: var(--tb-ink-soft);
+  border-color: var(--tb-ink-soft);
+}
+.cs-tb-btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cs-tb-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--tb-chip-border);
+  border-radius: var(--tb-radius-pill);
+  background: var(--tb-card-bg);
+  color: var(--tb-ink-soft);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.cs-tb-btn-ghost:hover:not(:disabled) {
+  border-color: var(--tb-ink);
+  color: var(--tb-ink);
+}
+.cs-tb-btn-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cs-tb-icon-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 1px solid var(--tb-chip-border);
+  border-radius: 50%;
+  background: var(--tb-card-bg);
+  color: var(--tb-muted);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.cs-tb-icon-ghost:hover:not(:disabled) {
+  color: var(--tb-ink);
+  border-color: var(--tb-ink);
+}
+.cs-tb-icon-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cs-tb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.cs-tb-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--tb-card-bg);
+  border-radius: var(--tb-radius-card);
+  box-shadow: var(--tb-card-shadow);
+  overflow: hidden;
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+.cs-tb-card:hover {
+  box-shadow: var(--tb-card-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.cs-tb-thumb {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
+  flex: none;
+}
+
+/* Gradient placeholders standing in for a real thumbnail image — templates
+   don't carry one yet (see api/templates.ts's TemplateSummary), so each
+   card gets a deterministic tint cycled by its position in the list
+   instead of a flat, identical block. */
+.cs-tb-thumb-0 { background: linear-gradient(135deg, #ddceae, #ab8457); }
+.cs-tb-thumb-1 { background: linear-gradient(135deg, #bdccc2, #5c7f74); }
+.cs-tb-thumb-2 { background: linear-gradient(135deg, #cdb8d8, #7c5d95); }
+.cs-tb-thumb-3 { background: linear-gradient(135deg, #e6b8a9, #a85b4a); }
+.cs-tb-thumb-4 { background: linear-gradient(135deg, #b9c8e2, #4f6690); }
+
+/* The one circular overlay button this card gets — the like/reaction
+   action, the only per-card affordance that fits "favorite" here. Reuses
+   ReactionButton as-is (shared across designs/collections/posts too) and
+   reskins it only inside this position, rather than forking the
+   component or touching its shared .cs-icon-btn rule. */
+.cs-tb-thumb-fav {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+.cs-tb-thumb-fav .cs-icon-btn {
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: var(--tb-radius-pill);
+  box-shadow: 0 1px 4px rgba(35, 29, 20, 0.25);
+  color: var(--tb-ink-soft);
+}
+.cs-tb-thumb-fav .cs-icon-btn:hover:not(:disabled) {
+  background: #fff;
+  color: var(--tb-ink);
+}
+.cs-tb-thumb-fav .cs-icon-btn.cs-active {
+  background: #fff;
+  color: #b23a3a;
+}
+
+.cs-tb-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px 14px;
+  flex: 1;
+}
+
+.cs-tb-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--tb-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs-tb-meta {
+  font-size: 12px;
+  color: var(--tb-muted);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs-tb-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.cs-tb-actions .cs-input {
+  width: auto;
+  flex: none;
+}
+
+@media (pointer: coarse) {
+  .cs-tb .cs-tb-chip,
+  .cs-tb .cs-tb-btn-primary,
+  .cs-tb .cs-tb-btn-ghost {
+    min-height: 44px;
+    padding: 8px 16px;
+  }
+
+  .cs-tb .cs-tb-icon-ghost,
+  .cs-tb .cs-tb-thumb-fav .cs-icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
