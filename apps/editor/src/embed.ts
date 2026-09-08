@@ -16,6 +16,7 @@ import styles from "./styles.css?inline";
 import fontFaces from "./fonts.generated.css?inline";
 import { preloadEmbeddedFonts } from "./loadEmbeddedFonts";
 import { setAssetBase } from "./assetBase";
+import { randomUUID } from "./uuid";
 
 // frameAssets.ts/rarityAssets.ts/symbolAssets.ts build their URLs
 // ("/frames/...", "/rarity/...", "/symbols/...") assuming this app is
@@ -208,7 +209,7 @@ export class CardStudioEditorElement extends HTMLElement {
         console.error("[card-studio] invalid initial-design attribute, starting blank.", err);
       }
     }
-    return createEmptyDesign(crypto.randomUUID(), STANDARD_CARD_SIZE_MM);
+    return createEmptyDesign(randomUUID(), STANDARD_CARD_SIZE_MM);
   }
 
   #readInitialEntitlements(): Entitlements {

@@ -1,3 +1,5 @@
+import { randomUUID } from "./uuid";
+
 export interface AiArtResult {
   src?: string;
   error?: string;
@@ -30,7 +32,7 @@ const pending = new Map<string, PendingRequest>();
  * problem to bound or not, not this package's to guess a deadline for.
  */
 export function requestAiArt(target: EventTarget, prompt: string): Promise<string> {
-  const requestId = crypto.randomUUID();
+  const requestId = randomUUID();
   return new Promise<string>((resolve, reject) => {
     pending.set(requestId, { resolve, reject });
     target.dispatchEvent(

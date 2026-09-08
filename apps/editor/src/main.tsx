@@ -7,10 +7,11 @@ import { DEFAULT_ENTITLEMENTS } from "./entitlements";
 import "./styles.css";
 import "./fonts.generated.css";
 import { preloadEmbeddedFonts } from "./loadEmbeddedFonts";
+import { randomUUID } from "./uuid";
 
 preloadEmbeddedFonts();
 
-const design = createEmptyDesign(crypto.randomUUID(), STANDARD_CARD_SIZE_MM);
+const design = createEmptyDesign(randomUUID(), STANDARD_CARD_SIZE_MM);
 // Dev-only way to preview contentLocked behavior without wiring real auth
 // — the embed element (embed.ts) is the actual integration surface and
 // has its own can-edit-locked-content attribute/setEntitlements() method;

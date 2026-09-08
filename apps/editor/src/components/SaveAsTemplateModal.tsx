@@ -6,6 +6,7 @@ import { Modal } from "./Modal";
 import { saveTemplate, type TemplateSummary, type TemplateVisibility } from "../api/templates";
 import { summarizeTemplateLayers } from "../cardTemplates";
 import { VISIBILITIES, VISIBILITY_HELP, VISIBILITY_LABELS } from "../visibility";
+import { randomUUID } from "../uuid";
 
 interface SaveAsTemplateModalProps {
   design: Design;
@@ -48,7 +49,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
         // Re-saving keeps the same row; a new template gets its own id
         // here rather than reusing design.id, so the design and the
         // template it was published from stay separate records.
-        id: existing?.id ?? crypto.randomUUID(),
+        id: existing?.id ?? randomUUID(),
         name: name.trim(),
         description: description.trim(),
         tags: tags

@@ -5,6 +5,7 @@ import { savePost, POST_CATEGORIES, type PostDetail } from "../api/posts";
 import { VISIBILITIES, VISIBILITY_HELP, VISIBILITY_LABELS } from "../visibility";
 import { Markdown } from "../markdown";
 import { Modal } from "./Modal";
+import { randomUUID } from "../uuid";
 
 /**
  * Write or edit a guide. A dialog rather than a destination on purpose:
@@ -33,7 +34,7 @@ export function PostEditorModal({ existing, onSaved, onClose }: { existing?: Pos
     try {
       onSaved(
         await savePost({
-          id: existing?.id ?? crypto.randomUUID(),
+          id: existing?.id ?? randomUUID(),
           title: title.trim(),
           body,
           category,

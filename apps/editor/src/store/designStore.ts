@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { Design, Layer, LayerGroup } from "@card-studio/scene-schema";
 import { type Entitlements, DEFAULT_ENTITLEMENTS } from "../entitlements";
 import type { GeneratedCardFields } from "../generatedCardFields";
+import { randomUUID } from "../uuid";
 
 const HISTORY_LIMIT = 50;
 export const MIN_ZOOM = 0.1;
@@ -25,7 +26,7 @@ function applyPatches(design: Design, entries: Array<{ id: string; patch: Partia
 }
 
 function cloneLayerWithOffset(layer: Layer, offsetMm: number): Layer {
-  return { ...layer, id: crypto.randomUUID(), name: `${layer.name} copy`, x: layer.x + offsetMm, y: layer.y + offsetMm };
+  return { ...layer, id: randomUUID(), name: `${layer.name} copy`, x: layer.x + offsetMm, y: layer.y + offsetMm };
 }
 
 /** Where a newly added single layer goes in z-order: directly above (in
@@ -282,7 +283,7 @@ export function createDesignStore(
         let nextLayers = layers;
         const groups: LayerGroup[] = [...state.design.groups];
         for (const def of groupDefs ?? []) {
-          const groupId = crypto.randomUUID();
+          const groupId = randomUUID();
           const next = groupContiguous(nextLayers, def.layerIds, groupId);
           if (next === nextLayers) continue;
           nextLayers = next;
@@ -362,7 +363,7 @@ export function createDesignStore(
 
     groupLayers: (layerIds, name) =>
       set((state) => {
-        const groupId = crypto.randomUUID();
+        const groupId = randomUUID();
         const layers = groupContiguous(state.design.layers, layerIds, groupId);
         if (layers === state.design.layers) return state;
         return {
@@ -378,7 +379,7 @@ export function createDesignStore(
         let layers = [...state.design.layers, ...newLayers];
         const groups: LayerGroup[] = [...state.design.groups];
         for (const def of groupDefs) {
-          const groupId = crypto.randomUUID();
+          const groupId = randomUUID();
           const next = groupContiguous(layers, def.layerIds, groupId);
           if (next === layers) continue;
           layers = next;
