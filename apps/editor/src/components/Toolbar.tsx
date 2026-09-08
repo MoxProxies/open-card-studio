@@ -46,9 +46,10 @@ import { getFrameAsset } from "../frameAssets";
 import { useActiveFrameCategory } from "../hooks/useActiveFrameCategory";
 import { computeRulesFlavorPatch } from "../rulesFlavorFit";
 import type { GeneratedCardFields } from "../generatedCardFields";
+import { randomUUID } from "../uuid";
 
 function newId(): string {
-  return crypto.randomUUID();
+  return randomUUID();
 }
 
 const fmt = (mm: number) => Number(mm.toFixed(2)).toString();
@@ -827,7 +828,7 @@ export function Toolbar({
           onRename={renameDesign}
           onSave={() => designStorage.save(design)}
           onNew={() => {
-            loadDesign(createEmptyDesign(crypto.randomUUID(), STANDARD_CARD_SIZE_MM));
+            loadDesign(createEmptyDesign(randomUUID(), STANDARD_CARD_SIZE_MM));
             setShowDesignLibrary(false);
           }}
           onLoad={(loaded) => {

@@ -4,6 +4,7 @@ import { LibraryPanel } from "../../components/LibraryPanel";
 import { designStorage } from "../../designStorage";
 import { navigate } from "../navStore";
 import { Page } from "../Page";
+import { randomUUID } from "../../uuid";
 
 /** Saved designs and collections. */
 export function LibraryView() {
@@ -21,7 +22,7 @@ export function LibraryView() {
       design={design}
       onRename={renameDesign}
       onSave={() => designStorage.save(design)}
-      onNew={() => openInEditor(createEmptyDesign(crypto.randomUUID(), STANDARD_CARD_SIZE_MM))}
+      onNew={() => openInEditor(createEmptyDesign(randomUUID(), STANDARD_CARD_SIZE_MM))}
       onLoad={openInEditor}
     >
       {({ toolbar, body }) => (

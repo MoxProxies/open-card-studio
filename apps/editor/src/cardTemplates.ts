@@ -1,6 +1,7 @@
 import { Design } from "@card-studio/scene-schema";
 import type { Layer } from "@card-studio/scene-schema";
 import type { TemplateDetail } from "./api/templates";
+import { randomUUID } from "./uuid";
 
 /**
  * Community card templates — a whole saved *layout* published by a user
@@ -81,7 +82,7 @@ export function summarizeTemplateLayers(design: Design): TemplateLayerBreakdown 
 export function designFromTemplate(template: TemplateDetail, name?: string): Design {
   return Design.parse({
     ...template.design,
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     name: name?.trim() || template.name,
     // Template lineage (which template a design came from, forking/
     // remixing) is explicitly out of scope for Phase 1 — see

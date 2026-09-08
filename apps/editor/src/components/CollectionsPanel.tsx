@@ -15,6 +15,7 @@ import {
 import type { Visibility } from "../visibility";
 import { ListRow } from "./ListRow";
 import { VisibilitySelect } from "./VisibilitySelect";
+import { randomUUID } from "../uuid";
 
 interface CollectionsPanelProps {
   /** The design open in the editor — "add to collection" files this one. */
@@ -71,7 +72,7 @@ export function CollectionsPanel({ currentDesignId, currentDesignName, signedIn 
 
   const create = () =>
     run(async () => {
-      const created = await saveCollection({ id: crypto.randomUUID(), name: newName.trim() || "New collection" });
+      const created = await saveCollection({ id: randomUUID(), name: newName.trim() || "New collection" });
       setNewName("");
       setCollections((c) => [{ ...created }, ...c]);
       setOpen(created);
