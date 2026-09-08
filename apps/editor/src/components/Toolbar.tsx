@@ -680,27 +680,27 @@ export function Toolbar({
         ...(narrow ? { overflowX: "auto" as const, overflowY: "hidden" as const, flexWrap: "nowrap" as const, flex: "none" } : {}),
       }}
     >
-      <button className="cs-btn" onClick={() => setShowFrameLibrary(true)}>
-        <Frame size={16} /> Frame
+      <button className="cs-icon-btn" onClick={() => setShowFrameLibrary(true)} title="Frame">
+        <Frame size={16} />
       </button>
-      <button className="cs-btn" onClick={addText}>
-        <Type size={16} /> Text
+      <button className="cs-icon-btn" onClick={addText} title="Text">
+        <Type size={16} />
       </button>
       <TextTemplateMenu templates={textTemplates} onAdd={addTextField} onAddAll={addAllTextFields} />
-      <button className="cs-btn" onClick={addShape}>
-        <Shapes size={16} /> Shape
+      <button className="cs-icon-btn" onClick={addShape} title="Shape">
+        <Shapes size={16} />
       </button>
       {/* Signed in, this opens the art library — where uploading is one
           of the things you can do, and reusing something already there is
           the other. Signed out there's no library to open, so it stays a
           plain file picker. */}
       {getCurrentUser() ? (
-        <button className="cs-btn" onClick={() => setPickingArt(true)} data-testid="toolbar-image">
-          <ImageUp size={16} /> Image
+        <button className="cs-icon-btn" onClick={() => setPickingArt(true)} data-testid="toolbar-image" title="Image">
+          <ImageUp size={16} />
         </button>
       ) : (
-        <label className="cs-btn" style={{ cursor: "pointer" }} data-testid="toolbar-image">
-          <ImageUp size={16} /> Image
+        <label className="cs-icon-btn" style={{ cursor: "pointer" }} data-testid="toolbar-image" title="Image">
+          <ImageUp size={16} />
           <input
             type="file"
             accept="image/*"
@@ -721,8 +721,8 @@ export function Toolbar({
         disabled={rarityLocked}
         title={
           rarityLocked
-            ? "Content-locked by default — requires a premium account to change"
-            : "Rarity symbol — prefills its position from RARITY_SYMBOL_BOX in rarityConfig.ts"
+            ? "Content-locked by default: requires a premium account to change"
+            : "Rarity symbol: prefills its position from RARITY_SYMBOL_BOX in rarityConfig.ts"
         }
       >
         <option value="">Rarity…</option>
@@ -745,7 +745,7 @@ export function Toolbar({
         className="cs-btn"
         onClick={() => setShowAiArtModal(true)}
         disabled={!entitlements.canGenerateAiArt}
-        title={entitlements.canGenerateAiArt ? "Generate an illustration from a text prompt" : "Premium feature — upgrade for AI art generation"}
+        title={entitlements.canGenerateAiArt ? "Generate an illustration from a text prompt" : "Premium feature: upgrade for AI art generation"}
       >
         <Sparkles size={16} /> AI Art
       </button>
@@ -770,14 +770,14 @@ export function Toolbar({
       <button
         className={`cs-icon-btn${showSafeArea ? " cs-active" : ""}`}
         onClick={toggleSafeArea}
-        title="Toggle safe-area guide — nothing critical should sit outside it"
+        title="Toggle safe-area guide: nothing critical should sit outside it"
       >
         <Ruler size={16} />
       </button>
       <button
         className={`cs-icon-btn${!showBleed ? " cs-active" : ""}`}
         onClick={toggleBleed}
-        title={showBleed ? "Preview trimmed card — hides the bleed margin and rounds the corners" : "Show full bleed"}
+        title={showBleed ? "Preview trimmed card: hides the bleed margin and rounds the corners" : "Show full bleed"}
       >
         <Scissors size={16} />
       </button>
@@ -819,7 +819,7 @@ export function Toolbar({
       )}
       {!hideLocalDesignLibrary && <AccountButton onViewProfile={setViewingProfile} />}
       <button className="cs-btn" onClick={handleExport} title={`Export PNG at ${PRINT_DPI} DPI`}>
-        <Download size={16} /> Export ({PRINT_DPI} DPI)
+        <Download size={16} /> Export
       </button>
 
       {showDesignLibrary && (
