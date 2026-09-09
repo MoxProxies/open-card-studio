@@ -85,7 +85,11 @@ export async function signUp(page, name, email) {
   await page.getByPlaceholder("Email", { exact: true }).fill(email);
   await page.getByPlaceholder("Password", { exact: true }).fill("password123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await page.getByTestId("account-button").waitFor();
+  // Signing in lands on the Profile tab (AccountModal's onSignedIn), and
+  // its own-profile header is the "signed in" tell now that the account
+  // slot in the top bar is empty for a signed-in account (no more
+  // always-visible account-button — see AppShell.tsx/ProfilePanel.tsx).
+  await page.getByTestId("profile-edit-button").waitFor();
 }
 
 /**
@@ -120,8 +124,24 @@ export async function signIn(page, email, password) {
   await page.getByPlaceholder("Email", { exact: true }).fill(email);
   await page.getByPlaceholder("Password", { exact: true }).fill(password);
   await page.locator("form").getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByTestId("account-button").waitFor();
+  await page.getByTestId("profile-edit-button").waitFor();
 }
+
+/** Navigates to your own profile's Edit profile / Notifications /
+ * Settings subview — the replacements for the old ProfileModal (a form)
+ * and NotificationsModal (a feed), both real destinations now instead of
+ * dialogs. Goes through the Profile tab first: unlike the old
+ * account-button, these entry points only exist on the Profile page
+ * itself, not in the top bar (see ProfilePanel.tsx). */
+async function openOwnProfileSubview(page, button, pageTestId) {
+  await go(page, "profile");
+  await page.getByTestId(button).click();
+  await page.getByTestId(pageTestId).waitFor();
+}
+
+export const openEditProfile = (page) => openOwnProfileSubview(page, "profile-edit-button", "page-profile-edit");
+export const openNotifications = (page) => openOwnProfileSubview(page, "profile-notifications-button", "page-profile-notifications");
+export const openSettings = (page) => openOwnProfileSubview(page, "profile-settings-button", "page-profile-settings");
 
 // cache: "no-store" throughout — a suite re-reads the same URL after
 // changing it server-side, and a cached 200 makes a passing assertion out

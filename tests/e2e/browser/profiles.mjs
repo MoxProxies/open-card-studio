@@ -1,7 +1,7 @@
 // Phase 2 through the shell: profiles are a tab, and an author credit
 // navigates to one rather than stacking a dialog.
 import { chromium } from "playwright";
-import { reporter, openApp, go, signUp, fetchJson, me, addFrame, publishTemplate, API, SHOT_DIR } from "./helpers.mjs";
+import { reporter, openApp, go, signUp, openEditProfile, fetchJson, me, addFrame, publishTemplate, API, SHOT_DIR } from "./helpers.mjs";
 
 const stamp = Date.now();
 const HANDLE = `nib-${stamp}`;
@@ -16,7 +16,7 @@ try {
   console.log("== sign up, then edit the profile ==");
   await signUp(page, "Nib Penman", `nib${stamp}@example.com`);
   check("signing up lands on the profile tab", true, await page.getByTestId("page-profile").isVisible());
-  await page.getByTestId("account-button").click();
+  await openEditProfile(page);
   check("username was assigned at signup", "nib-penman", (await page.getByTestId("profile-username").inputValue()).replace(/-\d+$/, ""));
   await page.getByTestId("profile-username").fill(HANDLE);
   await page.getByTestId("profile-bio").fill("I draw borders for a living.");

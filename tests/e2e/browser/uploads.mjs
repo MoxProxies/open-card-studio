@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { reporter, openApp, go, signUp, signIn, fetchAs, saveDesignAs, SHOT_DIR } from "./helpers.mjs";
+import { reporter, openApp, go, signUp, signIn, openEditProfile, fetchAs, saveDesignAs, SHOT_DIR } from "./helpers.mjs";
 
 const stamp = Date.now();
 const EMAIL = `art${stamp}@example.com`;
@@ -95,7 +95,7 @@ try {
   check("and the file is gone from storage", 0, (await fetchAs(page, "/api/uploads")).uploads.length);
 
   console.log("== avatars upload too ==");
-  await page.getByTestId("account-button").click();
+  await openEditProfile(page);
   await page.locator("[data-testid='avatar-upload'] input[type=file]").setInputFiles(artwork);
   await page.waitForFunction(() => {
     const field = document.querySelector("[data-testid='profile-avatar']");

@@ -22,7 +22,7 @@ async function setLocks(index, { locked, contentLocked }) {
 try {
   console.log("== sign up ==");
   await signUp(page, "Eve Endtoend", `e2e${stamp}@example.com`);
-  check("signed in against the real backend", true, await page.getByTestId("account-button").isVisible());
+  check("signed in against the real backend", true, await page.getByTestId("profile-edit-button").isVisible());
 
   console.log("== build a layout: frame (chrome) + text (fill-in slot) ==");
   await addFrame(page);

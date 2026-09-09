@@ -39,9 +39,38 @@ function useDestinations(): Destination[] {
   return user?.is_staff ? [...DESTINATIONS, MODERATION] : DESTINATIONS;
 }
 
+/** A destination's icon, with the unread-notifications dot pinned to the
+ * Profile tab specifically. Notifications moved from a top-bar bell into
+ * the Profile page itself (see shell/views/NotificationsView.tsx and
+ * AppShell.tsx) — the top bar no longer shows a bell at all, but "new
+ * things happened" still needs to be visible without a click, so the one
+ * destination that leads there carries the signal instead. */
+function DestinationIcon({ destination, unread }: { destination: Destination; unread: number }) {
+  if (destination.tab !== "profile" || unread <= 0) return <>{destination.icon}</>;
+
+  return (
+    <span style={{ position: "relative", display: "flex" }}>
+      {destination.icon}
+      <span
+        data-testid="profile-tab-unread-badge"
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: -2,
+          right: -2,
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          background: "var(--cs-accent)",
+        }}
+      />
+    </span>
+  );
+}
+
 /** Phone: a fixed bottom bar. Thumbs reach the bottom of a phone, not the
  * top, which is why every mobile app puts primary navigation there. */
-export function BottomTabs() {
+export function BottomTabs({ unread = 0 }: { unread?: number }) {
   const route = useRoute();
   const destinations = useDestinations();
 
@@ -82,7 +111,7 @@ export function BottomTabs() {
               fontSize: 12,
             }}
           >
-            {d.icon}
+            <DestinationIcon destination={d} unread={unread} />
             {d.label}
           </button>
         );
@@ -93,7 +122,7 @@ export function BottomTabs() {
 
 /** Desktop: a normal website header — brand on the left, nav inline, the
  * account on the right. */
-export function TopNav({ account }: { account: ReactNode }) {
+export function TopNav({ account, unread = 0 }: { account: ReactNode; unread?: number }) {
   const route = useRoute();
   const destinations = useDestinations();
 
@@ -124,7 +153,7 @@ export function TopNav({ account }: { account: ReactNode }) {
             className={`cs-btn${active ? " cs-active" : ""}`}
             style={{ border: active ? undefined : "1px solid transparent", background: active ? undefined : "none" }}
           >
-            {d.icon}
+            <DestinationIcon destination={d} unread={unread} />
             {d.label}
           </button>
         );
