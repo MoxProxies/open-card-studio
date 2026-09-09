@@ -33,8 +33,8 @@ interface ModalProps {
 }
 
 /**
- * The one modal shell — backdrop, centered panel, title bar with an X,
- * Escape-to-close, click-outside-to-close, scrolling body, optional
+ * The one modal shell — backdrop, top-anchored panel, title bar with an
+ * X, Escape-to-close, click-outside-to-close, scrolling body, optional
  * sticky footer. Every dialog in the editor is built from this; before
  * it existed each one hand-rolled the same six things slightly
  * differently.
@@ -43,6 +43,16 @@ interface ModalProps {
  * reason, and also a real bug fix: Escape is a plain window listener, and
  * with focus left on whatever toolbar button opened the dialog, the first
  * press could land before the dialog's own handler saw it.
+ *
+ * The backdrop anchors the panel near the top rather than centering it
+ * vertically. A centered dialog's position is computed from the full
+ * viewport height; opening the on-screen keyboard on a phone shrinks the
+ * *visible* area without moving that computed center, so a form's later
+ * fields end up hidden behind the keyboard (this bit AccountModal's
+ * password field in practice). Anchored near the top, the fields someone
+ * reaches first stay clear of the keyboard as it rises, and the backdrop
+ * itself scrolls (`overflowY: auto`) so a tall dialog is still reachable
+ * if the padding plus panel height exceed a short viewport.
  */
 export function Modal({
   title,
@@ -96,8 +106,10 @@ export function Modal({
         inset: 0,
         background: "var(--cs-backdrop)",
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-start",
         justifyContent: "center",
+        overflowY: "auto",
+        padding: "max(24px, env(safe-area-inset-top, 0px)) 16px 24px",
         zIndex: stacked ? 1001 : 1000,
       }}
     >
@@ -122,6 +134,7 @@ export function Modal({
           flexDirection: "column",
           boxShadow: "0 20px 50px var(--cs-shadow)",
           outline: "none",
+          flex: "none",
         }}
       >
         <div
