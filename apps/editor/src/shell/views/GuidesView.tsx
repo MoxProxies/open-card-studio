@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { Search, Loader2, PenLine, MessageSquare, Users, FileText } from "lucide-react";
+import { Search, PenLine, MessageSquare, Users, FileText } from "lucide-react";
 import { apiErrorMessage } from "../../api/client";
 import { getCurrentUser, subscribe } from "../../api/auth";
 import { browsePosts, listMyPosts, POST_CATEGORIES, type PostSummary } from "../../api/posts";
 import { ListRow } from "../../components/ListRow";
+import { SkeletonListRows } from "../../components/Skeleton";
 import { ReactionButton } from "../../components/ReactionButton";
 import { PostEditorModal } from "../../components/PostEditorModal";
 import { PostReader } from "../../components/PostReader";
@@ -107,9 +108,7 @@ export function GuidesView() {
         {!canList ? (
           <p style={{ padding: "6px 8px", fontSize: 15, color: "var(--cs-text-muted)" }}>Sign in to see the guides you've written.</p>
         ) : loading ? (
-          <p style={{ padding: "6px 8px", fontSize: 15, color: "var(--cs-text-muted)", display: "flex", gap: 6, alignItems: "center" }}>
-            <Loader2 size={17} className="cs-spin" /> Loading…
-          </p>
+          <SkeletonListRows />
         ) : error ? (
           <p style={{ padding: "6px 8px", fontSize: 15, color: "var(--cs-danger)" }}>{error}</p>
         ) : posts.length === 0 ? (

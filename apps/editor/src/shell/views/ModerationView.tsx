@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, ShieldAlert, EyeOff, Eye, UserX, UserCheck, ScrollText, Check, X, MessageSquareWarning } from "lucide-react";
+import { ShieldAlert, EyeOff, Eye, UserX, UserCheck, ScrollText, Check, X, MessageSquareWarning } from "lucide-react";
 import { apiErrorMessage } from "../../api/client";
 import {
   loadAppealQueue,
@@ -15,6 +15,7 @@ import {
   type ReportState,
 } from "../../api/moderation";
 import { ListRow } from "../../components/ListRow";
+import { SkeletonListRows } from "../../components/Skeleton";
 import { navigate } from "../navStore";
 import { Page } from "../Page";
 
@@ -128,9 +129,7 @@ export function ModerationView() {
       {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, padding: "6px 8px" }}>{error}</p>}
 
       {loading ? (
-        <p style={{ padding: "6px 8px", fontSize: 15, color: "var(--cs-text-muted)", display: "flex", gap: 6, alignItems: "center" }}>
-          <Loader2 size={17} className="cs-spin" /> Loading…
-        </p>
+        <SkeletonListRows />
       ) : tab === "appeals" ? (
         appeals.length === 0 ? (
           <p style={{ padding: "6px 8px", fontSize: 15, color: "var(--cs-text-muted)" }} data-testid="appeals-empty">

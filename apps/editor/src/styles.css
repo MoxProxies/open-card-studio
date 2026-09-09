@@ -860,6 +860,26 @@
   }
 }
 
+/* Shared page-level skeleton primitive (components/Skeleton.tsx) — a
+   themed shimmering block any page composes into an avatar/line/card
+   shaped placeholder while its real content loads. Built from the same
+   --cs-surface-soft/--cs-border-strong tokens every other surface in
+   this stylesheet reads, so it already tracks whatever this palette
+   is set to rather than a hardcoded light- or dark-only value. */
+.cs-skeleton {
+  background: linear-gradient(90deg, var(--cs-surface-soft) 0%, var(--cs-border-strong) 50%, var(--cs-surface-soft) 100%);
+  background-size: 200% 100%;
+  animation: cs-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes cs-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 .cs-insp-state,
 .cs-insp-state-inline {
   display: flex;
