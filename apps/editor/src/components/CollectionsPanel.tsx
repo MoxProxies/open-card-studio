@@ -52,7 +52,7 @@ export function CollectionsPanel({ currentDesignId, currentDesignName, signedIn 
     setLoading(true);
     listMyCollections()
       .then(setCollections)
-      .catch((e: unknown) => setError(apiErrorMessage(e, "Couldn't load your collections — check your connection and try again.")))
+      .catch((e: unknown) => setError(apiErrorMessage(e, "Couldn't load your collections. Check your connection and try again.")))
       .finally(() => setLoading(false));
   }, [signedIn]);
 
@@ -100,7 +100,7 @@ export function CollectionsPanel({ currentDesignId, currentDesignName, signedIn 
       const updated = await addDesignToCollection(id, currentDesignId);
       setOpen(updated);
       setCollections((list) => list.map((x) => (x.id === id ? { ...x, designCount: updated.designs.length } : x)));
-    }, "Couldn't add that design — save it to your account first.");
+    }, "Couldn't add that design: save it to your account first.");
 
   const unfile = (collectionId: string, designId: string) =>
     run(async () => {
@@ -175,7 +175,7 @@ export function CollectionsPanel({ currentDesignId, currentDesignName, signedIn 
           <Loader2 size={14} className="cs-spin" /> Loading…
         </p>
       ) : collections.length === 0 ? (
-        <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>No collections yet — name one above to start a binder.</p>
+        <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>No collections yet. Name one above to start a binder.</p>
       ) : (
         collections.map((c) => (
           <ListRow

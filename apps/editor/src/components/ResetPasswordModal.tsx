@@ -20,7 +20,7 @@ export function ResetPasswordModal({ token, email, onDone, onClose }: { token: s
     try {
       setDone(await resetPassword({ token, email, password }));
     } catch (e) {
-      setError(apiErrorMessage(e, "Couldn't reset your password — the link may have expired. Request a new one."));
+      setError(apiErrorMessage(e, "Couldn't reset your password. The link may have expired. Request a new one."));
     } finally {
       setSubmitting(false);
     }
@@ -64,7 +64,7 @@ export function ResetPasswordModal({ token, email, onDone, onClose }: { token: s
             />
             <span style={{ fontSize: 11, color: "var(--cs-text-muted)" }}>At least 8 characters, with letters and numbers.</span>
             <p style={{ fontSize: 11, color: "var(--cs-text-muted)", margin: 0 }}>
-              This signs you out everywhere else — anyone else holding a session on this account loses it.
+              This signs you out everywhere else: anyone else holding a session on this account loses it.
             </p>
             {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
           </>

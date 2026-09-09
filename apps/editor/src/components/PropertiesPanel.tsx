@@ -255,9 +255,9 @@ export function PropertiesPanel({ width }: { width: number | string }) {
           title={
             layer.contentLocked
               ? entitlements.canEditLockedContent
-                ? "Content locked (click to unlock) — its text/art can't be changed"
-                : "Content locked — unlocking it requires a premium account"
-              : "Content unlocked (click to lock) — locks the text/art, not the position"
+                ? "Content locked (click to unlock): its text/art can't be changed"
+                : "Content locked: unlocking it requires a premium account"
+              : "Content unlocked (click to lock): locks the text/art, not the position"
           }
           onClick={() => commitLayerChange(layer.id, { contentLocked: !layer.contentLocked })}
         >
@@ -302,7 +302,7 @@ export function PropertiesPanel({ width }: { width: number | string }) {
                   disabled={layer.contentLocked && !entitlements.canEditLockedContent}
                   title={
                     layer.contentLocked && !entitlements.canEditLockedContent
-                      ? "This frame is locked by the template — requires a premium account to change"
+                      ? "This frame is locked by the template: requires a premium account to change"
                       : undefined
                   }
                   onClick={() => setShowFrameLibrary(true)}
@@ -330,7 +330,7 @@ export function PropertiesPanel({ width }: { width: number | string }) {
                   title={
                     entitlements.canEditLockedContent
                       ? "Content-locked by the template, but your account can edit it anyway"
-                      : "Content-locked by the template — editing requires a premium account"
+                      : "Content-locked by the template: editing requires a premium account"
                   }
                 >
                   <Lock size={11} color={entitlements.canEditLockedContent ? "var(--cs-accent)" : "var(--cs-text-muted)"} />
@@ -344,7 +344,7 @@ export function PropertiesPanel({ width }: { width: number | string }) {
               disabled={layer.contentLocked && !entitlements.canEditLockedContent}
               title={
                 layer.contentLocked && !entitlements.canEditLockedContent
-                  ? "This field's content is locked by the template — requires a premium account to edit"
+                  ? "This field's content is locked by the template: requires a premium account to edit"
                   : undefined
               }
               onFocus={beginLiveEdit}
@@ -381,7 +381,7 @@ export function PropertiesPanel({ width }: { width: number | string }) {
                 style={labelStyle}
                 title={
                   layer.maxFontSizePt !== undefined
-                    ? "A Max size is set, so this also moves Max size along with it — otherwise the shrink search still starts from Max size and this field would have no visible effect"
+                    ? "A Max size is set, so this also moves Max size along with it. Otherwise the shrink search still starts from Max size and this field would have no visible effect"
                     : undefined
                 }
               >
@@ -423,7 +423,7 @@ export function PropertiesPanel({ width }: { width: number | string }) {
                 </button>
                 <button
                   className={`cs-icon-btn${layer.italic ? " cs-active" : ""}`}
-                  title="Italic — uses the font's real italic file if the embedded family has one, otherwise a slanted (synthetic) italic"
+                  title="Italic: uses the font's real italic file if the embedded family has one, otherwise a slanted (synthetic) italic"
                   onClick={() => commitLayerChange(layer.id, { italic: !layer.italic })}
                 >
                   <Italic size={15} />

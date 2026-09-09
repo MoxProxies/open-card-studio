@@ -47,7 +47,7 @@ export function AccountModal({ onSignedIn, onChallenge, onClose }: AccountModalP
       }
       onSignedIn();
     } catch (e) {
-      setError(apiErrorMessage(e, "Something went wrong — check your connection and try again."));
+      setError(apiErrorMessage(e, "Something went wrong. Check your connection and try again."));
     } finally {
       setSubmitting(false);
     }

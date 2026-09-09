@@ -37,6 +37,6 @@ class ResetPassword extends Notification
             // reset email is someone mistyping their own address — not an
             // attack — and the reassurance is what stops a support ticket.
             ->line("If this wasn't you, you can ignore this email. Your password won't change until someone opens that link and sets a new one.")
-            ->salutation('— open-card-studio');
+            ->salutation('- open-card-studio');
     }
 }

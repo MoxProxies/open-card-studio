@@ -28,7 +28,7 @@ export function DeleteAccountModal({ user, onClose }: { user: AuthUser; onClose:
       // this dialog to be attached to.
       onClose();
     } catch (e) {
-      setError(apiErrorMessage(e, "Couldn't delete the account — try again shortly."));
+      setError(apiErrorMessage(e, "Couldn't delete the account. Try again shortly."));
       setBusy(false);
     }
   };
@@ -65,7 +65,7 @@ export function DeleteAccountModal({ user, onClose }: { user: AuthUser; onClose:
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
           <TriangleAlert size={20} style={{ flex: "none", color: "var(--cs-danger)" }} />
           <p style={{ margin: 0 }}>
-            This deletes your designs, templates, collections, guides, comments and points. It can't be undone, and published templates disappear for everyone —
+            This deletes your designs, templates, collections, guides, comments and points. It can't be undone, and published templates disappear for everyone,
             though designs already made from them keep working, since those copied the layers.
           </p>
         </div>

@@ -62,7 +62,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
       });
       onSaved(saved);
     } catch (e) {
-      setError(apiErrorMessage(e, "Couldn't save the template — check your connection and try again."));
+      setError(apiErrorMessage(e, "Couldn't save the template. Check your connection and try again."));
     } finally {
       setSubmitting(false);
     }
@@ -203,7 +203,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
               gap: 6,
             }}
           >
-            <Lock size={13} /> {breakdown.chrome} fixed {breakdown.chrome === 1 ? "layer" : "layers"} — locked and content-locked
+            <Lock size={13} /> {breakdown.chrome} fixed {breakdown.chrome === 1 ? "layer" : "layers"}, locked and content-locked
           </span>
           <span
             style={{
@@ -214,7 +214,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
               gap: 6,
             }}
           >
-            <PencilLine size={13} /> {breakdown.slot} fill-in {breakdown.slot === 1 ? "slot" : "slots"} — locked in place, content editable
+            <PencilLine size={13} /> {breakdown.slot} fill-in {breakdown.slot === 1 ? "slot" : "slots"}, locked in place, content editable
           </span>
           <span
             style={{
@@ -225,7 +225,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
               gap: 6,
             }}
           >
-            <Unlock size={13} /> {breakdown.free} unlocked {breakdown.free === 1 ? "layer" : "layers"} — freely movable
+            <Unlock size={13} /> {breakdown.free} unlocked {breakdown.free === 1 ? "layer" : "layers"}, freely movable
           </span>
           <span style={{ fontSize: 11, color: "var(--cs-text-muted)" }}>
             Lock a layer (and content-lock it) in the layers panel to fix it in your template; leave a locked layer's content unlocked to make it a fill-in
@@ -242,7 +242,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
               lineHeight: 1.5,
             }}
           >
-            Published templates are community-made and credited to you by name — not official layouts of any existing card game. Don't publish artwork or a
+            Published templates are community-made and credited to you by name, not official layouts of any existing card game. Don't publish artwork or a
             layout you don't have the right to share.
           </p>
         )}

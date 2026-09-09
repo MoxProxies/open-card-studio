@@ -22,7 +22,7 @@ export function TwoFactorPrompt({ challenge, onSignedIn, onCancel }: { challenge
       await completeTwoFactor(challenge, code);
       onSignedIn();
     } catch (e) {
-      setError(apiErrorMessage(e, "That didn't work — try the next code your app shows."));
+      setError(apiErrorMessage(e, "That didn't work. Try the next code your app shows."));
       setCode("");
       setBusy(false);
     }

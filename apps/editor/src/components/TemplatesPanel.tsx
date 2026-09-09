@@ -82,7 +82,7 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
     const request = tab === "mine" ? listMyTemplates() : browseTemplates({ q: search, sort });
     request
       .then(setTemplates)
-      .catch((e: unknown) => setListError(apiErrorMessage(e, "Couldn't load templates — check your connection and try again.")))
+      .catch((e: unknown) => setListError(apiErrorMessage(e, "Couldn't load templates. Check your connection and try again.")))
       .finally(() => setListLoading(false));
   }, [tab, search, sort]);
 
@@ -118,9 +118,9 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
       const fork = await forkTemplate(summary.id);
       setTab("mine");
       setReloadToken((token) => token + 1);
-      setNotice(`Remixed as "${fork.name}" — it's private until you publish it.`);
+      setNotice(`Remixed as "${fork.name}": it's private until you publish it.`);
     } catch (e) {
-      setActionError(apiErrorMessage(e, "Couldn't remix that template — check your connection and try again."));
+      setActionError(apiErrorMessage(e, "Couldn't remix that template. Check your connection and try again."));
     } finally {
       setBusyId(null);
     }
@@ -137,7 +137,7 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
       void markTemplateUsed(summary.id).catch(() => {});
       onUseTemplate(designFromTemplate(template));
     } catch (e) {
-      setActionError(apiErrorMessage(e, "Couldn't open that template — check your connection and try again."));
+      setActionError(apiErrorMessage(e, "Couldn't open that template. Check your connection and try again."));
     } finally {
       setBusyId(null);
     }
@@ -261,7 +261,7 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
               ) : templates.length === 0 ? (
                 <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>
                   {tab === "mine"
-                    ? "You haven't saved any templates yet — lock the layers you want fixed, then use the button above."
+                    ? "You haven't saved any templates yet. Lock the layers you want fixed, then use the button above."
                     : "No published templates match that search yet."}
                 </p>
               ) : (

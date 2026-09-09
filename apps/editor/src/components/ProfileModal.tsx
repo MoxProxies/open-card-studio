@@ -57,7 +57,7 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
       setCurrentUser(updated);
       setSaved(true);
     } catch (e) {
-      setError(apiErrorMessage(e, "Couldn't save your profile — check your connection and try again."));
+      setError(apiErrorMessage(e, "Couldn't save your profile. Check your connection and try again."));
     } finally {
       setSaving(false);
     }
@@ -100,7 +100,7 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
                 onClick={() =>
                   void resendVerification()
                     .then(setVerifyNotice)
-                    .catch(() => setVerifyNotice("Couldn't send that — try again shortly."))
+                    .catch(() => setVerifyNotice("Couldn't send that. Try again shortly."))
                 }
               >
                 Resend
@@ -190,7 +190,7 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
             style={{ marginTop: 2 }}
           />
           <span>
-            Email me when something happens to my work — one summary a day at most, never for things I've already seen in the app. Every one of those emails can
+            Email me when something happens to my work: one summary a day at most, never for things I've already seen in the app. Every one of those emails can
             turn this off in a click.
           </span>
         </label>
@@ -205,7 +205,7 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
           {user.has_two_factor ? (
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }} data-testid="two-factor-on">
               <ShieldCheck size={16} style={{ color: "var(--cs-accent)" }} />
-              <span style={{ flex: 1, fontSize: 12 }}>On — a code from your app is needed to sign in.</span>
+              <span style={{ flex: 1, fontSize: 12 }}>On: a code from your app is needed to sign in.</span>
               <button type="button" className="cs-btn" data-testid="two-factor-codes" onClick={() => setReauthFor("recovery-codes")}>
                 New recovery codes
               </button>
@@ -319,7 +319,7 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
               onClick={() =>
                 void downloadMyData()
                   .then((filename) => setExportNotice(`Saved ${filename}.`))
-                  .catch(() => setExportNotice("Couldn't build the export — try again shortly."))
+                  .catch(() => setExportNotice("Couldn't build the export. Try again shortly."))
               }
             >
               <Download size={14} /> Download my data

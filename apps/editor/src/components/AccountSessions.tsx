@@ -25,7 +25,7 @@ export function AccountSessions({ onSignedOut }: { onSignedOut: () => void }) {
   }, []);
 
   const revoke = async (session: AuthSession) => {
-    if (session.current && !window.confirm("That's this device — revoking it signs you out here.")) return;
+    if (session.current && !window.confirm("That's this device: revoking it signs you out here.")) return;
     setBusy(session.id);
     setError(null);
     try {
@@ -51,7 +51,7 @@ export function AccountSessions({ onSignedOut }: { onSignedOut: () => void }) {
           testId="session-row"
           attrs={{ "data-current": String(session.current) }}
           icon={<MonitorSmartphone size={15} />}
-          title={session.current ? `${session.device} — this device` : session.device}
+          title={session.current ? `${session.device} (this device)` : session.device}
           subtitle={
             session.last_used_at ? `Last used ${new Date(session.last_used_at).toLocaleString()}` : `Signed in ${new Date(session.created_at).toLocaleString()}`
           }

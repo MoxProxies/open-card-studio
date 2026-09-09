@@ -39,7 +39,7 @@ export function GuidesView() {
     setError(null);
     (tab === "mine" ? listMyPosts() : browsePosts({ q: search, category: category || undefined }))
       .then(setPosts)
-      .catch((e: unknown) => setError(apiErrorMessage(e, "Couldn't load guides — check your connection and try again.")))
+      .catch((e: unknown) => setError(apiErrorMessage(e, "Couldn't load guides. Check your connection and try again.")))
       .finally(() => setLoading(false));
   }, [tab, search, category, canList]);
 
@@ -65,7 +65,7 @@ export function GuidesView() {
       <Page
         testId="page-guides"
         title="Guides"
-        subtitle="How to print, cut and source card stock at home — plus design tips from the community."
+        subtitle="How to print, cut and source card stock at home, plus design tips from the community."
         toolbar={
           <>
             <button className={`cs-btn${tab === "browse" ? " cs-active" : ""}`} onClick={() => setTab("browse")} data-testid="guides-tab-browse">

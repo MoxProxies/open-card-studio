@@ -108,7 +108,7 @@ export function ArtPanel({ onUse, children }: ArtPanelProps) {
 
             {uploads?.length === 0 && (
               <p style={{ fontSize: 13, color: "var(--cs-text-muted)", margin: 0 }} data-testid="art-empty">
-                Nothing here yet. Anything you upload — here or from the editor — is kept for reuse in any design.
+                Nothing here yet. Anything you upload, here or from the editor, is kept for reuse in any design.
               </p>
             )}
 

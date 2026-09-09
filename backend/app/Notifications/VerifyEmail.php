@@ -29,7 +29,7 @@ class VerifyEmail extends Notification
             ->line('Confirm this address to finish setting up your open-card-studio account.')
             ->action('Confirm email address', $this->signedUrl($notifiable))
             ->line('The link is good for 60 minutes.')
-            ->salutation('— open-card-studio');
+            ->salutation('- open-card-studio');
     }
 
     public static function signedUrl(object $notifiable): string

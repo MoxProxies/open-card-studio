@@ -36,7 +36,7 @@ export function TwoFactorSetupModal({ user, onClose }: { user: AuthUser; onClose
     requested.current = true;
     startSetup()
       .then(setSetup)
-      .catch((e) => setError(apiErrorMessage(e, "Couldn't start setup — try again shortly.")));
+      .catch((e) => setError(apiErrorMessage(e, "Couldn't start setup. Try again shortly.")));
   }, []);
 
   // Drawn locally: the QR encodes a secret, and handing that to an
@@ -74,7 +74,7 @@ export function TwoFactorSetupModal({ user, onClose }: { user: AuthUser; onClose
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, fontSize: 13 }}>
           <p style={{ margin: 0 }}>
-            Two-factor authentication is on. These codes are the way back in if you lose your phone — each works once, and{" "}
+            Two-factor authentication is on. These codes are the way back in if you lose your phone: each works once, and{" "}
             <strong>this is the only time they're shown.</strong>
           </p>
           <pre
@@ -131,7 +131,7 @@ export function TwoFactorSetupModal({ user, onClose }: { user: AuthUser; onClose
       <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, fontSize: 13 }}>
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
           <ShieldCheck size={20} style={{ flex: "none", color: "var(--cs-accent)" }} />
-          <p style={{ margin: 0 }}>Scan this with an authenticator app (Google Authenticator, 1Password, Aegis — any of them), then enter the code it shows.</p>
+          <p style={{ margin: 0 }}>Scan this with an authenticator app (Google Authenticator, 1Password, Aegis, or any of them), then enter the code it shows.</p>
         </div>
 
         {!setup && !error && <p style={{ margin: 0, color: "var(--cs-text-muted)" }}>Preparing…</p>}
