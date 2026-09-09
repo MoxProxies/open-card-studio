@@ -99,13 +99,13 @@ export function ModerationView() {
       toolbar={
         <>
           <button className={`cs-btn${tab === "queue" ? " cs-active" : ""}`} onClick={() => setTab("queue")} data-testid="mod-tab-queue">
-            <ShieldAlert size={14} /> Queue
+            <ShieldAlert size={17} /> Queue
           </button>
           <button className={`cs-btn${tab === "appeals" ? " cs-active" : ""}`} onClick={() => setTab("appeals")} data-testid="mod-tab-appeals">
-            <MessageSquareWarning size={14} /> Appeals
+            <MessageSquareWarning size={17} /> Appeals
           </button>
           <button className={`cs-btn${tab === "audit" ? " cs-active" : ""}`} onClick={() => setTab("audit")} data-testid="mod-tab-audit">
-            <ScrollText size={14} /> Audit trail
+            <ScrollText size={17} /> Audit trail
           </button>
           {tab === "queue" && (
             <select
@@ -125,15 +125,15 @@ export function ModerationView() {
         </>
       }
     >
-      {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "6px 8px" }}>{error}</p>}
+      {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, padding: "6px 8px" }}>{error}</p>}
 
       {loading ? (
-        <p style={{ padding: "6px 8px", fontSize: 13, color: "var(--cs-text-muted)", display: "flex", gap: 6, alignItems: "center" }}>
-          <Loader2 size={14} className="cs-spin" /> Loading…
+        <p style={{ padding: "6px 8px", fontSize: 15, color: "var(--cs-text-muted)", display: "flex", gap: 6, alignItems: "center" }}>
+          <Loader2 size={17} className="cs-spin" /> Loading…
         </p>
       ) : tab === "appeals" ? (
         appeals.length === 0 ? (
-          <p style={{ padding: "6px 8px", fontSize: 13, color: "var(--cs-text-muted)" }} data-testid="appeals-empty">
+          <p style={{ padding: "6px 8px", fontSize: 15, color: "var(--cs-text-muted)" }} data-testid="appeals-empty">
             No open appeals.
           </p>
         ) : (
@@ -146,10 +146,10 @@ export function ModerationView() {
               subtitle={`appealed ${new Date(a.submitted_at).toLocaleDateString()}${a.user.suspended ? "" : " · already reinstated"}`}
             >
               <button className="cs-btn" disabled={busy} onClick={() => decide(a, true)} data-testid="appeal-grant" title="Grant and reinstate">
-                <UserCheck size={14} /> Grant
+                <UserCheck size={17} /> Grant
               </button>
               <button className="cs-btn" disabled={busy} onClick={() => decide(a, false)} data-testid="appeal-deny" title="Decline this appeal">
-                <X size={14} /> Decline
+                <X size={17} /> Decline
               </button>
               {a.user.username && (
                 <button className="cs-btn" onClick={() => navigate({ tab: "profile", username: a.user.username as string })} title="See the account">
@@ -161,7 +161,7 @@ export function ModerationView() {
         )
       ) : tab === "audit" ? (
         audit.length === 0 ? (
-          <p style={{ padding: "6px 8px", fontSize: 13, color: "var(--cs-text-muted)" }}>Nothing has been actioned yet.</p>
+          <p style={{ padding: "6px 8px", fontSize: 15, color: "var(--cs-text-muted)" }}>Nothing has been actioned yet.</p>
         ) : (
           audit.map((a) => (
             <ListRow
@@ -173,7 +173,7 @@ export function ModerationView() {
           ))
         )
       ) : reports.length === 0 ? (
-        <p style={{ padding: "6px 8px", fontSize: 13, color: "var(--cs-text-muted)" }} data-testid="mod-empty">
+        <p style={{ padding: "6px 8px", fontSize: 15, color: "var(--cs-text-muted)" }} data-testid="mod-empty">
           Nothing in the queue. {state === "open" && "That's the good outcome."}
         </p>
       ) : (
@@ -193,7 +193,7 @@ export function ModerationView() {
           >
             {r.target.type === "user" ? (
               <button className="cs-btn" disabled={busy} onClick={() => suspend(r)} data-testid="mod-suspend" title="Suspend this account">
-                <UserX size={14} /> Suspend
+                <UserX size={17} /> Suspend
               </button>
             ) : (
               !r.target.gone && (
@@ -205,7 +205,7 @@ export function ModerationView() {
                   }
                   data-testid="mod-takedown"
                 >
-                  {r.target.moderation_state === "removed" ? <Eye size={14} /> : <EyeOff size={14} />}
+                  {r.target.moderation_state === "removed" ? <Eye size={17} /> : <EyeOff size={17} />}
                   {r.target.moderation_state === "removed" ? "Restore" : "Remove"}
                 </button>
               )
@@ -217,7 +217,7 @@ export function ModerationView() {
               onClick={() => void act(() => resolveReport(r.id, "dismissed"), "Couldn't dismiss.")}
               data-testid="mod-dismiss"
             >
-              <X size={14} />
+              <X size={17} />
             </button>
             <button
               className="cs-icon-btn"
@@ -226,7 +226,7 @@ export function ModerationView() {
               onClick={() => void act(() => resolveReport(r.id, "reviewed"), "Couldn't update.")}
               data-testid="mod-reviewed"
             >
-              <Check size={14} />
+              <Check size={17} />
             </button>
             {typeof r.target.owner === "string" && (
               <button className="cs-btn" onClick={() => navigate({ tab: "profile", username: r.target.owner as string })} title="See the account">

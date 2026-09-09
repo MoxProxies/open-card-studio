@@ -110,7 +110,7 @@ export function CollectionsPanel({ currentDesignId, currentDesignName, signedIn 
     }, "Couldn't remove that design.");
 
   if (!signedIn) {
-    return <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "14px 16px", margin: 0 }}>Sign in to group your designs into collections.</p>;
+    return <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: "14px 16px", margin: 0 }}>Sign in to group your designs into collections.</p>;
   }
 
   if (open) {
@@ -121,7 +121,7 @@ export function CollectionsPanel({ currentDesignId, currentDesignName, signedIn 
           <button className="cs-btn" onClick={() => setOpen(null)} data-testid="collection-back">
             ← All collections
           </button>
-          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{open.name}</span>
+          <span style={{ flex: 1, fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{open.name}</span>
           <VisibilitySelect value={open.visibility} onChange={(v) => void changeVisibility(open.id, v)} testId="collection-detail-visibility" />
         </div>
 
@@ -132,18 +132,18 @@ export function CollectionsPanel({ currentDesignId, currentDesignName, signedIn 
           disabled={busy || alreadyIn}
           data-testid="collection-add-current"
         >
-          <Plus size={14} /> {alreadyIn ? `“${currentDesignName}” is in this collection` : `Add “${currentDesignName}”`}
+          <Plus size={17} /> {alreadyIn ? `“${currentDesignName}” is in this collection` : `Add “${currentDesignName}”`}
         </button>
 
-        {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "0 8px 8px", margin: 0 }}>{error}</p>}
+        {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, padding: "0 8px 8px", margin: 0 }}>{error}</p>}
 
         {open.designs.length === 0 ? (
-          <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>Nothing in here yet.</p>
+          <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: "6px 8px" }}>Nothing in here yet.</p>
         ) : (
           open.designs.map((d) => (
-            <ListRow key={d.id} testId="collection-design" title={d.name} subtitle={new Date(d.updatedAt).toLocaleString()} icon={<FolderOpen size={15} />}>
+            <ListRow key={d.id} testId="collection-design" title={d.name} subtitle={new Date(d.updatedAt).toLocaleString()} icon={<FolderOpen size={18} />}>
               <button className="cs-icon-btn" title="Remove from this collection" onClick={() => void unfile(open.id, d.id)} data-testid="collection-remove-design">
-                <X size={13} />
+                <X size={16} />
               </button>
             </ListRow>
           ))
@@ -164,24 +164,24 @@ export function CollectionsPanel({ currentDesignId, currentDesignName, signedIn 
           data-testid="collection-new-name"
         />
         <button className="cs-btn" onClick={() => void create()} disabled={busy} data-testid="collection-create">
-          {busy ? <Loader2 size={14} className="cs-spin" /> : <Plus size={14} />} Create
+          {busy ? <Loader2 size={17} className="cs-spin" /> : <Plus size={17} />} Create
         </button>
       </div>
 
-      {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "0 8px 8px", margin: 0 }}>{error}</p>}
+      {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, padding: "0 8px 8px", margin: 0 }}>{error}</p>}
 
       {loading ? (
-        <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
-          <Loader2 size={14} className="cs-spin" /> Loading…
+        <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+          <Loader2 size={17} className="cs-spin" /> Loading…
         </p>
       ) : collections.length === 0 ? (
-        <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>No collections yet. Name one above to start a binder.</p>
+        <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: "6px 8px" }}>No collections yet. Name one above to start a binder.</p>
       ) : (
         collections.map((c) => (
           <ListRow
             key={c.id}
             testId="collection-row"
-            icon={<Library size={15} />}
+            icon={<Library size={18} />}
             title={c.name}
             subtitle={`${c.designCount ?? 0} design${c.designCount === 1 ? "" : "s"}`}
             onClick={() => void openCollection(c.id)}
@@ -196,7 +196,7 @@ export function CollectionsPanel({ currentDesignId, currentDesignName, signedIn 
               }}
               data-testid="collection-delete"
             >
-              <Trash2 size={13} />
+              <Trash2 size={16} />
             </button>
           </ListRow>
         ))

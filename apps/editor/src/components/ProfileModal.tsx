@@ -63,7 +63,7 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
     }
   };
 
-  const field = { display: "flex", flexDirection: "column" as const, gap: 4, fontSize: 12, color: "var(--cs-text-muted)" };
+  const field = { display: "flex", flexDirection: "column" as const, gap: 4, fontSize: 14, color: "var(--cs-text-muted)" };
 
   return (
     <Modal
@@ -77,7 +77,7 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
             View public profile
           </button>
           <button type="submit" className="cs-btn cs-active" disabled={saving} data-testid="profile-save">
-            {saving ? <Loader2 size={14} className="cs-spin" /> : null} Save
+            {saving ? <Loader2 size={17} className="cs-spin" /> : null} Save
           </button>
         </>
       }
@@ -88,9 +88,9 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
         {!user.email_verified_at && (
           <div
             data-testid="unverified-email"
-            style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 10px", borderRadius: 8, background: "var(--cs-accent-soft)", fontSize: 12 }}
+            style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 10px", borderRadius: 8, background: "var(--cs-accent-soft)", fontSize: 14 }}
           >
-            <MailWarning size={16} style={{ flex: "none" }} />
+            <MailWarning size={19} style={{ flex: "none" }} />
             <span style={{ flex: 1 }}>{verifyNotice ?? `${user.email} isn't confirmed yet.`}</span>
             {!verifyNotice && (
               <button
@@ -123,7 +123,7 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
             placeholder="your-handle"
             data-testid="profile-username"
           />
-          <span style={{ fontSize: 11 }}>Lowercase letters, numbers, dashes and underscores. This is how people find your profile.</span>
+          <span style={{ fontSize: 13 }}>Lowercase letters, numbers, dashes and underscores. This is how people find your profile.</span>
         </label>
 
         <label style={field}>
@@ -157,7 +157,7 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
                 there's still one source of truth for what the avatar is
                 — the upload just happens to produce the URL for you. */}
             <label className="cs-btn" style={{ cursor: "pointer", flex: "none" }} data-testid="avatar-upload">
-              {avatarBusy ? <Loader2 size={14} className="cs-spin" /> : <Upload size={14} />}
+              {avatarBusy ? <Loader2 size={17} className="cs-spin" /> : <Upload size={17} />}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif"
@@ -176,12 +176,12 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
               />
             </label>
           </div>
-          <span style={{ fontSize: 11 }}>Upload an image, or paste an https link to one. Uploads are resized and stripped of camera metadata.</span>
+          <span style={{ fontSize: 13 }}>Upload an image, or paste an https link to one. Uploads are resized and stripped of camera metadata.</span>
         </label>
 
         <hr style={{ border: "none", borderTop: "1px solid var(--cs-border)", margin: "4px 0" }} />
 
-        <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "var(--cs-text-muted)" }}>
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14, color: "var(--cs-text-muted)" }}>
           <input
             type="checkbox"
             checked={emailDigest}
@@ -201,11 +201,11 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
             stating plainly, because someone who can't remember whether
             they enabled it will assume they didn't. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={{ fontSize: 12, color: "var(--cs-text-muted)" }}>Two-factor authentication</span>
+          <span style={{ fontSize: 14, color: "var(--cs-text-muted)" }}>Two-factor authentication</span>
           {user.has_two_factor ? (
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }} data-testid="two-factor-on">
-              <ShieldCheck size={16} style={{ color: "var(--cs-accent)" }} />
-              <span style={{ flex: 1, fontSize: 12 }}>On: a code from your app is needed to sign in.</span>
+              <ShieldCheck size={19} style={{ color: "var(--cs-accent)" }} />
+              <span style={{ flex: 1, fontSize: 14 }}>On: a code from your app is needed to sign in.</span>
               <button type="button" className="cs-btn" data-testid="two-factor-codes" onClick={() => setReauthFor("recovery-codes")}>
                 New recovery codes
               </button>
@@ -215,14 +215,14 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
             </div>
           ) : (
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ flex: 1, fontSize: 12 }}>Off. A stolen password is enough to get in.</span>
+              <span style={{ flex: 1, fontSize: 14 }}>Off. A stolen password is enough to get in.</span>
               <button type="button" className="cs-btn" data-testid="two-factor-enable" onClick={() => setSettingUpTwoFactor(true)}>
-                <ShieldCheck size={14} /> Turn on
+                <ShieldCheck size={17} /> Turn on
               </button>
             </div>
           )}
           {twoFactorNotice && (
-            <span style={{ fontSize: 11 }} data-testid="two-factor-notice">
+            <span style={{ fontSize: 13 }} data-testid="two-factor-notice">
               {twoFactorNotice}
             </span>
           )}
@@ -267,12 +267,12 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
               </button>
             }
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, fontSize: 13 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, fontSize: 15 }}>
               <p style={{ margin: 0 }}>
                 Your old codes no longer work. Each of these works once, and <strong>this is the only time they're shown.</strong>
               </p>
               <pre
-                style={{ margin: 0, padding: 12, borderRadius: 8, background: "var(--cs-surface-soft)", fontSize: 13, lineHeight: 1.7, userSelect: "all" }}
+                style={{ margin: 0, padding: 12, borderRadius: 8, background: "var(--cs-surface-soft)", fontSize: 15, lineHeight: 1.7, userSelect: "all" }}
                 data-testid="recovery-code-list"
               >
                 {newRecoveryCodes.join("\n")}
@@ -282,7 +282,7 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
         )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontSize: 12, color: "var(--cs-text-muted)" }}>Signed-in devices</span>
+          <span style={{ fontSize: 14, color: "var(--cs-text-muted)" }}>Signed-in devices</span>
           <AccountSessions onSignedOut={onClose} />
         </div>
 
@@ -299,9 +299,9 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
               void logoutEverywhere().then(onClose);
             }}
           >
-            <LogOut size={14} /> Sign out everywhere
+            <LogOut size={17} /> Sign out everywhere
           </button>
-          <span style={{ fontSize: 11 }}>Ends every signed-in session on every device.</span>
+          <span style={{ fontSize: 13 }}>Ends every signed-in session on every device.</span>
         </div>
 
         <hr style={{ border: "none", borderTop: "1px solid var(--cs-border)", margin: "4px 0" }} />
@@ -310,7 +310,7 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
             Service will need to point at — see the vision doc's
             constraints section. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={{ fontSize: 12, color: "var(--cs-text-muted)" }}>Your data</span>
+          <span style={{ fontSize: 14, color: "var(--cs-text-muted)" }}>Your data</span>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <button
               type="button"
@@ -322,14 +322,14 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
                   .catch(() => setExportNotice("Couldn't build the export. Try again shortly."))
               }
             >
-              <Download size={14} /> Download my data
+              <Download size={17} /> Download my data
             </button>
             <button type="button" className="cs-btn cs-danger" data-testid="delete-account-open" onClick={() => setConfirmingDelete(true)}>
-              <Trash2 size={14} /> Delete account
+              <Trash2 size={17} /> Delete account
             </button>
           </div>
           {exportNotice && (
-            <span style={{ fontSize: 11 }} data-testid="export-notice">
+            <span style={{ fontSize: 13 }} data-testid="export-notice">
               {exportNotice}
             </span>
           )}
@@ -337,9 +337,9 @@ export function ProfileModal({ user, onClose, onViewPublic }: ProfileModalProps)
 
         {confirmingDelete && <DeleteAccountModal user={user} onClose={() => setConfirmingDelete(false)} />}
 
-        {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
+        {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, margin: 0 }}>{error}</p>}
         {saved && !error && (
-          <p style={{ color: "var(--cs-text-muted)", fontSize: 13, margin: 0 }} data-testid="profile-saved">
+          <p style={{ color: "var(--cs-text-muted)", fontSize: 15, margin: 0 }} data-testid="profile-saved">
             Saved.
           </p>
         )}

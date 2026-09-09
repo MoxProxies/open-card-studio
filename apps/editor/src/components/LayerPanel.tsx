@@ -173,7 +173,7 @@ export function LayerPanel({ width }: { width: number | string }) {
       className="cs-root"
       style={{ width, flex: "none", minWidth: 0, borderLeft: "1px solid var(--cs-border)", padding: 8, overflowY: "auto", overflowX: "hidden" }}
     >
-      <h3 className="cs-heading" style={{ fontSize: 14, fontWeight: 600, margin: "4px 0 8px" }}>Layers</h3>
+      <h3 className="cs-heading" style={{ fontSize: 16, fontWeight: 600, margin: "4px 0 8px" }}>Layers</h3>
       {entries.map((entry, entryIndex) => {
         const rowId = entryRowId(entry);
         const isFirstEntry = entryIndex === 0;
@@ -199,14 +199,14 @@ export function LayerPanel({ width }: { width: number | string }) {
                 marginBottom: 2,
                 cursor: "pointer",
                 background: isSelected ? "var(--cs-accent-soft)" : "transparent",
-                fontSize: 13,
+                fontSize: 15,
                 ...dropIndicatorStyle(rowId),
               }}
             >
               <span {...dragHandleProps(rowId)} style={{ display: "flex", flex: "none", cursor: "grab", color: "var(--cs-text-muted)" }} title="Drag to reorder">
-                <GripVertical size={13} />
+                <GripVertical size={16} />
               </span>
-              <TypeIcon size={14} color="var(--cs-text-muted)" style={{ flex: "none" }} />
+              <TypeIcon size={17} color="var(--cs-text-muted)" style={{ flex: "none" }} />
               <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{layer.name}</span>
               <button
                 className="cs-icon-btn"
@@ -218,7 +218,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                   moveEntry(rowId, "up");
                 }}
               >
-                <ChevronUp size={14} />
+                <ChevronUp size={17} />
               </button>
               <button
                 className="cs-icon-btn"
@@ -230,7 +230,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                   moveEntry(rowId, "down");
                 }}
               >
-                <ChevronDown size={14} />
+                <ChevronDown size={17} />
               </button>
               <button
                 className="cs-icon-btn"
@@ -241,7 +241,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                   commitLayerChange(layer.id, { visible: !layer.visible });
                 }}
               >
-                {layer.visible ? <Eye size={13} /> : <EyeOff size={13} />}
+                {layer.visible ? <Eye size={16} /> : <EyeOff size={16} />}
               </button>
               <button
                 className="cs-icon-btn"
@@ -252,7 +252,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                   commitLayerChange(layer.id, { locked: !layer.locked });
                 }}
               >
-                {layer.locked ? <Lock size={13} /> : <Unlock size={13} />}
+                {layer.locked ? <Lock size={16} /> : <Unlock size={16} />}
               </button>
               <button
                 className="cs-icon-btn"
@@ -263,7 +263,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                   removeLayers([layer.id]);
                 }}
               >
-                <Trash2 size={13} />
+                <Trash2 size={16} />
               </button>
             </div>
           );
@@ -297,12 +297,12 @@ export function LayerPanel({ width }: { width: number | string }) {
                 borderRadius: 6,
                 cursor: "pointer",
                 background: isGroupSelected ? "var(--cs-accent-soft)" : "transparent",
-                fontSize: 13,
+                fontSize: 15,
                 fontWeight: 600,
               }}
             >
               <span {...dragHandleProps(rowId)} style={{ display: "flex", flex: "none", cursor: "grab", color: "var(--cs-text-muted)" }} title="Drag to reorder">
-                <GripVertical size={13} />
+                <GripVertical size={16} />
               </span>
               <button
                 className="cs-icon-btn"
@@ -313,9 +313,9 @@ export function LayerPanel({ width }: { width: number | string }) {
                   toggleCollapsed(groupId);
                 }}
               >
-                {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                {isCollapsed ? <ChevronRight size={17} /> : <ChevronDown size={17} />}
               </button>
-              <Folder size={14} color="var(--cs-text-muted)" style={{ flex: "none" }} />
+              <Folder size={17} color="var(--cs-text-muted)" style={{ flex: "none" }} />
               {isEditing ? (
                 <input
                   className="cs-input"
@@ -353,7 +353,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                   moveEntry(rowId, "up");
                 }}
               >
-                <ChevronUp size={14} />
+                <ChevronUp size={17} />
               </button>
               <button
                 className="cs-icon-btn"
@@ -365,7 +365,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                   moveEntry(rowId, "down");
                 }}
               >
-                <ChevronDown size={14} />
+                <ChevronDown size={17} />
               </button>
               <button
                 className="cs-icon-btn"
@@ -376,7 +376,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                   commitLayerChanges(memberIds.map((id) => ({ id, patch: { visible: !allVisible } })));
                 }}
               >
-                {allVisible ? <Eye size={13} /> : <EyeOff size={13} />}
+                {allVisible ? <Eye size={16} /> : <EyeOff size={16} />}
               </button>
               <button
                 className="cs-icon-btn"
@@ -387,7 +387,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                   commitLayerChanges(memberIds.map((id) => ({ id, patch: { locked: !allLocked } })));
                 }}
               >
-                {allLocked ? <Lock size={13} /> : <Unlock size={13} />}
+                {allLocked ? <Lock size={16} /> : <Unlock size={16} />}
               </button>
               <button
                 className="cs-icon-btn"
@@ -398,7 +398,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                   ungroupLayers(groupId);
                 }}
               >
-                <Ungroup size={13} />
+                <Ungroup size={16} />
               </button>
               <button
                 className="cs-icon-btn"
@@ -409,7 +409,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                   deleteGroup(groupId);
                 }}
               >
-                <Trash2 size={13} />
+                <Trash2 size={16} />
               </button>
             </div>
 
@@ -431,10 +431,10 @@ export function LayerPanel({ width }: { width: number | string }) {
                     marginTop: 2,
                     cursor: "pointer",
                     background: isSelected ? "var(--cs-accent-soft)" : "transparent",
-                    fontSize: 13,
+                    fontSize: 15,
                   }}
                 >
-                  <TypeIcon size={14} color="var(--cs-text-muted)" style={{ flex: "none" }} />
+                  <TypeIcon size={17} color="var(--cs-text-muted)" style={{ flex: "none" }} />
                   <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{layer.name}</span>
                   <button
                     className="cs-icon-btn"
@@ -446,7 +446,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                       moveMemberWithinGroup(members, layer.id, "up");
                     }}
                   >
-                    <ChevronUp size={14} />
+                    <ChevronUp size={17} />
                   </button>
                   <button
                     className="cs-icon-btn"
@@ -458,7 +458,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                       moveMemberWithinGroup(members, layer.id, "down");
                     }}
                   >
-                    <ChevronDown size={14} />
+                    <ChevronDown size={17} />
                   </button>
                   <button
                     className="cs-icon-btn"
@@ -469,7 +469,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                       commitLayerChange(layer.id, { visible: !layer.visible });
                     }}
                   >
-                    {layer.visible ? <Eye size={13} /> : <EyeOff size={13} />}
+                    {layer.visible ? <Eye size={16} /> : <EyeOff size={16} />}
                   </button>
                   <button
                     className="cs-icon-btn"
@@ -480,7 +480,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                       commitLayerChange(layer.id, { locked: !layer.locked });
                     }}
                   >
-                    {layer.locked ? <Lock size={13} /> : <Unlock size={13} />}
+                    {layer.locked ? <Lock size={16} /> : <Unlock size={16} />}
                   </button>
                   <button
                     className="cs-icon-btn"
@@ -491,7 +491,7 @@ export function LayerPanel({ width }: { width: number | string }) {
                       removeLayers([layer.id]);
                     }}
                   >
-                    <Trash2 size={13} />
+                    <Trash2 size={16} />
                   </button>
                 </div>
               );
@@ -499,7 +499,7 @@ export function LayerPanel({ width }: { width: number | string }) {
           </div>
         );
       })}
-      {layers.length === 0 && <p style={{ color: "var(--cs-text-muted)", fontSize: 12 }}>No layers yet.</p>}
+      {layers.length === 0 && <p style={{ color: "var(--cs-text-muted)", fontSize: 14 }}>No layers yet.</p>}
     </div>
   );
 }

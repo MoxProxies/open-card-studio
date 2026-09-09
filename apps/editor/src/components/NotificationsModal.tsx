@@ -43,18 +43,18 @@ export function NotificationsModal({ onClose, onRead }: { onClose: () => void; o
       footer={
         unreadCount > 0 ? (
           <button type="button" className="cs-btn" onClick={() => void markAll()} data-testid="notifications-read-all">
-            <Check size={14} /> Mark all read
+            <Check size={17} /> Mark all read
           </button>
         ) : undefined
       }
     >
       <div style={{ padding: 8 }}>
-        {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: "0 0 8px" }}>{error}</p>}
+        {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, margin: "0 0 8px" }}>{error}</p>}
 
-        {notifications === null && !error && <p style={{ fontSize: 13, color: "var(--cs-text-muted)", margin: 0 }}>Loading…</p>}
+        {notifications === null && !error && <p style={{ fontSize: 15, color: "var(--cs-text-muted)", margin: 0 }}>Loading…</p>}
 
         {notifications?.length === 0 && (
-          <p style={{ fontSize: 13, color: "var(--cs-text-muted)", margin: 0 }} data-testid="notifications-empty">
+          <p style={{ fontSize: 15, color: "var(--cs-text-muted)", margin: 0 }} data-testid="notifications-empty">
             Nothing yet. Likes, comments and remixes of your work show up here.
           </p>
         )}
@@ -64,7 +64,7 @@ export function NotificationsModal({ onClose, onRead }: { onClose: () => void; o
             key={notification.id}
             testId="notification-row"
             attrs={{ "data-read": String(notification.read), "data-type": notification.type }}
-            icon={<Bell size={15} style={{ color: notification.read ? "var(--cs-text-muted)" : "var(--cs-accent)" }} />}
+            icon={<Bell size={18} style={{ color: notification.read ? "var(--cs-text-muted)" : "var(--cs-accent)" }} />}
             title={describeNotification(notification)}
             subtitle={new Date(notification.at).toLocaleString()}
           />

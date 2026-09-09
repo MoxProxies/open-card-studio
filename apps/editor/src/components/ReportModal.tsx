@@ -53,7 +53,7 @@ export function ReportModal({ type, id, label, onClose }: ReportModalProps) {
               Cancel
             </button>
             <button type="submit" className="cs-btn cs-active" disabled={submitting} data-testid="report-submit">
-              {submitting ? <Loader2 size={14} className="cs-spin" /> : <Flag size={14} />} Send report
+              {submitting ? <Loader2 size={17} className="cs-spin" /> : <Flag size={17} />} Send report
             </button>
           </>
         )
@@ -61,12 +61,12 @@ export function ReportModal({ type, id, label, onClose }: ReportModalProps) {
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16 }}>
         {done ? (
-          <p style={{ margin: 0, fontSize: 13 }} data-testid="report-done">
+          <p style={{ margin: 0, fontSize: 15 }} data-testid="report-done">
             Thanks. This has been sent for review. Nothing is hidden automatically; someone will look at it.
           </p>
         ) : (
           <>
-            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--cs-text-muted)" }}>
+            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, color: "var(--cs-text-muted)" }}>
               Reason
               <select className="cs-input" value={reason} onChange={(e) => setReason(e.target.value)} data-testid="report-reason">
                 {REPORT_REASONS.map((r) => (
@@ -77,7 +77,7 @@ export function ReportModal({ type, id, label, onClose }: ReportModalProps) {
               </select>
             </label>
 
-            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--cs-text-muted)" }}>
+            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, color: "var(--cs-text-muted)" }}>
               Details (optional)
               <textarea
                 className="cs-input"
@@ -90,7 +90,7 @@ export function ReportModal({ type, id, label, onClose }: ReportModalProps) {
               />
             </label>
 
-            {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
+            {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, margin: 0 }}>{error}</p>}
           </>
         )}
       </div>

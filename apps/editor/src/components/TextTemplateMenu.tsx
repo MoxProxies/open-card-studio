@@ -51,7 +51,7 @@ export function TextTemplateMenu({ templates, onAdd, onAddAll }: TextTemplateMen
   return (
     <div ref={rootRef} style={{ position: "relative" }}>
       <button className="cs-btn" onClick={() => setOpen((o) => !o)}>
-        <LayoutTemplate size={16} /> Text Fields <ChevronDown size={14} />
+        <LayoutTemplate size={19} /> Text Fields <ChevronDown size={17} />
       </button>
 
       {open && (

@@ -72,7 +72,7 @@ export function TwoFactorSetupModal({ user, onClose }: { user: AuthUser; onClose
           </button>
         }
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, fontSize: 13 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, fontSize: 15 }}>
           <p style={{ margin: 0 }}>
             Two-factor authentication is on. These codes are the way back in if you lose your phone: each works once, and{" "}
             <strong>this is the only time they're shown.</strong>
@@ -83,7 +83,7 @@ export function TwoFactorSetupModal({ user, onClose }: { user: AuthUser; onClose
               padding: 12,
               borderRadius: 8,
               background: "var(--cs-surface-soft)",
-              fontSize: 13,
+              fontSize: 15,
               lineHeight: 1.7,
               userSelect: "all",
             }}
@@ -97,7 +97,7 @@ export function TwoFactorSetupModal({ user, onClose }: { user: AuthUser; onClose
             style={{ alignSelf: "flex-start" }}
             onClick={() => void navigator.clipboard?.writeText(recoveryCodes.join("\n"))}
           >
-            <Copy size={14} /> Copy
+            <Copy size={17} /> Copy
           </button>
         </div>
       </Modal>
@@ -123,14 +123,14 @@ export function TwoFactorSetupModal({ user, onClose }: { user: AuthUser; onClose
             disabled={busy || !setup || code.trim().length < 6}
             onClick={() => void confirm()}
           >
-            {busy ? <Loader2 size={14} className="cs-spin" /> : null} Turn it on
+            {busy ? <Loader2 size={17} className="cs-spin" /> : null} Turn it on
           </button>
         </>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, fontSize: 13 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, fontSize: 15 }}>
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-          <ShieldCheck size={20} style={{ flex: "none", color: "var(--cs-accent)" }} />
+          <ShieldCheck size={22} style={{ flex: "none", color: "var(--cs-accent)" }} />
           <p style={{ margin: 0 }}>Scan this with an authenticator app (Google Authenticator, 1Password, Aegis, or any of them), then enter the code it shows.</p>
         </div>
 
@@ -145,15 +145,15 @@ export function TwoFactorSetupModal({ user, onClose }: { user: AuthUser; onClose
         )}
 
         {setup && (
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--cs-text-muted)" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, color: "var(--cs-text-muted)" }}>
             Can't scan? Type this key in instead
-            <code style={{ userSelect: "all", fontSize: 13, wordBreak: "break-all" }} data-testid="two-factor-secret">
+            <code style={{ userSelect: "all", fontSize: 15, wordBreak: "break-all" }} data-testid="two-factor-secret">
               {setup.secret}
             </code>
           </label>
         )}
 
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--cs-text-muted)" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, color: "var(--cs-text-muted)" }}>
           Code from the app
           <input
             className="cs-input"
@@ -163,7 +163,7 @@ export function TwoFactorSetupModal({ user, onClose }: { user: AuthUser; onClose
             inputMode="numeric"
             autoComplete="one-time-code"
             data-testid="two-factor-setup-code"
-            style={{ fontSize: 16, letterSpacing: 2, textAlign: "center" }}
+            style={{ fontSize: 18, letterSpacing: 2, textAlign: "center" }}
           />
         </label>
 

@@ -81,7 +81,7 @@ export function ArtPanel({ onUse, children }: ArtPanelProps) {
         toolbar: (
           <>
             <label className="cs-btn" style={{ cursor: "pointer" }} data-testid="art-upload">
-              {uploading ? <Loader2 size={14} className="cs-spin" /> : <ImageUp size={14} />} Upload art
+              {uploading ? <Loader2 size={17} className="cs-spin" /> : <ImageUp size={17} />} Upload art
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif"
@@ -94,7 +94,7 @@ export function ArtPanel({ onUse, children }: ArtPanelProps) {
               />
             </label>
             {usage.quota > 0 && (
-              <span style={{ fontSize: 11, color: "var(--cs-text-muted)", alignSelf: "center" }} data-testid="art-usage">
+              <span style={{ fontSize: 13, color: "var(--cs-text-muted)", alignSelf: "center" }} data-testid="art-usage">
                 {formatBytes(usage.used)} of {formatBytes(usage.quota)} used
               </span>
             )}
@@ -102,12 +102,12 @@ export function ArtPanel({ onUse, children }: ArtPanelProps) {
         ),
         body: (
           <div style={{ padding: 8 }}>
-            {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: "0 0 8px" }}>{error}</p>}
+            {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, margin: "0 0 8px" }}>{error}</p>}
 
-            {uploads === null && !error && <p style={{ fontSize: 13, color: "var(--cs-text-muted)", margin: 0 }}>Loading…</p>}
+            {uploads === null && !error && <p style={{ fontSize: 15, color: "var(--cs-text-muted)", margin: 0 }}>Loading…</p>}
 
             {uploads?.length === 0 && (
-              <p style={{ fontSize: 13, color: "var(--cs-text-muted)", margin: 0 }} data-testid="art-empty">
+              <p style={{ fontSize: 15, color: "var(--cs-text-muted)", margin: 0 }} data-testid="art-empty">
                 Nothing here yet. Anything you upload, here or from the editor, is kept for reuse in any design.
               </p>
             )}
@@ -137,12 +137,12 @@ export function ArtPanel({ onUse, children }: ArtPanelProps) {
                       data-testid="art-thumb"
                     />
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 6px", fontSize: 10, color: "var(--cs-text-muted)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 6px", fontSize: 12, color: "var(--cs-text-muted)" }}>
                     <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {upload.width}×{upload.height} · {formatBytes(upload.bytes)}
                     </span>
                     {onUse && (
-                      <button className="cs-btn" style={{ padding: "2px 6px", fontSize: 11 }} onClick={() => onUse(upload)} data-testid="art-use">
+                      <button className="cs-btn" style={{ padding: "2px 6px", fontSize: 13 }} onClick={() => onUse(upload)} data-testid="art-use">
                         Use
                       </button>
                     )}
@@ -153,7 +153,7 @@ export function ArtPanel({ onUse, children }: ArtPanelProps) {
                       onClick={() => void remove(upload)}
                       data-testid="art-delete"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>

@@ -64,14 +64,14 @@ export function ReauthModal({
               which is itself a <form>, and nested forms are invalid HTML
               the browser drops. */}
           <button type="button" className="cs-btn cs-active" data-testid="reauth-confirm" disabled={busy || value.length === 0} onClick={() => void submit()}>
-            {busy ? <Loader2 size={14} className="cs-spin" /> : null} {confirmLabel}
+            {busy ? <Loader2 size={17} className="cs-spin" /> : null} {confirmLabel}
           </button>
         </>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, fontSize: 13 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, fontSize: 15 }}>
         <p style={{ margin: 0 }}>{description}</p>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--cs-text-muted)" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, color: "var(--cs-text-muted)" }}>
           {byPassword ? "Your password" : "A code from your authenticator app"}
           <input
             className="cs-input"

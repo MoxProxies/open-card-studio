@@ -39,12 +39,12 @@ const getPanelStyle = (width: number | string): CSSProperties => ({
   padding: 12,
   overflowY: "auto",
   overflowX: "hidden",
-  fontSize: 13,
+  fontSize: 15,
 });
-const headingStyle: CSSProperties = { fontSize: 14, fontWeight: 600, margin: "0 0 10px" };
+const headingStyle: CSSProperties = { fontSize: 16, fontWeight: 600, margin: "0 0 10px" };
 const fieldRowStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 3, marginBottom: 8, minWidth: 0 };
 const twoColStyle: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, minWidth: 0 };
-const labelStyle: CSSProperties = { color: "var(--cs-text-muted)", fontSize: 11 };
+const labelStyle: CSSProperties = { color: "var(--cs-text-muted)", fontSize: 13 };
 
 /** See LayerPanel — a number on desktop, "100%" inside the mobile sheet. */
 export function PropertiesPanel({ width }: { width: number | string }) {
@@ -94,7 +94,7 @@ export function PropertiesPanel({ width }: { width: number | string }) {
   if (selectedLayers.length === 0) {
     return (
       <div className="cs-root" style={getPanelStyle(width)} data-testid="properties-panel">
-        <p style={{ color: "var(--cs-text-muted)", fontSize: 12 }}>Select a layer to edit its properties.</p>
+        <p style={{ color: "var(--cs-text-muted)", fontSize: 14 }}>Select a layer to edit its properties.</p>
       </div>
     );
   }
@@ -107,22 +107,22 @@ export function PropertiesPanel({ width }: { width: number | string }) {
           <span style={labelStyle}>Align to card</span>
           <div style={{ display: "flex", gap: 4 }}>
             <button className="cs-icon-btn" title="Align left" onClick={() => alignTo("x", "start")}>
-              <AlignHorizontalJustifyStart size={15} />
+              <AlignHorizontalJustifyStart size={18} />
             </button>
             <button className="cs-icon-btn" title="Center horizontally" onClick={() => alignTo("x", "center")}>
-              <AlignHorizontalJustifyCenter size={15} />
+              <AlignHorizontalJustifyCenter size={18} />
             </button>
             <button className="cs-icon-btn" title="Align right" onClick={() => alignTo("x", "end")}>
-              <AlignHorizontalJustifyEnd size={15} />
+              <AlignHorizontalJustifyEnd size={18} />
             </button>
             <button className="cs-icon-btn" title="Align top" onClick={() => alignTo("y", "start")}>
-              <AlignVerticalJustifyStart size={15} />
+              <AlignVerticalJustifyStart size={18} />
             </button>
             <button className="cs-icon-btn" title="Center vertically" onClick={() => alignTo("y", "center")}>
-              <AlignVerticalJustifyCenter size={15} />
+              <AlignVerticalJustifyCenter size={18} />
             </button>
             <button className="cs-icon-btn" title="Align bottom" onClick={() => alignTo("y", "end")}>
-              <AlignVerticalJustifyEnd size={15} />
+              <AlignVerticalJustifyEnd size={18} />
             </button>
           </div>
         </div>
@@ -135,13 +135,13 @@ export function PropertiesPanel({ width }: { width: number | string }) {
               groupLayers(selectedLayerIds, name.trim() || "Group");
             }}
           >
-            <GroupIcon size={14} /> Group
+            <GroupIcon size={17} /> Group
           </button>
           <button className="cs-btn" onClick={() => duplicateLayers(selectedLayerIds)}>
-            <Copy size={14} /> Duplicate
+            <Copy size={17} /> Duplicate
           </button>
           <button className="cs-btn" onClick={() => removeLayers(selectedLayerIds)}>
-            <Trash2 size={14} /> Delete
+            <Trash2 size={17} /> Delete
           </button>
         </div>
       </div>
@@ -231,14 +231,14 @@ export function PropertiesPanel({ width }: { width: number | string }) {
           title={layer.visible ? "Visible (click to hide)" : "Hidden (click to show)"}
           onClick={() => commitLayerChange(layer.id, { visible: !layer.visible })}
         >
-          {layer.visible ? <Eye size={15} /> : <EyeOff size={15} />}
+          {layer.visible ? <Eye size={18} /> : <EyeOff size={18} />}
         </button>
         <button
           className={`cs-icon-btn${layer.locked ? " cs-active" : ""}`}
           title={layer.locked ? "Locked (click to unlock)" : "Unlocked (click to lock)"}
           onClick={() => commitLayerChange(layer.id, { locked: !layer.locked })}
         >
-          {layer.locked ? <Lock size={15} /> : <Unlock size={15} />}
+          {layer.locked ? <Lock size={18} /> : <Unlock size={18} />}
         </button>
         {/* The content lock — the second of the two independent flags (see
             the root README's "Field locking"), and the one a template
@@ -261,7 +261,7 @@ export function PropertiesPanel({ width }: { width: number | string }) {
           }
           onClick={() => commitLayerChange(layer.id, { contentLocked: !layer.contentLocked })}
         >
-          {layer.contentLocked ? <FileLock2 size={15} /> : <FileText size={15} />}
+          {layer.contentLocked ? <FileLock2 size={18} /> : <FileText size={18} />}
         </button>
       </div>
 
@@ -283,13 +283,13 @@ export function PropertiesPanel({ width }: { width: number | string }) {
                     />
                   ) : (
                     <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <ImageOff size={16} color="var(--cs-text-muted)" />
+                      <ImageOff size={19} color="var(--cs-text-muted)" />
                     </div>
                   );
                 })()}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div style={{ fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {getFrameAsset(layer.assetId)?.name ?? layer.assetId}
                 </div>
                 {/* Which frame art a frame layer shows *is* its content,
@@ -298,7 +298,7 @@ export function PropertiesPanel({ width }: { width: number | string }) {
                     could be swapped out isn't a locked template. */}
                 <button
                   className="cs-btn"
-                  style={{ marginTop: 4, fontSize: 12, padding: "4px 8px" }}
+                  style={{ marginTop: 4, fontSize: 14, padding: "4px 8px" }}
                   disabled={layer.contentLocked && !entitlements.canEditLockedContent}
                   title={
                     layer.contentLocked && !entitlements.canEditLockedContent
@@ -333,7 +333,7 @@ export function PropertiesPanel({ width }: { width: number | string }) {
                       : "Content-locked by the template: editing requires a premium account"
                   }
                 >
-                  <Lock size={11} color={entitlements.canEditLockedContent ? "var(--cs-accent)" : "var(--cs-text-muted)"} />
+                  <Lock size={13} color={entitlements.canEditLockedContent ? "var(--cs-accent)" : "var(--cs-text-muted)"} />
                 </span>
               )}
             </span>
@@ -419,14 +419,14 @@ export function PropertiesPanel({ width }: { width: number | string }) {
                   title="Bold"
                   onClick={() => commitLayerChange(layer.id, { fontWeight: layer.fontWeight === "bold" ? "normal" : "bold" })}
                 >
-                  <Bold size={15} />
+                  <Bold size={18} />
                 </button>
                 <button
                   className={`cs-icon-btn${layer.italic ? " cs-active" : ""}`}
                   title="Italic: uses the font's real italic file if the embedded family has one, otherwise a slanted (synthetic) italic"
                   onClick={() => commitLayerChange(layer.id, { italic: !layer.italic })}
                 >
-                  <Italic size={15} />
+                  <Italic size={18} />
                 </button>
               </div>
             </div>
@@ -466,7 +466,7 @@ export function PropertiesPanel({ width }: { width: number | string }) {
                   title={`Align ${align}`}
                   onClick={() => commitLayerChange(layer.id, { align })}
                 >
-                  <Icon size={15} />
+                  <Icon size={18} />
                 </button>
               ))}
             </div>

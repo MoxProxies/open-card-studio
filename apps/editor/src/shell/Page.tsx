@@ -15,10 +15,10 @@ export function Page({ title, subtitle, toolbar, children, actions, testId = "pa
       <div style={{ width: "100%", maxWidth: 880, margin: "0 auto", display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "16px 16px 10px", flex: "none" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 className="cs-heading" style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>
+            <h1 className="cs-heading" style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>
               {title}
             </h1>
-            {subtitle && <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--cs-text-muted)" }}>{subtitle}</p>}
+            {subtitle && <p style={{ margin: "2px 0 0", fontSize: 14, color: "var(--cs-text-muted)" }}>{subtitle}</p>}
           </div>
           {actions}
         </div>

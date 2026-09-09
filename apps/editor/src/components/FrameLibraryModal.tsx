@@ -40,7 +40,7 @@ export function FrameLibraryModal({ onSelect, onClose }: FrameLibraryModalProps)
             ))}
           </select>
           <div style={{ position: "relative", flex: 1 }}>
-            <Search size={14} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "var(--cs-text-muted)" }} />
+            <Search size={17} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "var(--cs-text-muted)" }} />
             <input
               className="cs-input"
               placeholder="Search frames…"
@@ -55,7 +55,7 @@ export function FrameLibraryModal({ onSelect, onClose }: FrameLibraryModalProps)
     >
       <div style={{ padding: 16 }}>
         {filtered.length === 0 ? (
-          <p style={{ color: "var(--cs-text-muted)", fontSize: 13 }}>No frames match.</p>
+          <p style={{ color: "var(--cs-text-muted)", fontSize: 15 }}>No frames match.</p>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 12 }}>
             {filtered.map((asset) => (
@@ -70,7 +70,7 @@ export function FrameLibraryModal({ onSelect, onClose }: FrameLibraryModalProps)
                   <img src={getFrameAssetUrl(asset.id)} alt={asset.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 </div>
                 <span
-                  style={{ fontSize: 11, color: "var(--cs-text)", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  style={{ fontSize: 13, color: "var(--cs-text)", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                 >
                   {asset.name}
                 </span>

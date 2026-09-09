@@ -133,11 +133,11 @@ export function Modal({
             flex: "none",
           }}
         >
-          <h2 className="cs-heading" style={{ fontSize: 16, fontWeight: 600, margin: 0, flex: 1 }}>
+          <h2 className="cs-heading" style={{ fontSize: 18, fontWeight: 600, margin: 0, flex: 1 }}>
             {title}
           </h2>
           <button type="button" className="cs-icon-btn" onClick={onClose} disabled={!dismissable} title="Close">
-            <X size={16} />
+            <X size={19} />
           </button>
         </div>
 

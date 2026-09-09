@@ -49,7 +49,7 @@ export function AccountButton({ onViewProfile }: { onViewProfile: (username: str
           title={`Signed in as ${user.email}: edit your public profile`}
           data-testid="account-button"
         >
-          <User size={16} /> {user.name}
+          <User size={19} /> {user.name}
         </button>
         <button
           className="cs-icon-btn"
@@ -59,7 +59,7 @@ export function AccountButton({ onViewProfile }: { onViewProfile: (username: str
           }}
           title="Sign out"
         >
-          <LogOut size={14} />
+          <LogOut size={17} />
         </button>
         {showProfile && (
           <ProfileModal
@@ -78,7 +78,7 @@ export function AccountButton({ onViewProfile }: { onViewProfile: (username: str
   return (
     <>
       <button className="cs-btn" onClick={() => setShowModal(true)} title="Sign in to save designs to your account instead of just this browser">
-        <LogIn size={16} /> Sign in
+        <LogIn size={19} /> Sign in
       </button>
       {showModal && (
         <AccountModal

@@ -39,19 +39,19 @@ export function ResetPasswordModal({ token, email, onDone, onClose }: { token: s
           </button>
         ) : (
           <button type="submit" className="cs-btn cs-active" disabled={submitting || password.length < 8} data-testid="reset-submit">
-            {submitting ? <Loader2 size={14} className="cs-spin" /> : null} Set password
+            {submitting ? <Loader2 size={17} className="cs-spin" /> : null} Set password
           </button>
         )
       }
     >
       <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
         {done ? (
-          <p style={{ margin: 0, fontSize: 13 }} data-testid="reset-done">
+          <p style={{ margin: 0, fontSize: 15 }} data-testid="reset-done">
             {done}
           </p>
         ) : (
           <>
-            <p style={{ margin: 0, fontSize: 13, color: "var(--cs-text-muted)" }}>Setting a new password for {email}.</p>
+            <p style={{ margin: 0, fontSize: 15, color: "var(--cs-text-muted)" }}>Setting a new password for {email}.</p>
             <input
               className="cs-input"
               type="password"
@@ -62,11 +62,11 @@ export function ResetPasswordModal({ token, email, onDone, onClose }: { token: s
               autoFocus
               data-testid="reset-password"
             />
-            <span style={{ fontSize: 11, color: "var(--cs-text-muted)" }}>At least 8 characters, with letters and numbers.</span>
-            <p style={{ fontSize: 11, color: "var(--cs-text-muted)", margin: 0 }}>
+            <span style={{ fontSize: 13, color: "var(--cs-text-muted)" }}>At least 8 characters, with letters and numbers.</span>
+            <p style={{ fontSize: 13, color: "var(--cs-text-muted)", margin: 0 }}>
               This signs you out everywhere else: anyone else holding a session on this account loses it.
             </p>
-            {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
+            {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, margin: 0 }}>{error}</p>}
           </>
         )}
       </div>

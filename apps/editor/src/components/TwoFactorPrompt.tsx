@@ -37,13 +37,13 @@ export function TwoFactorPrompt({ challenge, onSignedIn, onCancel }: { challenge
       onSubmit={() => void submit()}
       footer={
         <button type="submit" className="cs-btn cs-active" data-testid="two-factor-submit" disabled={busy || code.trim().length < 6}>
-          {busy ? <Loader2 size={14} className="cs-spin" /> : null} Sign in
+          {busy ? <Loader2 size={17} className="cs-spin" /> : null} Sign in
         </button>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, fontSize: 13 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, fontSize: 15 }}>
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-          <ShieldCheck size={20} style={{ flex: "none", color: "var(--cs-accent)" }} />
+          <ShieldCheck size={22} style={{ flex: "none", color: "var(--cs-accent)" }} />
           <p style={{ margin: 0 }}>Your password was right. Enter the six-digit code from your authenticator app to finish signing in.</p>
         </div>
 
@@ -58,10 +58,10 @@ export function TwoFactorPrompt({ challenge, onSignedIn, onCancel }: { challenge
           autoComplete="one-time-code"
           autoFocus
           data-testid="two-factor-code"
-          style={{ fontSize: 18, letterSpacing: 2, textAlign: "center" }}
+          style={{ fontSize: 20, letterSpacing: 2, textAlign: "center" }}
         />
 
-        <span style={{ fontSize: 11, color: "var(--cs-text-muted)" }}>Lost your phone? Use one of your recovery codes here instead.</span>
+        <span style={{ fontSize: 13, color: "var(--cs-text-muted)" }}>Lost your phone? Use one of your recovery codes here instead.</span>
 
         {error && <p style={{ color: "var(--cs-danger)", margin: 0 }}>{error}</p>}
       </div>

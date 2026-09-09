@@ -59,11 +59,11 @@ export function PostReader({ slug, onBack, onViewProfile }: { slug: string; onBa
     }
   };
 
-  if (error && !post) return <p style={{ padding: 16, fontSize: 13, color: "var(--cs-danger)" }}>{error}</p>;
+  if (error && !post) return <p style={{ padding: 16, fontSize: 15, color: "var(--cs-danger)" }}>{error}</p>;
   if (!post) {
     return (
-      <p style={{ padding: 16, fontSize: 13, color: "var(--cs-text-muted)", display: "flex", gap: 6, alignItems: "center" }}>
-        <Loader2 size={14} className="cs-spin" /> Loading…
+      <p style={{ padding: 16, fontSize: 15, color: "var(--cs-text-muted)", display: "flex", gap: 6, alignItems: "center" }}>
+        <Loader2 size={17} className="cs-spin" /> Loading…
       </p>
     );
   }
@@ -71,14 +71,14 @@ export function PostReader({ slug, onBack, onViewProfile }: { slug: string; onBa
   return (
     <div style={{ padding: "8px 8px 24px" }} data-testid="post-reader">
       <button className="cs-btn" onClick={onBack} style={{ marginBottom: 12 }} data-testid="post-back">
-        <ArrowLeft size={14} /> All guides
+        <ArrowLeft size={17} /> All guides
       </button>
 
       <article style={{ padding: "0 8px" }}>
-        <h2 className="cs-heading" style={{ fontSize: 22, fontWeight: 600, margin: "0 0 4px" }} data-testid="post-heading">
+        <h2 className="cs-heading" style={{ fontSize: 24, fontWeight: 600, margin: "0 0 4px" }} data-testid="post-heading">
           {post.title}
         </h2>
-        <p style={{ margin: "0 0 14px", fontSize: 12, color: "var(--cs-text-muted)" }}>
+        <p style={{ margin: "0 0 14px", fontSize: 14, color: "var(--cs-text-muted)" }}>
           {post.categoryLabel} · by{" "}
           {post.author.username ? (
             <button
@@ -100,14 +100,14 @@ export function PostReader({ slug, onBack, onViewProfile }: { slug: string; onBa
           {post.isAuthor ? (
             <>
               <button className="cs-btn" onClick={() => setEditing(true)} data-testid="post-edit">
-                <PenLine size={14} /> Edit
+                <PenLine size={17} /> Edit
               </button>
               <button
                 className="cs-btn"
                 data-testid="post-history"
                 onClick={() => (revisions ? setRevisions(null) : loadRevisions(post.id).then(setRevisions).catch(() => setRevisions([])))}
               >
-                <History size={14} /> History ({post.revisionCount})
+                <History size={17} /> History ({post.revisionCount})
               </button>
               <button
                 className="cs-btn"
@@ -118,13 +118,13 @@ export function PostReader({ slug, onBack, onViewProfile }: { slug: string; onBa
                   onBack();
                 }}
               >
-                <Trash2 size={14} /> Delete
+                <Trash2 size={17} /> Delete
               </button>
             </>
           ) : (
             viewer && (
               <button className="cs-btn" onClick={() => setReporting({ type: "post", id: post.id, label: `“${post.title}”` })} data-testid="post-report">
-                <Flag size={14} /> Report
+                <Flag size={17} /> Report
               </button>
             )
           )}
@@ -132,12 +132,12 @@ export function PostReader({ slug, onBack, onViewProfile }: { slug: string; onBa
 
         {revisions && (
           <div style={{ border: "1px solid var(--cs-border)", borderRadius: 8, padding: 12, marginBottom: 14 }} data-testid="post-revisions">
-            <strong style={{ fontSize: 12 }}>Edit history</strong>
+            <strong style={{ fontSize: 14 }}>Edit history</strong>
             {revisions.length === 0 ? (
-              <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--cs-text-muted)" }}>No edits yet, this is the original.</p>
+              <p style={{ margin: "6px 0 0", fontSize: 14, color: "var(--cs-text-muted)" }}>No edits yet, this is the original.</p>
             ) : (
               revisions.map((r) => (
-                <details key={r.id} style={{ marginTop: 8, fontSize: 12 }}>
+                <details key={r.id} style={{ marginTop: 8, fontSize: 14 }}>
                   <summary style={{ cursor: "pointer", color: "var(--cs-text-muted)" }}>Before {new Date(r.saved_at).toLocaleString()}</summary>
                   <div style={{ marginTop: 6, opacity: 0.85 }}>
                     <Markdown source={r.body} />
@@ -152,26 +152,26 @@ export function PostReader({ slug, onBack, onViewProfile }: { slug: string; onBa
       </article>
 
       <section style={{ marginTop: 24, padding: "0 8px" }} data-testid="post-comments">
-        <h3 className="cs-heading" style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}>
-          <MessageSquare size={14} /> Comments ({comments.length})
+        <h3 className="cs-heading" style={{ fontSize: 16, fontWeight: 600, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}>
+          <MessageSquare size={17} /> Comments ({comments.length})
         </h3>
 
         {comments.map((c) => (
           <div key={c.id} style={{ borderTop: "1px solid var(--cs-border)", padding: "8px 0", display: "flex", gap: 8 }} data-testid="comment">
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, color: "var(--cs-text-muted)" }}>
+              <div style={{ fontSize: 13, color: "var(--cs-text-muted)" }}>
                 {c.author.name ?? "someone"} · {new Date(c.created_at).toLocaleString()}
               </div>
-              <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{c.body}</div>
+              <div style={{ fontSize: 15, whiteSpace: "pre-wrap" }}>{c.body}</div>
             </div>
             {viewer && (viewer.id === c.author.id || post.isAuthor) && (
               <button className="cs-icon-btn" title="Delete" onClick={() => void removeComment(c.id)} data-testid="comment-delete">
-                <Trash2 size={13} />
+                <Trash2 size={16} />
               </button>
             )}
             {viewer && viewer.id !== c.author.id && (
               <button className="cs-icon-btn" title="Report" onClick={() => setReporting({ type: "comment", id: String(c.id), label: "this comment" })}>
-                <Flag size={13} />
+                <Flag size={16} />
               </button>
             )}
           </div>
@@ -189,14 +189,14 @@ export function PostReader({ slug, onBack, onViewProfile }: { slug: string; onBa
               style={{ resize: "vertical", fontFamily: "inherit" }}
             />
             <button className="cs-btn" onClick={() => void submitComment()} disabled={busy || !draft.trim()} style={{ alignSelf: "flex-start" }} data-testid="comment-submit">
-              {busy ? <Loader2 size={14} className="cs-spin" /> : <MessageSquare size={14} />} Comment
+              {busy ? <Loader2 size={17} className="cs-spin" /> : <MessageSquare size={17} />} Comment
             </button>
           </div>
         ) : (
-          <p style={{ fontSize: 12, color: "var(--cs-text-muted)", marginTop: 10 }}>Sign in to join the discussion.</p>
+          <p style={{ fontSize: 14, color: "var(--cs-text-muted)", marginTop: 10 }}>Sign in to join the discussion.</p>
         )}
 
-        {error && <p style={{ color: "var(--cs-danger)", fontSize: 13 }}>{error}</p>}
+        {error && <p style={{ color: "var(--cs-danger)", fontSize: 15 }}>{error}</p>}
       </section>
 
       {editing && <PostEditorModal existing={post} onSaved={() => { setEditing(false); refresh(); }} onClose={() => setEditing(false)} />}

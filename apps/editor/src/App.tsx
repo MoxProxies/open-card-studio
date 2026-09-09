@@ -109,11 +109,11 @@ export function App() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", padding: "6px 8px", borderBottom: "1px solid var(--cs-border)", flex: "none" }}>
-                <span className="cs-heading" style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
+                <span className="cs-heading" style={{ fontSize: 15, fontWeight: 600, flex: 1 }}>
                   {sheet === "layers" ? "Layers" : "Properties"}
                 </span>
                 <button className="cs-icon-btn" onClick={() => setSheet(null)} title="Close" data-testid="editor-sheet-close">
-                  <X size={16} />
+                  <X size={19} />
                 </button>
               </div>
               <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex" }}>
@@ -127,8 +127,8 @@ export function App() {
 
           <div style={{ display: "flex", borderTop: "1px solid var(--cs-border)", flex: "none", background: "var(--cs-surface)" }} data-testid="editor-sheet-tabs">
             {([
-              ["layers", "Layers", <LayersIcon key="l" size={18} />],
-              ["properties", "Properties", <SlidersHorizontal key="p" size={18} />],
+              ["layers", "Layers", <LayersIcon key="l" size={20} />],
+              ["properties", "Properties", <SlidersHorizontal key="p" size={20} />],
             ] as const).map(([key, label, icon]) => (
               <button
                 key={key}
@@ -146,7 +146,7 @@ export function App() {
                   background: "none",
                   cursor: "pointer",
                   color: sheet === key ? "var(--cs-accent)" : "var(--cs-text-muted)",
-                  fontSize: 12,
+                  fontSize: 14,
                 }}
               >
                 {icon}

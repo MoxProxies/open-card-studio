@@ -118,13 +118,13 @@ export function LibraryPanel({ design, onRename, onSave, onNew, onLoad, children
   const tabs = (
     <>
       <button className={`cs-btn${tab === "designs" ? " cs-active" : ""}`} onClick={() => setTab("designs")} data-testid="tab-designs">
-        <FileImage size={14} /> Designs
+        <FileImage size={17} /> Designs
       </button>
       <button className={`cs-btn${tab === "collections" ? " cs-active" : ""}`} onClick={() => setTab("collections")} data-testid="tab-collections">
-        <Library size={14} /> Collections
+        <Library size={17} /> Collections
       </button>
       <button className={`cs-btn${tab === "art" ? " cs-active" : ""}`} onClick={() => setTab("art")} data-testid="tab-art">
-        <Palette size={14} /> Art
+        <Palette size={17} /> Art
       </button>
     </>
   );
@@ -160,10 +160,10 @@ export function LibraryPanel({ design, onRename, onSave, onNew, onLoad, children
             <div style={{ display: "flex", gap: 8, width: "100%" }}>
               <input className="cs-input" value={design.name} onChange={(e) => onRename(e.target.value)} placeholder="Design name" style={{ flex: 1 }} />
               <button className="cs-btn" onClick={() => void handleSave()} disabled={saving} title="Save this design">
-                {saving ? <Loader2 size={14} className="cs-spin" /> : <Save size={14} />} Save
+                {saving ? <Loader2 size={17} className="cs-spin" /> : <Save size={17} />} Save
               </button>
               <button className="cs-btn" onClick={handleNew} title="Start a new blank design">
-                <FilePlus size={14} /> New
+                <FilePlus size={17} /> New
               </button>
             </div>
           </>
@@ -174,23 +174,23 @@ export function LibraryPanel({ design, onRename, onSave, onNew, onLoad, children
               <CollectionsPanel currentDesignId={design.id} currentDesignName={design.name} signedIn={Boolean(user)} />
             ) : (
               <>
-                {actionError && <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "8px 16px", margin: 0 }}>{actionError}</p>}
+                {actionError && <p style={{ color: "var(--cs-danger)", fontSize: 15, padding: "8px 16px", margin: 0 }}>{actionError}</p>}
 
                 <div style={{ padding: 8 }}>
                   {listLoading ? (
-                    <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
-                      <Loader2 size={14} className="cs-spin" /> Loading…
+                    <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+                      <Loader2 size={17} className="cs-spin" /> Loading…
                     </p>
                   ) : listError ? (
-                    <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "6px 8px" }}>{listError}</p>
+                    <p style={{ color: "var(--cs-danger)", fontSize: 15, padding: "6px 8px" }}>{listError}</p>
                   ) : summaries.length === 0 ? (
-                    <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>No saved designs yet. Click Save above.</p>
+                    <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: "6px 8px" }}>No saved designs yet. Click Save above.</p>
                   ) : (
                     summaries.map((s) => (
                       <ListRow
                         key={s.id}
                         testId="saved-design-row"
-                        icon={loadingId === s.id ? <Loader2 size={15} className="cs-spin" /> : <FolderOpen size={15} />}
+                        icon={loadingId === s.id ? <Loader2 size={18} className="cs-spin" /> : <FolderOpen size={18} />}
                         title={
                           <>
                             {s.name}
@@ -206,7 +206,7 @@ export function LibraryPanel({ design, onRename, onSave, onNew, onLoad, children
                       to be published to (see DesignSummary.visibility). */}
                         {s.visibility && <VisibilitySelect value={s.visibility} onChange={(v) => void handleVisibility(s.id, v)} testId="design-visibility" />}
                         <button className="cs-icon-btn" title="Delete" onClick={(e) => void handleDelete(s.id, s.name, e)}>
-                          <Trash2 size={13} />
+                          <Trash2 size={16} />
                         </button>
                       </ListRow>
                     ))

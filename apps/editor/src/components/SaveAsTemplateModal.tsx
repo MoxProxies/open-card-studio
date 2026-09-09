@@ -83,7 +83,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
             Cancel
           </button>
           <button type="submit" className="cs-btn cs-active" disabled={submitting} data-testid="template-save-submit">
-            {submitting ? <Loader2 size={14} className="cs-spin" /> : null} {existing ? "Update" : "Save template"}
+            {submitting ? <Loader2 size={17} className="cs-spin" /> : null} {existing ? "Update" : "Save template"}
           </button>
         </>
       }
@@ -101,7 +101,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
             display: "flex",
             flexDirection: "column",
             gap: 4,
-            fontSize: 12,
+            fontSize: 14,
             color: "var(--cs-text-muted)",
           }}
         >
@@ -121,7 +121,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
             display: "flex",
             flexDirection: "column",
             gap: 4,
-            fontSize: 12,
+            fontSize: 14,
             color: "var(--cs-text-muted)",
           }}
         >
@@ -142,7 +142,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
             display: "flex",
             flexDirection: "column",
             gap: 4,
-            fontSize: 12,
+            fontSize: 14,
             color: "var(--cs-text-muted)",
           }}
         >
@@ -161,7 +161,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
             display: "flex",
             flexDirection: "column",
             gap: 4,
-            fontSize: 12,
+            fontSize: 14,
             color: "var(--cs-text-muted)",
           }}
         >
@@ -176,7 +176,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
             <option value="unlisted">Unlisted</option>
             <option value="published">Published</option>
           </select>
-          <span style={{ fontSize: 11 }}>{VISIBILITY_HELP[visibility]}</span>
+          <span style={{ fontSize: 13 }}>{VISIBILITY_HELP[visibility]}</span>
         </label>
 
         {/* The whole "slot definition" UI, such as it is: a read-out of
@@ -193,41 +193,41 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
           }}
           data-testid="template-lock-breakdown"
         >
-          <span style={{ fontSize: 12, fontWeight: 600 }}>What people can change</span>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>What people can change</span>
           <span
             style={{
-              fontSize: 12,
+              fontSize: 14,
               color: "var(--cs-text-muted)",
               display: "flex",
               alignItems: "center",
               gap: 6,
             }}
           >
-            <Lock size={13} /> {breakdown.chrome} fixed {breakdown.chrome === 1 ? "layer" : "layers"}, locked and content-locked
+            <Lock size={16} /> {breakdown.chrome} fixed {breakdown.chrome === 1 ? "layer" : "layers"}, locked and content-locked
           </span>
           <span
             style={{
-              fontSize: 12,
+              fontSize: 14,
               color: "var(--cs-text-muted)",
               display: "flex",
               alignItems: "center",
               gap: 6,
             }}
           >
-            <PencilLine size={13} /> {breakdown.slot} fill-in {breakdown.slot === 1 ? "slot" : "slots"}, locked in place, content editable
+            <PencilLine size={16} /> {breakdown.slot} fill-in {breakdown.slot === 1 ? "slot" : "slots"}, locked in place, content editable
           </span>
           <span
             style={{
-              fontSize: 12,
+              fontSize: 14,
               color: "var(--cs-text-muted)",
               display: "flex",
               alignItems: "center",
               gap: 6,
             }}
           >
-            <Unlock size={13} /> {breakdown.free} unlocked {breakdown.free === 1 ? "layer" : "layers"}, freely movable
+            <Unlock size={16} /> {breakdown.free} unlocked {breakdown.free === 1 ? "layer" : "layers"}, freely movable
           </span>
-          <span style={{ fontSize: 11, color: "var(--cs-text-muted)" }}>
+          <span style={{ fontSize: 13, color: "var(--cs-text-muted)" }}>
             Lock a layer (and content-lock it) in the layers panel to fix it in your template; leave a locked layer's content unlocked to make it a fill-in
             slot.
           </span>
@@ -236,7 +236,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
         {visibility === "published" && (
           <p
             style={{
-              fontSize: 11,
+              fontSize: 13,
               color: "var(--cs-text-muted)",
               margin: 0,
               lineHeight: 1.5,
@@ -247,7 +247,7 @@ export function SaveAsTemplateModal({ design, existing, onSaved, onClose }: Save
           </p>
         )}
 
-        {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
+        {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, margin: 0 }}>{error}</p>}
       </div>
     </Modal>
   );

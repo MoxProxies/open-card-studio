@@ -681,14 +681,14 @@ export function Toolbar({
       }}
     >
       <button className="cs-icon-btn" onClick={() => setShowFrameLibrary(true)} title="Frame">
-        <Frame size={16} />
+        <Frame size={19} />
       </button>
       <button className="cs-icon-btn" onClick={addText} title="Text">
-        <Type size={16} />
+        <Type size={19} />
       </button>
       <TextTemplateMenu templates={textTemplates} onAdd={addTextField} onAddAll={addAllTextFields} />
       <button className="cs-icon-btn" onClick={addShape} title="Shape">
-        <Shapes size={16} />
+        <Shapes size={19} />
       </button>
       {/* Signed in, this opens the art library — where uploading is one
           of the things you can do, and reusing something already there is
@@ -696,11 +696,11 @@ export function Toolbar({
           plain file picker. */}
       {getCurrentUser() ? (
         <button className="cs-icon-btn" onClick={() => setPickingArt(true)} data-testid="toolbar-image" title="Image">
-          <ImageUp size={16} />
+          <ImageUp size={19} />
         </button>
       ) : (
         <label className="cs-icon-btn" style={{ cursor: "pointer" }} data-testid="toolbar-image" title="Image">
-          <ImageUp size={16} />
+          <ImageUp size={19} />
           <input
             type="file"
             accept="image/*"
@@ -738,7 +738,7 @@ export function Toolbar({
           onClick={() => setShowImportSearch(true)}
           title={activeImportSource.description ?? `Import from ${activeImportSource.label}`}
         >
-          <Search size={16} /> Import
+          <Search size={19} /> Import
         </button>
       )}
       <button
@@ -747,22 +747,22 @@ export function Toolbar({
         disabled={!entitlements.canGenerateAiArt}
         title={entitlements.canGenerateAiArt ? "Generate an illustration from a text prompt" : "Premium feature: upgrade for AI art generation"}
       >
-        <Sparkles size={16} /> AI Art
+        <Sparkles size={19} /> AI Art
       </button>
 
       <div className="cs-divider" />
 
       <button className="cs-icon-btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl/Cmd+Z)">
-        <Undo2 size={16} />
+        <Undo2 size={19} />
       </button>
       <button className="cs-icon-btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl/Cmd+Shift+Z)">
-        <Redo2 size={16} />
+        <Redo2 size={19} />
       </button>
       <button className="cs-icon-btn" onClick={() => duplicateLayers(selectedLayerIds)} disabled={selectedLayerIds.length === 0} title="Duplicate (Ctrl/Cmd+D)">
-        <Copy size={16} />
+        <Copy size={19} />
       </button>
       <button className="cs-icon-btn" onClick={() => removeLayers(selectedLayerIds)} disabled={selectedLayerIds.length === 0} title="Delete (Del)">
-        <Trash2 size={16} />
+        <Trash2 size={19} />
       </button>
 
       <div style={{ flex: narrow ? "none" : 1 }} />
@@ -772,25 +772,25 @@ export function Toolbar({
         onClick={toggleSafeArea}
         title="Toggle safe-area guide: nothing critical should sit outside it"
       >
-        <Ruler size={16} />
+        <Ruler size={19} />
       </button>
       <button
         className={`cs-icon-btn${!showBleed ? " cs-active" : ""}`}
         onClick={toggleBleed}
         title={showBleed ? "Preview trimmed card: hides the bleed margin and rounds the corners" : "Show full bleed"}
       >
-        <Scissors size={16} />
+        <Scissors size={19} />
       </button>
       <button
         className={`cs-icon-btn${isFullscreen ? " cs-active" : ""}`}
         onClick={onToggleFullscreen}
         title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
       >
-        {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+        {isFullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
       </button>
 
       <span
-        style={{ alignSelf: "center", color: "var(--cs-text-muted)", fontSize: 12, cursor: "help" }}
+        style={{ alignSelf: "center", color: "var(--cs-text-muted)", fontSize: 14, cursor: "help" }}
         title={
           `Cut (final card): ${fmt(design.size.cutWidthMm)}×${fmt(design.size.cutHeightMm)}mm\n` +
           `Full bleed (art must extend to here): ${fmt(design.size.widthMm)}×${fmt(design.size.heightMm)}mm\n` +
@@ -801,7 +801,7 @@ export function Toolbar({
       </span>
       {!hideLocalDesignLibrary && (
         <button className="cs-btn" onClick={() => setShowDesignLibrary(true)} title="Save or load a design">
-          <Save size={16} /> Designs
+          <Save size={19} /> Designs
         </button>
       )}
       {/* Same `hideLocalDesignLibrary` gate as the Designs button and the
@@ -814,12 +814,12 @@ export function Toolbar({
           onClick={() => setShowTemplateBrowser(true)}
           title="Start a design from a community template, or publish this one as a template"
         >
-          <LayoutTemplate size={16} /> Templates
+          <LayoutTemplate size={19} /> Templates
         </button>
       )}
       {!hideLocalDesignLibrary && <AccountButton onViewProfile={setViewingProfile} />}
       <button className="cs-btn" onClick={handleExport} title={`Export PNG at ${PRINT_DPI} DPI`}>
-        <Download size={16} /> Export
+        <Download size={19} /> Export
       </button>
 
       {showDesignLibrary && (

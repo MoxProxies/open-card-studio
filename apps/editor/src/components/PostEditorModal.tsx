@@ -49,7 +49,7 @@ export function PostEditorModal({ existing, onSaved, onClose }: { existing?: Pos
     }
   };
 
-  const label = { display: "flex", flexDirection: "column" as const, gap: 4, fontSize: 12, color: "var(--cs-text-muted)" };
+  const label = { display: "flex", flexDirection: "column" as const, gap: 4, fontSize: 14, color: "var(--cs-text-muted)" };
 
   return (
     <Modal
@@ -60,14 +60,14 @@ export function PostEditorModal({ existing, onSaved, onClose }: { existing?: Pos
       footer={
         <>
           <button type="button" className="cs-btn" onClick={() => setPreview((p) => !p)} data-testid="post-preview-toggle">
-            {preview ? <PenLine size={14} /> : <Eye size={14} />} {preview ? "Write" : "Preview"}
+            {preview ? <PenLine size={17} /> : <Eye size={17} />} {preview ? "Write" : "Preview"}
           </button>
           <div style={{ flex: 1 }} />
           <button type="button" className="cs-btn" onClick={onClose}>
             Cancel
           </button>
           <button type="submit" className="cs-btn cs-active" disabled={saving} data-testid="post-save">
-            {saving ? <Loader2 size={14} className="cs-spin" /> : null} Save
+            {saving ? <Loader2 size={17} className="cs-spin" /> : null} Save
           </button>
         </>
       }
@@ -76,7 +76,7 @@ export function PostEditorModal({ existing, onSaved, onClose }: { existing?: Pos
         <label style={label}>
           Title
           <input className="cs-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="How I cut cards at home" data-testid="post-title" />
-          {existing && <span style={{ fontSize: 11 }}>The link stays /{existing.slug}; renaming won't break links people already shared.</span>}
+          {existing && <span style={{ fontSize: 13 }}>The link stays /{existing.slug}; renaming won't break links people already shared.</span>}
         </label>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -99,7 +99,7 @@ export function PostEditorModal({ existing, onSaved, onClose }: { existing?: Pos
                 </option>
               ))}
             </select>
-            <span style={{ fontSize: 11 }}>{VISIBILITY_HELP[visibility]}</span>
+            <span style={{ fontSize: 13 }}>{VISIBILITY_HELP[visibility]}</span>
           </label>
         </div>
 
@@ -125,12 +125,12 @@ export function PostEditorModal({ existing, onSaved, onClose }: { existing?: Pos
               rows={14}
               placeholder={"# What you'll need\n\n- A guillotine cutter\n- Matte 300gsm stock"}
               data-testid="post-body"
-              style={{ resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 13, lineHeight: 1.5 }}
+              style={{ resize: "vertical", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 15, lineHeight: 1.5 }}
             />
           )}
         </label>
 
-        {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
+        {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, margin: 0 }}>{error}</p>}
       </div>
     </Modal>
   );
