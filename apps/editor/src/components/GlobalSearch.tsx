@@ -151,14 +151,14 @@ export function GlobalSearch() {
         aria-label="Search templates, guides and your library"
         data-testid="global-search-toggle"
       >
-        <Search size={16} />
+        <Search size={19} />
       </button>
 
       {open && (
         <div className="cs-root cs-search-panel" data-testid="global-search-panel">
           <div style={{ position: "relative", padding: 8, borderBottom: "1px solid var(--cs-border)", flex: "none" }}>
             <Search
-              size={14}
+              size={17}
               style={{ position: "absolute", left: 20, top: "50%", transform: "translateY(-50%)", color: "var(--cs-text-muted)" }}
             />
             <input
@@ -174,17 +174,17 @@ export function GlobalSearch() {
 
           <div style={{ overflowY: "auto", padding: 6 }}>
             {!trimmed ? (
-              <p style={{ fontSize: 12, color: "var(--cs-text-muted)", padding: "10px 8px", margin: 0 }}>
+              <p style={{ fontSize: 14, color: "var(--cs-text-muted)", padding: "10px 8px", margin: 0 }}>
                 Search published templates, guides{user ? ", and your library" : ""}.
               </p>
             ) : loading ? (
-              <p style={{ fontSize: 12, color: "var(--cs-text-muted)", padding: "10px 8px", margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                <Loader2 size={13} className="cs-spin" /> Searching
+              <p style={{ fontSize: 14, color: "var(--cs-text-muted)", padding: "10px 8px", margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                <Loader2 size={16} className="cs-spin" /> Searching
               </p>
             ) : error ? (
-              <p style={{ fontSize: 12, color: "var(--cs-danger)", padding: "10px 8px", margin: 0 }}>{error}</p>
+              <p style={{ fontSize: 14, color: "var(--cs-danger)", padding: "10px 8px", margin: 0 }}>{error}</p>
             ) : !hasResults ? (
-              <p style={{ fontSize: 12, color: "var(--cs-text-muted)", padding: "10px 8px", margin: 0 }} data-testid="global-search-empty">
+              <p style={{ fontSize: 14, color: "var(--cs-text-muted)", padding: "10px 8px", margin: 0 }} data-testid="global-search-empty">
                 No matches for "{trimmed}".
               </p>
             ) : (
@@ -195,7 +195,7 @@ export function GlobalSearch() {
                       <ListRow
                         key={t.id}
                         testId="global-search-template"
-                        icon={busyId === t.id ? <Loader2 size={14} className="cs-spin" /> : <LayoutTemplate size={14} />}
+                        icon={busyId === t.id ? <Loader2 size={17} className="cs-spin" /> : <LayoutTemplate size={17} />}
                         title={t.name}
                         subtitle={`by ${t.author.name ?? "a community member"}`}
                         onClick={() => void handleUseTemplate(t.id, t.name)}
@@ -211,7 +211,7 @@ export function GlobalSearch() {
                       <ListRow
                         key={g.id}
                         testId="global-search-guide"
-                        icon={<BookOpen size={14} />}
+                        icon={<BookOpen size={17} />}
                         title={g.title}
                         subtitle={g.categoryLabel}
                         onClick={() => handleOpenGuide(g.slug)}
@@ -226,7 +226,7 @@ export function GlobalSearch() {
                       <ListRow
                         key={d.id}
                         testId="global-search-design"
-                        icon={busyId === d.id ? <Loader2 size={14} className="cs-spin" /> : <FolderOpen size={14} />}
+                        icon={busyId === d.id ? <Loader2 size={17} className="cs-spin" /> : <FolderOpen size={17} />}
                         title={d.name}
                         subtitle={new Date(d.updatedAt).toLocaleDateString()}
                         onClick={() => void handleOpenDesign(d.id, d.name)}
@@ -249,7 +249,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
     <div style={{ marginBottom: 4 }}>
       <div
         style={{
-          fontSize: 11,
+          fontSize: 13,
           fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: "0.04em",

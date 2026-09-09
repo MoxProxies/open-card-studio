@@ -65,8 +65,8 @@ export function ReactionButton({
       title={signedIn ? (state.reacted ? "Remove your like" : "Like this") : "Sign in to like this"}
       style={{ gap: 4, width: "auto", padding: "0 6px" }}
     >
-      <Heart size={13} fill={state.reacted ? "currentColor" : "none"} />
-      <span style={{ fontSize: 11 }} data-testid="reaction-count">
+      <Heart size={16} fill={state.reacted ? "currentColor" : "none"} />
+      <span style={{ fontSize: 13 }} data-testid="reaction-count">
         {state.count}
       </span>
     </button>

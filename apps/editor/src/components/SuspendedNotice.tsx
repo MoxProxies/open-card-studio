@@ -66,15 +66,15 @@ export function SuspendedNotice() {
               disabled={sending || message.trim().length < MIN_LENGTH}
               onClick={() => void send()}
             >
-              {sending ? <Loader2 size={14} className="cs-spin" /> : null} Send appeal
+              {sending ? <Loader2 size={17} className="cs-spin" /> : null} Send appeal
             </button>
           )}
         </>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, fontSize: 13 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, fontSize: 15 }}>
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-          <ShieldAlert size={20} style={{ flex: "none", color: "var(--cs-danger)" }} />
+          <ShieldAlert size={22} style={{ flex: "none", color: "var(--cs-danger)" }} />
           <p style={{ margin: 0 }}>
             This account is suspended, so its designs, templates and profile aren't publicly visible and it can't publish anything. Your work isn't deleted.
           </p>
@@ -97,7 +97,7 @@ export function SuspendedNotice() {
         )}
 
         {appeal === null && (
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--cs-text-muted)" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, color: "var(--cs-text-muted)" }}>
             If you think this is a mistake, tell us why. A person reads these.
             <textarea
               className="cs-input"

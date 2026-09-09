@@ -11,11 +11,11 @@ export function ProfileStats({ stats, badges }: { stats: LevelProgress; badges: 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }} data-testid="profile-stats">
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 13 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 15 }}>
         <strong data-testid="profile-level">
           Level {stats.level} · {stats.level_name}
         </strong>
-        <span style={{ color: "var(--cs-text-muted)", fontSize: 12 }} data-testid="profile-points">
+        <span style={{ color: "var(--cs-text-muted)", fontSize: 14 }} data-testid="profile-points">
           {stats.points} point{stats.points === 1 ? "" : "s"}
           {stats.reactions_received > 0 && ` · ${stats.reactions_received} reaction${stats.reactions_received === 1 ? "" : "s"} received`}
         </span>
@@ -25,7 +25,7 @@ export function ProfileStats({ stats, badges }: { stats: LevelProgress; badges: 
         <div style={{ width: `${filled * 100}%`, height: "100%", background: "var(--cs-accent)" }} />
       </div>
 
-      <span style={{ fontSize: 11, color: "var(--cs-text-muted)" }}>
+      <span style={{ fontSize: 13, color: "var(--cs-text-muted)" }}>
         {stats.points_to_next === null ? "Top level reached." : `${stats.points_to_next} to level ${stats.level + 1}.`}
       </span>
 
@@ -40,7 +40,7 @@ export function ProfileStats({ stats, badges }: { stats: LevelProgress; badges: 
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 4,
-                fontSize: 11,
+                fontSize: 13,
                 padding: "3px 8px",
                 borderRadius: 999,
                 border: "1px solid var(--cs-border-strong)",

@@ -78,7 +78,7 @@ function inline(text: string, keyPrefix: string): ReactNode[] {
   return nodes;
 }
 
-const HEADING_SIZES = [19, 16, 14];
+const HEADING_SIZES = [21, 18, 16];
 
 export function Markdown({ source }: { source: string }) {
   const lines = source.replace(/\r\n/g, "\n").split("\n");
@@ -127,7 +127,7 @@ export function Markdown({ source }: { source: string }) {
       blocks.push(
         <pre
           key={`c${key++}`}
-          style={{ margin: "0 0 10px", padding: 10, background: "var(--cs-surface-soft)", borderRadius: 6, overflowX: "auto", fontSize: 12, lineHeight: 1.5 }}
+          style={{ margin: "0 0 10px", padding: 10, background: "var(--cs-surface-soft)", borderRadius: 6, overflowX: "auto", fontSize: 14, lineHeight: 1.5 }}
         >
           <code>{code.join("\n")}</code>
         </pre>
@@ -192,5 +192,5 @@ export function Markdown({ source }: { source: string }) {
 
   flush();
 
-  return <div style={{ fontSize: 14 }}>{blocks}</div>;
+  return <div style={{ fontSize: 16 }}>{blocks}</div>;
 }

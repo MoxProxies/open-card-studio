@@ -69,19 +69,19 @@ export function GuidesView() {
         toolbar={
           <>
             <button className={`cs-btn${tab === "browse" ? " cs-active" : ""}`} onClick={() => setTab("browse")} data-testid="guides-tab-browse">
-              <Users size={14} /> Community
+              <Users size={17} /> Community
             </button>
             <button className={`cs-btn${tab === "mine" ? " cs-active" : ""}`} onClick={() => setTab("mine")} data-testid="guides-tab-mine">
-              <FileText size={14} /> My guides
+              <FileText size={17} /> My guides
             </button>
             <div style={{ flex: 1 }} />
             <button className="cs-btn" onClick={() => setWriting(true)} disabled={!user} data-testid="guide-write" title={user ? "Write a guide" : "Sign in to write a guide"}>
-              <PenLine size={14} /> Write a guide
+              <PenLine size={17} /> Write a guide
             </button>
             {tab === "browse" && (
               <div style={{ display: "flex", gap: 8, width: "100%" }}>
                 <div style={{ position: "relative", flex: 1 }}>
-                  <Search size={14} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "var(--cs-text-muted)" }} />
+                  <Search size={17} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "var(--cs-text-muted)" }} />
                   <input
                     className="cs-input"
                     placeholder="Search guides…"
@@ -105,15 +105,15 @@ export function GuidesView() {
         }
       >
         {!canList ? (
-          <p style={{ padding: "6px 8px", fontSize: 13, color: "var(--cs-text-muted)" }}>Sign in to see the guides you've written.</p>
+          <p style={{ padding: "6px 8px", fontSize: 15, color: "var(--cs-text-muted)" }}>Sign in to see the guides you've written.</p>
         ) : loading ? (
-          <p style={{ padding: "6px 8px", fontSize: 13, color: "var(--cs-text-muted)", display: "flex", gap: 6, alignItems: "center" }}>
-            <Loader2 size={14} className="cs-spin" /> Loading…
+          <p style={{ padding: "6px 8px", fontSize: 15, color: "var(--cs-text-muted)", display: "flex", gap: 6, alignItems: "center" }}>
+            <Loader2 size={17} className="cs-spin" /> Loading…
           </p>
         ) : error ? (
-          <p style={{ padding: "6px 8px", fontSize: 13, color: "var(--cs-danger)" }}>{error}</p>
+          <p style={{ padding: "6px 8px", fontSize: 15, color: "var(--cs-danger)" }}>{error}</p>
         ) : posts.length === 0 ? (
-          <p style={{ padding: "6px 8px", fontSize: 13, color: "var(--cs-text-muted)" }}>
+          <p style={{ padding: "6px 8px", fontSize: 15, color: "var(--cs-text-muted)" }}>
             {tab === "mine" ? "You haven't written any guides yet." : "No guides match that search yet."}
           </p>
         ) : (
@@ -131,8 +131,8 @@ export function GuidesView() {
               onClick={() => navigate({ tab: "guides", slug: p.slug })}
             >
               {p.commentCount !== null && p.commentCount > 0 && (
-                <span style={{ fontSize: 11, color: "var(--cs-text-muted)", display: "flex", alignItems: "center", gap: 3 }}>
-                  <MessageSquare size={12} /> {p.commentCount}
+                <span style={{ fontSize: 13, color: "var(--cs-text-muted)", display: "flex", alignItems: "center", gap: 3 }}>
+                  <MessageSquare size={14} /> {p.commentCount}
                 </span>
               )}
               <ReactionButton type="post" id={p.id} count={p.reactionCount} reacted={p.reacted} />

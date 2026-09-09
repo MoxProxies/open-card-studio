@@ -56,14 +56,14 @@ export function DeleteAccountModal({ user, onClose }: { user: AuthUser; onClose:
             disabled={busy || value.length === 0}
             onClick={() => void submit()}
           >
-            {busy ? <Loader2 size={14} className="cs-spin" /> : null} Delete everything
+            {busy ? <Loader2 size={17} className="cs-spin" /> : null} Delete everything
           </button>
         </>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, fontSize: 13 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, fontSize: 15 }}>
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-          <TriangleAlert size={20} style={{ flex: "none", color: "var(--cs-danger)" }} />
+          <TriangleAlert size={22} style={{ flex: "none", color: "var(--cs-danger)" }} />
           <p style={{ margin: 0 }}>
             This deletes your designs, templates, collections, guides, comments and points. It can't be undone, and published templates disappear for everyone,
             though designs already made from them keep working, since those copied the layers.
@@ -72,7 +72,7 @@ export function DeleteAccountModal({ user, onClose }: { user: AuthUser; onClose:
 
         <p style={{ margin: 0, color: "var(--cs-text-muted)" }}>Take a copy first if you want one: “Download my data” is on the previous screen.</p>
 
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--cs-text-muted)" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, color: "var(--cs-text-muted)" }}>
           {byPassword ? "Enter your password to confirm" : `Type “${user.username}” to confirm`}
           <input
             className="cs-input"

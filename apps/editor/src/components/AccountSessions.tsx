@@ -41,7 +41,7 @@ export function AccountSessions({ onSignedOut }: { onSignedOut: () => void }) {
     }
   };
 
-  if (!sessions) return <p style={{ fontSize: 12, color: "var(--cs-text-muted)", margin: 0 }}>{error ?? "Loading devices…"}</p>;
+  if (!sessions) return <p style={{ fontSize: 14, color: "var(--cs-text-muted)", margin: 0 }}>{error ?? "Loading devices…"}</p>;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }} data-testid="account-sessions">
@@ -50,7 +50,7 @@ export function AccountSessions({ onSignedOut }: { onSignedOut: () => void }) {
           key={session.id}
           testId="session-row"
           attrs={{ "data-current": String(session.current) }}
-          icon={<MonitorSmartphone size={15} />}
+          icon={<MonitorSmartphone size={18} />}
           title={session.current ? `${session.device} (this device)` : session.device}
           subtitle={
             session.last_used_at ? `Last used ${new Date(session.last_used_at).toLocaleString()}` : `Signed in ${new Date(session.created_at).toLocaleString()}`
@@ -64,11 +64,11 @@ export function AccountSessions({ onSignedOut }: { onSignedOut: () => void }) {
             disabled={busy === session.id}
             onClick={() => void revoke(session)}
           >
-            {busy === session.id ? <Loader2 size={14} className="cs-spin" /> : <X size={14} />}
+            {busy === session.id ? <Loader2 size={17} className="cs-spin" /> : <X size={17} />}
           </button>
         </ListRow>
       ))}
-      {error && <p style={{ color: "var(--cs-danger)", fontSize: 12, margin: 0 }}>{error}</p>}
+      {error && <p style={{ color: "var(--cs-danger)", fontSize: 14, margin: 0 }}>{error}</p>}
     </div>
   );
 }

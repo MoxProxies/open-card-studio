@@ -48,8 +48,8 @@ export function ListRow({
     >
       {icon && <span style={{ display: "flex", flex: "none", color: "var(--cs-text-muted)" }}>{icon}</span>}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>
-        {subtitle && <div style={{ fontSize: 11, color: "var(--cs-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitle}</div>}
+        <div style={{ fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>
+        {subtitle && <div style={{ fontSize: 13, color: "var(--cs-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitle}</div>}
       </div>
       {children}
     </div>

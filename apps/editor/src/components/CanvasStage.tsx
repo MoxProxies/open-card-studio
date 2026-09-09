@@ -566,17 +566,17 @@ export function CanvasStage({ stageRef }: { stageRef: RefObject<Konva.Stage> }) 
 
       <div style={{ position: "absolute", right: 12, bottom: 12, display: "flex", gap: 4, background: "var(--cs-surface)", border: "1px solid var(--cs-border)", borderRadius: 8, padding: 4, boxShadow: "0 2px 8px var(--cs-shadow)" }}>
         <button className="cs-icon-btn" title="Zoom out" onClick={() => setZoom(zoom / BUTTON_ZOOM_STEP, zoomFocal())}>
-          <ZoomOut size={16} />
+          <ZoomOut size={19} />
         </button>
         <button className="cs-btn" style={{ minWidth: 52, justifyContent: "center" }} title="Reset to 100%" onClick={() => setZoom(1, zoomFocal())}>
           {Math.round(zoom * 100)}%
         </button>
         <button className="cs-icon-btn" title="Zoom in" onClick={() => setZoom(zoom * BUTTON_ZOOM_STEP, zoomFocal())}>
-          <ZoomIn size={16} />
+          <ZoomIn size={19} />
         </button>
         <div className="cs-divider" />
         <button className="cs-icon-btn" title="Fit to view" onClick={() => fitToView(false)}>
-          <Maximize size={16} />
+          <Maximize size={19} />
         </button>
       </div>
     </div>

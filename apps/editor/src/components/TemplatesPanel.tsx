@@ -171,10 +171,10 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
         toolbar: (
           <div className="cs-tb" style={{ display: "contents" }}>
             <button className={`cs-tb-chip${tab === "browse" ? " cs-active" : ""}`} onClick={() => setTab("browse")} data-testid="template-tab-browse">
-              <Users size={14} /> Community
+              <Users size={17} /> Community
             </button>
             <button className={`cs-tb-chip${tab === "mine" ? " cs-active" : ""}`} onClick={() => setTab("mine")} data-testid="template-tab-mine">
-              <LayoutTemplate size={14} /> My templates
+              <LayoutTemplate size={17} /> My templates
             </button>
             <div style={{ flex: 1 }} />
             <button
@@ -187,13 +187,13 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
               disabled={!user}
               title={user ? "Publish the design you're editing as a reusable template" : "Sign in to save templates to your account"}
             >
-              <Upload size={14} /> Save current design as template
+              <Upload size={17} /> Save current design as template
             </button>
             {tab === "browse" && (
               <div style={{ display: "flex", gap: 8, width: "100%" }}>
                 <div style={{ position: "relative", flex: 1 }}>
                   <Search
-                    size={16}
+                    size={19}
                     style={{
                       position: "absolute",
                       left: 12,
@@ -222,7 +222,7 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
         body: (
           <div className="cs-tb cs-tb-body" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
             {notice && (
-              <p style={{ color: "var(--cs-accent)", fontSize: 13, padding: "6px 8px", margin: 0 }} data-testid="template-remix-notice">
+              <p style={{ color: "var(--cs-accent)", fontSize: 15, padding: "6px 8px", margin: 0 }} data-testid="template-remix-notice">
                 {notice}
               </p>
             )}
@@ -231,7 +231,7 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
               <p
                 style={{
                   color: "var(--cs-danger)",
-                  fontSize: 13,
+                  fontSize: 15,
                   padding: "8px 16px",
                   margin: 0,
                 }}
@@ -242,24 +242,24 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
 
             <div style={{ padding: 16, overflowY: "auto", flex: 1 }}>
               {!canList ? (
-                <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>Sign in to see the templates you've saved.</p>
+                <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: "6px 8px" }}>Sign in to see the templates you've saved.</p>
               ) : listLoading ? (
                 <p
                   style={{
                     color: "var(--cs-text-muted)",
-                    fontSize: 13,
+                    fontSize: 15,
                     padding: "6px 8px",
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
                   }}
                 >
-                  <Loader2 size={14} className="cs-spin" /> Loading…
+                  <Loader2 size={17} className="cs-spin" /> Loading…
                 </p>
               ) : listError ? (
-                <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "6px 8px" }}>{listError}</p>
+                <p style={{ color: "var(--cs-danger)", fontSize: 15, padding: "6px 8px" }}>{listError}</p>
               ) : templates.length === 0 ? (
-                <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>
+                <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: "6px 8px" }}>
                   {tab === "mine"
                     ? "You haven't saved any templates yet. Lock the layers you want fixed, then use the button above."
                     : "No published templates match that search yet."}
@@ -354,7 +354,7 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
                               data-testid="template-report"
                               onClick={() => setReportingTemplate(t)}
                             >
-                              <Flag size={13} />
+                              <Flag size={16} />
                             </button>
                           )}
 
@@ -366,19 +366,19 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
                               data-testid="template-remix"
                               title="Make your own editable copy of this layout, credited to its author"
                             >
-                              <GitFork size={14} /> Remix
+                              <GitFork size={17} /> Remix
                             </button>
                           )}
 
                           <div style={{ flex: 1 }} />
 
                           <button className="cs-tb-btn-primary" onClick={() => void handleUse(t)} disabled={busyId === t.id} data-testid="template-use">
-                            {busyId === t.id ? <Loader2 size={14} className="cs-spin" /> : <LayoutTemplate size={14} />} Use
+                            {busyId === t.id ? <Loader2 size={17} className="cs-spin" /> : <LayoutTemplate size={17} />} Use
                           </button>
 
                           {tab === "mine" && (
                             <button className="cs-tb-icon-ghost" title="Delete" onClick={(e) => void handleDelete(t, e)} data-testid="template-delete">
-                              <Trash2 size={13} />
+                              <Trash2 size={16} />
                             </button>
                           )}
                         </div>

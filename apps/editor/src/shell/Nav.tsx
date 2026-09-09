@@ -23,15 +23,15 @@ interface Destination {
  * "your own stuff" pair.
  */
 export const DESTINATIONS: Destination[] = [
-  { tab: "guides", label: "Guides", icon: <BookOpen size={20} /> },
-  { tab: "templates", label: "Templates", icon: <LayoutTemplate size={20} /> },
-  { tab: "design", label: "Design", icon: <Palette size={20} /> },
-  { tab: "library", label: "Library", icon: <Library size={20} /> },
-  { tab: "profile", label: "Profile", icon: <User size={20} /> },
+  { tab: "guides", label: "Guides", icon: <BookOpen size={22} /> },
+  { tab: "templates", label: "Templates", icon: <LayoutTemplate size={22} /> },
+  { tab: "design", label: "Design", icon: <Palette size={22} /> },
+  { tab: "library", label: "Library", icon: <Library size={22} /> },
+  { tab: "profile", label: "Profile", icon: <User size={22} /> },
 ];
 
 /** The staff-only sixth destination — see navStore. */
-const MODERATION: Destination = { tab: "moderation", label: "Moderate", icon: <ShieldAlert size={20} /> };
+const MODERATION: Destination = { tab: "moderation", label: "Moderate", icon: <ShieldAlert size={22} /> };
 
 function useDestinations(): Destination[] {
   const user = useSyncExternalStore(subscribe, getCurrentUser);
@@ -79,7 +79,7 @@ export function BottomTabs() {
               background: "none",
               cursor: "pointer",
               color: active ? "var(--cs-accent)" : "var(--cs-text-muted)",
-              fontSize: 10,
+              fontSize: 12,
             }}
           >
             {d.icon}

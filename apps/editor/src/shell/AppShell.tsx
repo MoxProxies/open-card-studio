@@ -158,7 +158,7 @@ export function AppShell() {
         title={unread > 0 ? `${unread} unread` : "Notifications"}
         style={{ position: "relative" }}
       >
-        <Bell size={16} />
+        <Bell size={19} />
         {unread > 0 && (
           <span
             data-testid="notifications-badge"
@@ -166,14 +166,14 @@ export function AppShell() {
               position: "absolute",
               top: -4,
               right: -4,
-              minWidth: 16,
-              height: 16,
+              minWidth: 18,
+              height: 18,
               padding: "0 4px",
-              borderRadius: 8,
+              borderRadius: 9,
               background: "var(--cs-accent)",
               color: "var(--cs-surface)",
-              fontSize: 10,
-              lineHeight: "16px",
+              fontSize: 12,
+              lineHeight: "18px",
               textAlign: "center",
             }}
           >
@@ -182,7 +182,7 @@ export function AppShell() {
         )}
       </button>
       <button className="cs-btn" onClick={() => setShowProfileEditor(true)} data-testid="account-button" title={`Signed in as ${user.email}`}>
-        <User size={16} />
+        <User size={19} />
         {/* Capped and truncated on the phone header only — search now sits in
             that same limited width, and an unbounded name was the one part
             of this row that could still push the row wide enough to wrap. */}
@@ -196,7 +196,7 @@ export function AppShell() {
           if (window.confirm("Sign out? You'll go back to designs saved only in this browser.")) void logout();
         }}
       >
-        <LogOut size={14} />
+        <LogOut size={17} />
       </button>
     </div>
   ) : (
@@ -207,7 +207,7 @@ export function AppShell() {
     // branch, and there's no search icon competing with it there since
     // GlobalSearch is rendered once, next to whichever branch is active.
     <button className="cs-icon-btn" onClick={() => setShowSignIn(true)} data-testid="sign-in" title="Sign in" aria-label="Sign in">
-      <LogIn size={16} />
+      <LogIn size={19} />
     </button>
   );
 
@@ -257,7 +257,7 @@ export function AppShell() {
             padding: "10px 16px",
             background: "var(--cs-accent-soft)",
             color: "var(--cs-accent)",
-            fontSize: 13,
+            fontSize: 15,
             display: "flex",
             gap: 8,
             alignItems: "center",
@@ -265,7 +265,7 @@ export function AppShell() {
         >
           <span style={{ flex: 1 }}>{authNotice}</span>
           <button className="cs-icon-btn" onClick={() => setAuthNotice(null)} title="Dismiss">
-            <X size={14} />
+            <X size={17} />
           </button>
         </div>
       )}
@@ -277,7 +277,7 @@ export function AppShell() {
             padding: "10px 16px",
             background: "var(--cs-danger-soft)",
             color: "var(--cs-danger)",
-            fontSize: 13,
+            fontSize: 15,
             display: "flex",
             gap: 8,
             alignItems: "center",
@@ -285,7 +285,7 @@ export function AppShell() {
         >
           <span style={{ flex: 1 }}>{authError}</span>
           <button className="cs-icon-btn" onClick={() => setAuthError(null)} title="Dismiss">
-            <X size={14} />
+            <X size={17} />
           </button>
         </div>
       )}

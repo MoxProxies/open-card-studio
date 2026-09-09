@@ -84,10 +84,10 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
         body: (
           <>
         {error ? (
-          <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: 16 }}>{error}</p>
+          <p style={{ color: "var(--cs-danger)", fontSize: 15, padding: 16 }}>{error}</p>
         ) : !page ? (
-          <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: 16, display: "flex", alignItems: "center", gap: 6 }}>
-            <Loader2 size={14} className="cs-spin" /> Loading…
+          <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: 16, display: "flex", alignItems: "center", gap: 6 }}>
+            <Loader2 size={17} className="cs-spin" /> Loading…
           </p>
         ) : (
           <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
@@ -101,13 +101,13 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 {page.profile.bio ? (
-                  <p style={{ margin: 0, fontSize: 13, whiteSpace: "pre-wrap" }} data-testid="profile-bio-text">
+                  <p style={{ margin: 0, fontSize: 15, whiteSpace: "pre-wrap" }} data-testid="profile-bio-text">
                     {page.profile.bio}
                   </p>
                 ) : (
-                  <p style={{ margin: 0, fontSize: 13, color: "var(--cs-text-muted)" }}>No bio yet.</p>
+                  <p style={{ margin: 0, fontSize: 15, color: "var(--cs-text-muted)" }}>No bio yet.</p>
                 )}
-                <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--cs-text-muted)" }}>
+                <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--cs-text-muted)" }}>
                   Joined {new Date(page.profile.joined_at).toLocaleDateString()}
                 </p>
               </div>
@@ -118,7 +118,7 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
                   data-testid="report-user"
                   onClick={() => setReporting({ type: "user", id: String(page.profile.id), label: `@${page.profile.username}` })}
                 >
-                  <Flag size={14} />
+                  <Flag size={17} />
                 </button>
               )}
             </div>
@@ -126,7 +126,7 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
             <ProfileStats stats={page.stats} badges={page.badges} />
 
             {page.featured.length > 0 && (
-              <Section icon={<Star size={13} />} title="Featured" count={page.featured.length} testId="profile-featured">
+              <Section icon={<Star size={16} />} title="Featured" count={page.featured.length} testId="profile-featured">
                 {page.featured.map((f) => (
                   <ListRow key={`${f.type}-${f.id}`} testId="featured-row" title={f.name} subtitle={f.type}>
                     <ReactionButton type={f.type} id={f.id} count={f.reaction_count ?? 0} reacted={f.reacted ?? false} />
@@ -135,7 +135,7 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
               </Section>
             )}
 
-            <Section icon={<LayoutTemplate size={13} />} title="Published templates" count={page.templates.length} testId="profile-templates">
+            <Section icon={<LayoutTemplate size={16} />} title="Published templates" count={page.templates.length} testId="profile-templates">
               {page.templates.map((t) => (
                 <ListRow key={t.id} testId="profile-row" title={t.name} subtitle={`used ${t.usageCount}× ${t.tags.length ? `· ${t.tags.join(", ")}` : ""}`}>
                   <ReactionButton type="template" id={t.id} count={t.reactionCount} reacted={t.reacted} />
@@ -146,22 +146,22 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
                       data-testid="feature-toggle"
                       onClick={() => void toggleFeatured("template", t.id, !t.featured)}
                     >
-                      <Star size={13} fill={t.featured ? "currentColor" : "none"} />
+                      <Star size={16} fill={t.featured ? "currentColor" : "none"} />
                     </button>
                   )}
                   <button className="cs-btn" onClick={() => void useTemplate(t.id, t.name)} disabled={busyId === t.id} data-testid="profile-use-template">
-                    {busyId === t.id ? <Loader2 size={14} className="cs-spin" /> : <LayoutTemplate size={14} />} Use
+                    {busyId === t.id ? <Loader2 size={17} className="cs-spin" /> : <LayoutTemplate size={17} />} Use
                   </button>
                   {viewer && !isSelf && (
                     <button className="cs-icon-btn" title="Report this template" onClick={() => setReporting({ type: "template", id: t.id, label: `“${t.name}”` })}>
-                      <Flag size={13} />
+                      <Flag size={16} />
                     </button>
                   )}
                 </ListRow>
               ))}
             </Section>
 
-            <Section icon={<Library size={13} />} title="Published collections" count={page.collections.length} testId="profile-collections">
+            <Section icon={<Library size={16} />} title="Published collections" count={page.collections.length} testId="profile-collections">
               {page.collections.map((c) => (
                 <ListRow
                   key={c.id}
@@ -171,14 +171,14 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
                 >
                   {viewer && !isSelf && (
                     <button className="cs-icon-btn" title="Report this collection" onClick={() => setReporting({ type: "collection", id: c.id, label: `“${c.name}”` })}>
-                      <Flag size={13} />
+                      <Flag size={16} />
                     </button>
                   )}
                 </ListRow>
               ))}
             </Section>
 
-            <Section icon={<FileImage size={13} />} title="Published designs" count={page.designs.length} testId="profile-designs">
+            <Section icon={<FileImage size={16} />} title="Published designs" count={page.designs.length} testId="profile-designs">
               {page.designs.map((d) => (
                 <ListRow key={d.id} testId="profile-row" title={d.name} subtitle={new Date(d.updated_at).toLocaleDateString()} />
               ))}
@@ -197,10 +197,10 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
 function Section({ icon, title, count, testId, children }: { icon: React.ReactNode; title: string; count: number; testId: string; children: React.ReactNode }) {
   return (
     <div data-testid={testId}>
-      <h3 className="cs-heading" style={{ fontSize: 13, fontWeight: 600, margin: "0 0 6px", display: "flex", alignItems: "center", gap: 6 }}>
+      <h3 className="cs-heading" style={{ fontSize: 15, fontWeight: 600, margin: "0 0 6px", display: "flex", alignItems: "center", gap: 6 }}>
         {icon} {title} ({count})
       </h3>
-      {count === 0 ? <p style={{ margin: 0, fontSize: 12, color: "var(--cs-text-muted)" }}>Nothing published yet.</p> : children}
+      {count === 0 ? <p style={{ margin: 0, fontSize: 14, color: "var(--cs-text-muted)" }}>Nothing published yet.</p> : children}
     </div>
   );
 }

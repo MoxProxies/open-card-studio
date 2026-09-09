@@ -75,7 +75,7 @@ export function AccountModal({ onSignedIn, onChallenge, onClose }: AccountModalP
                 </button>
               ))}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--cs-text-muted)", fontSize: 11 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--cs-text-muted)", fontSize: 13 }}>
               <span style={{ flex: 1, height: 1, background: "var(--cs-border)" }} />
               or
               <span style={{ flex: 1, height: 1, background: "var(--cs-border)" }} />
@@ -103,10 +103,10 @@ export function AccountModal({ onSignedIn, onChallenge, onClose }: AccountModalP
           required
         />
 
-        {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
+        {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, margin: 0 }}>{error}</p>}
 
         <button className="cs-btn" type="submit" disabled={submitting} style={{ justifyContent: "center" }}>
-          {submitting && <Loader2 size={14} className="cs-spin" />}
+          {submitting && <Loader2 size={17} className="cs-spin" />}
           {mode === "login" ? "Sign in" : "Create account"}
         </button>
 
@@ -124,14 +124,14 @@ export function AccountModal({ onSignedIn, onChallenge, onClose }: AccountModalP
                 .then(setResetNotice)
                 .catch(() => setResetNotice("If that address has an account, we've sent a reset link."));
             }}
-            style={{ background: "none", border: "none", color: "var(--cs-text-muted)", fontSize: 12, cursor: "pointer", padding: 0 }}
+            style={{ background: "none", border: "none", color: "var(--cs-text-muted)", fontSize: 14, cursor: "pointer", padding: 0 }}
           >
             Forgot password?
           </button>
         )}
 
         {resetNotice && (
-          <p style={{ fontSize: 12, color: "var(--cs-text-muted)", margin: 0 }} data-testid="reset-notice">
+          <p style={{ fontSize: 14, color: "var(--cs-text-muted)", margin: 0 }} data-testid="reset-notice">
             {resetNotice}
           </p>
         )}
@@ -142,7 +142,7 @@ export function AccountModal({ onSignedIn, onChallenge, onClose }: AccountModalP
             setMode((m) => (m === "login" ? "register" : "login"));
             setError(null);
           }}
-          style={{ background: "none", border: "none", color: "var(--cs-text-muted)", fontSize: 12, cursor: "pointer", padding: 0 }}
+          style={{ background: "none", border: "none", color: "var(--cs-text-muted)", fontSize: 14, cursor: "pointer", padding: 0 }}
         >
           {mode === "login" ? "Need an account? Create one" : "Already have an account? Sign in"}
         </button>

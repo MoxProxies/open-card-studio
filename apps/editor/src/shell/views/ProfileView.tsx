@@ -64,10 +64,10 @@ export function ProfileView({ onSignIn }: { onSignIn: () => void }) {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 320 }}>
-            <h2 className="cs-heading" style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>
+            <h2 className="cs-heading" style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>
               Your profile is waiting
             </h2>
-            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--cs-text-muted)" }}>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5, color: "var(--cs-text-muted)" }}>
               Sign in to publish templates and collections, and track your level and badges.
             </p>
           </div>
@@ -83,11 +83,11 @@ export function ProfileView({ onSignIn }: { onSignIn: () => void }) {
               border: "1px solid var(--cs-accent)",
               background: "var(--cs-accent)",
               color: "var(--cs-surface)",
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: 600,
             }}
           >
-            <LogIn size={18} /> Sign in
+            <LogIn size={20} /> Sign in
           </button>
         </div>
       </Page>

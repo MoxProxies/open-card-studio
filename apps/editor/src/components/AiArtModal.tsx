@@ -47,7 +47,7 @@ export function AiArtModal({ onGenerated, onClose }: AiArtModalProps) {
     // the in-flight ai-art-request the host page is still answering.
     <Modal title="Generate AI Art" onClose={onClose} dismissable={!loading} rootRef={rootRef}>
       <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--cs-text-muted)" }}>
+        <p style={{ margin: 0, fontSize: 15, color: "var(--cs-text-muted)" }}>
           Describe the illustration you want: framing, style, and aspect ratio are handled automatically.
         </p>
         <textarea
@@ -61,15 +61,15 @@ export function AiArtModal({ onGenerated, onClose }: AiArtModalProps) {
           style={{ resize: "vertical", width: "100%" }}
         />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 11, color: "var(--cs-text-muted)" }}>
+          <span style={{ fontSize: 13, color: "var(--cs-text-muted)" }}>
             {prompt.length}/{MAX_PROMPT_LENGTH}
           </span>
           <button className="cs-btn" onClick={() => void generate()} disabled={loading || !prompt.trim()}>
-            {loading ? <Loader2 size={14} className="cs-spin" /> : <Sparkles size={14} />}
+            {loading ? <Loader2 size={17} className="cs-spin" /> : <Sparkles size={17} />}
             {loading ? "Generating…" : "Generate"}
           </button>
         </div>
-        {error && <p style={{ color: "var(--cs-danger)", fontSize: 13, margin: 0 }}>{error}</p>}
+        {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, margin: 0 }}>{error}</p>}
       </div>
     </Modal>
   );
