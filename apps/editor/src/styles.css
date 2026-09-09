@@ -196,6 +196,40 @@
   background: var(--cs-accent);
 }
 
+/* GlobalSearch.tsx's popover — anchored under its toggle button on
+ * desktop, same as TextTemplateMenu.tsx's dropdown. Below the 767px
+ * breakpoint (matches hooks/useIsNarrow.ts — everywhere the mobile
+ * header, not TopNav, is what mounts this) it switches to a fixed,
+ * full-width band instead: right-anchoring it to the toggle button's own
+ * position on a narrow phone header risked the panel hanging off the
+ * left edge of the viewport, since the button sits well left of the
+ * header's own right edge once the account slot is beside it. */
+.cs-search-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(380px, 92vw);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--cs-surface);
+  border: 1px solid var(--cs-border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px var(--cs-shadow);
+  z-index: 1000;
+  overflow: hidden;
+}
+@media (max-width: 767px) {
+  .cs-search-panel {
+    position: fixed;
+    top: 54px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: calc(100vh - 64px);
+  }
+}
+
 /* Touch targets. Keyed on the *pointer*, not the viewport: a small window
  * on a desktop still has a mouse and doesn't need 44px buttons, while a
  * tablet in landscape is wide but still finger-driven. 44px is the usual

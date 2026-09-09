@@ -2,6 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { Bell, LogIn, LogOut, User, X } from "lucide-react";
 import { App } from "../App";
 import { AccountModal } from "../components/AccountModal";
+import { GlobalSearch } from "../components/GlobalSearch";
 import { ProfileModal } from "../components/ProfileModal";
 import { ResetPasswordModal } from "../components/ResetPasswordModal";
 import { SuspendedNotice } from "../components/SuspendedNotice";
@@ -181,7 +182,11 @@ export function AppShell() {
         )}
       </button>
       <button className="cs-btn" onClick={() => setShowProfileEditor(true)} data-testid="account-button" title={`Signed in as ${user.email}`}>
-        <User size={16} /> {user.name}
+        <User size={16} />
+        {/* Capped and truncated on the phone header only — search now sits in
+            that same limited width, and an unbounded name was the one part
+            of this row that could still push the row wide enough to wrap. */}
+        <span style={narrow ? { maxWidth: 84, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } : undefined}>{user.name}</span>
       </button>
       <button
         className="cs-icon-btn"
@@ -195,8 +200,14 @@ export function AppShell() {
       </button>
     </div>
   ) : (
-    <button className="cs-btn" onClick={() => setShowSignIn(true)} data-testid="sign-in">
-      <LogIn size={16} /> Sign in
+    // Icon-only: this sits beside GlobalSearch in the header now (both the
+    // desktop TopNav and the mobile header below), and the text label
+    // "Sign in" no longer fits alongside it on a phone-width bar. The
+    // signed-in branch above keeps its label — it's a separate render
+    // branch, and there's no search icon competing with it there since
+    // GlobalSearch is rendered once, next to whichever branch is active.
+    <button className="cs-icon-btn" onClick={() => setShowSignIn(true)} data-testid="sign-in" title="Sign in" aria-label="Sign in">
+      <LogIn size={16} />
     </button>
   );
 
@@ -208,12 +219,12 @@ export function AppShell() {
         // The phone header is just a title and the account — navigation
         // lives at the bottom where a thumb can reach it.
         <header
-          style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 12px", height: 48, borderBottom: "1px solid var(--cs-border)", flex: "none" }}
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 10px", height: 48, borderBottom: "1px solid var(--cs-border)", flex: "none" }}
           data-testid="mobile-header"
         >
-          <span className="cs-heading" style={{ fontSize: 15, fontWeight: 600, flex: 1 }}>
-            Card Studio
-          </span>
+          <img src="/icon-192.png" alt="Card Studio" width={26} height={26} style={{ borderRadius: 6, flex: "none" }} />
+          <div style={{ flex: 1 }} />
+          <GlobalSearch />
           {account}
         </header>
       )}

@@ -47,7 +47,10 @@ export interface PostRevision {
 
 type Row = Record<string, unknown> & Partial<ReactionState>;
 
-const toSummary = (row: Row): PostSummary => ({
+/** Exported so a caller with its own rows shaped like a post listing (the
+ * global search endpoint's `guides` array — see api/search.ts) can reuse
+ * this mapping instead of a second copy of it. */
+export const toPostSummary = (row: Row): PostSummary => ({
   id: row.id as string,
   title: row.title as string,
   slug: row.slug as string,
@@ -64,7 +67,7 @@ const toSummary = (row: Row): PostSummary => ({
 });
 
 const toDetail = (row: Row): PostDetail => ({
-  ...toSummary(row),
+  ...toPostSummary(row),
   body: (row.body ?? "") as string,
   revisionCount: (row.revision_count ?? 0) as number,
   isAuthor: (row.is_author ?? false) as boolean,
@@ -85,12 +88,12 @@ export async function browsePosts(params: BrowsePostsParams = {}): Promise<PostS
   if (params.sort) query.set("sort", params.sort);
   const qs = query.toString();
 
-  return (await api.get<Row[]>(`/api/posts${qs ? `?${qs}` : ""}`)).map(toSummary);
+  return (await api.get<Row[]>(`/api/posts${qs ? `?${qs}` : ""}`)).map(toPostSummary);
 }
 
 /** Your own posts, drafts included. */
 export async function listMyPosts(): Promise<PostSummary[]> {
-  return (await api.get<Row[]>("/api/my/posts")).map(toSummary);
+  return (await api.get<Row[]>("/api/my/posts")).map(toPostSummary);
 }
 
 export async function loadPost(slug: string): Promise<PostDetail> {

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useSyncExternalStore } from "react";
 import { Palette, Library, LayoutTemplate, BookOpen, User, ShieldAlert } from "lucide-react";
 import { getCurrentUser, subscribe } from "../api/auth";
+import { GlobalSearch } from "../components/GlobalSearch";
 import { navigate, useRoute, type Tab } from "./navStore";
 
 interface Destination {
@@ -15,12 +16,17 @@ interface Destination {
  * hit without looking beats a menu that grows every phase. Anything
  * smaller than a destination — save-as-template, report, sign-in — stays
  * a dialog.
+ *
+ * Ordered Guides, Templates, Design, Library, Profile — the two
+ * "look around" destinations lead, Design (where most sessions actually
+ * spend their time) sits in the middle, and Library/Profile trail as the
+ * "your own stuff" pair.
  */
 export const DESTINATIONS: Destination[] = [
+  { tab: "guides", label: "Guides", icon: <BookOpen size={20} /> },
+  { tab: "templates", label: "Templates", icon: <LayoutTemplate size={20} /> },
   { tab: "design", label: "Design", icon: <Palette size={20} /> },
   { tab: "library", label: "Library", icon: <Library size={20} /> },
-  { tab: "templates", label: "Templates", icon: <LayoutTemplate size={20} /> },
-  { tab: "guides", label: "Guides", icon: <BookOpen size={20} /> },
   { tab: "profile", label: "Profile", icon: <User size={20} /> },
 ];
 
@@ -105,9 +111,7 @@ export function TopNav({ account }: { account: ReactNode }) {
         flex: "none",
       }}
     >
-      <span className="cs-heading" style={{ fontSize: 16, fontWeight: 600, marginRight: 10 }}>
-        Card Studio
-      </span>
+      <img src="/icon-192.png" alt="Card Studio" width={30} height={30} style={{ borderRadius: 7, marginRight: 10, flex: "none" }} />
 
       {destinations.map((d) => {
         const active = route.tab === d.tab;
@@ -127,6 +131,7 @@ export function TopNav({ account }: { account: ReactNode }) {
       })}
 
       <div style={{ flex: 1 }} />
+      <GlobalSearch />
       {account}
     </header>
   );
