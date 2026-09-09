@@ -3,28 +3,35 @@
  * document's <html>, never a shadow tree's boundary. A class selector works
  * identically in both the standalone document and inside a shadow root.
  *
- * Palette is warm/parchment-and-ink — evocative of a card frame and rules
- * text box rather than a generic gray SaaS tool — built around a bronze/gold
- * accent (the color classic MTG gold frames use) instead of a cool blue or
- * indigo. --cs-surface-soft is a step deeper than --cs-surface, for
- * thumbnails/placeholders that need to read as a shallow inset rather than
- * flush with the page. --cs-shadow/--cs-backdrop replace flat black
- * drop-shadows with the same warm ink tone the text color is built from, so
- * elevation reads as "shadow," not a mismatched cool gray dropped onto a
- * warm page. */
+ * Palette is a dark theme inspired by the Audible app: a near-black surface
+ * with a cool blue/purple undertone (not pure black, not navy) carrying a
+ * single warm amber-gold accent used sparingly for emphasis — active
+ * states, primary actions, small highlights — the modern read of the old
+ * bronze/gold MTG-frame accent this app started with, brightened and
+ * re-saturated so it actually holds contrast against near-black instead of
+ * the muted, low-contrast bronze the light theme could get away with.
+ * --cs-surface-soft is a step *lighter* than --cs-surface (the direction
+ * that reads as "lifted/highlighted" on a dark surface, the opposite of
+ * the old light theme where "soft" meant a step toward ink) — used for
+ * hover states and shallow insets. --cs-shadow/--cs-backdrop are a cool
+ * near-black rather than flat pure-black, so elevation still reads as part
+ * of the same palette instead of a mismatched neutral dropped onto a
+ * tinted page. Every consumer below still reads these through the same
+ * variable names, so the swap from the old parchment palette cascades
+ * automatically almost everywhere. */
 .cs-root {
-  --cs-border: #e3d5b0;
-  --cs-border-strong: #cbb37e;
-  --cs-text: #2a2013;
-  --cs-text-muted: #8c7a58;
-  --cs-accent: #935e13;
-  --cs-accent-soft: #f6ecd2;
-  --cs-surface: #fffdf7;
-  --cs-surface-soft: #f1e6c8;
-  --cs-danger: #9c3a2c;
-  --cs-danger-soft: #f6ded8;
-  --cs-shadow: rgba(58, 38, 15, 0.28);
-  --cs-backdrop: rgba(43, 28, 10, 0.5);
+  --cs-border: rgba(255, 255, 255, 0.08);
+  --cs-border-strong: rgba(255, 255, 255, 0.18);
+  --cs-text: #f4f1ea;
+  --cs-text-muted: #a89d8c;
+  --cs-accent: #e2a13d;
+  --cs-accent-soft: rgba(226, 161, 61, 0.16);
+  --cs-surface: #1c1e26;
+  --cs-surface-soft: #2b2f3c;
+  --cs-danger: #e9695c;
+  --cs-danger-soft: rgba(233, 105, 92, 0.16);
+  --cs-shadow: rgba(2, 3, 8, 0.55);
+  --cs-backdrop: rgba(4, 5, 10, 0.72);
   --cs-font-heading: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -217,32 +224,43 @@
 
 /* ---------------------------------------------------------------------
  * Template browser (Phase 1 gallery — see docs/PRODUCT_VISION.md and
- * TemplatesPanel.tsx). A card-forward look deliberately different from
- * the rest of the app's parchment/ink chrome: a cool, neutral off-white
- * page with true-white cards lifted off it by a soft shadow instead of a
- * border, pill-shaped buttons and chips, and a near-black primary action.
+ * TemplatesPanel.tsx), now folded into the dark theme rather than living
+ * as a light island: the page and its chrome (chips, ghost buttons, the
+ * search input) are dark like the rest of the app and lean directly on
+ * --cs-* for that (var(--cs-surface)/--cs-text-muted/--cs-accent below),
+ * so this view can't drift out of sync with the app palette again.
  *
- * All of it lives under its own --tb-* custom properties on `.cs-tb`
- * rather than touching --cs-* — `.cs-btn`/`.cs-icon-btn`/`.cs-input` are
- * shared by every other modal and panel in the app, and this pass is
- * scoped to one view. Extending the look to another view later means
- * reusing these tokens there, not widening what --cs-* means everywhere.
+ * The one deliberate holdout is --tb-card-bg itself: the actual template
+ * preview card stays a light, warm ivory — Audible's own reference image
+ * is a light book-cover card floating on a dark background, and this view
+ * already had exactly that shape (.cs-tb-card/.cs-tb-thumb). Keeping it
+ * light instead of flipping it dark is what makes the cards read as
+ * "items on a dark shelf" rather than just more dark chrome. --tb-ink/
+ * --tb-ink-soft/--tb-muted stay dedicated to *that* card's own text (it
+ * needs dark ink for contrast against its light card, not the app's
+ * near-white text) — text living directly on the dark page instead uses
+ * --cs-text/--cs-text-muted like everywhere else, not these.
  * ------------------------------------------------------------------- */
 .cs-tb {
-  --tb-page-bg: #f4f5f6;
-  --tb-card-bg: #ffffff;
-  --tb-card-shadow: 0 1px 2px rgba(17, 19, 23, 0.06), 0 10px 24px rgba(17, 19, 23, 0.08);
-  --tb-card-shadow-hover: 0 2px 6px rgba(17, 19, 23, 0.08), 0 16px 32px rgba(17, 19, 23, 0.12);
-  --tb-radius-card: 18px;
+  --tb-page-bg: #171922;
+  --tb-card-bg: #f6eee0;
+  --tb-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 36px rgba(0, 0, 0, 0.5);
+  --tb-card-shadow-hover: 0 2px 6px rgba(0, 0, 0, 0.45), 0 22px 44px rgba(0, 0, 0, 0.58);
+  --tb-radius-card: 20px;
   --tb-radius-pill: 999px;
-  --tb-ink: #191b1f;
-  --tb-ink-soft: #33363c;
-  --tb-muted: #74787f;
-  --tb-chip-border: #e1e3e6;
+  --tb-ink: #241c11;
+  --tb-ink-soft: #4a3c28;
+  --tb-muted: #5e4f3b;
+  --tb-chip-border: rgba(255, 255, 255, 0.14);
 }
 
+/* A restrained gradient wash — one of the few spots in the app that gets
+   one, per the brief, rather than every surface being a gradient — a
+   soft cool-toned glow near the top fading quickly into the flat page
+   tone, echoing the hero treatment in the Audible reference without
+   tinting the whole view. */
 .cs-tb-body {
-  background: var(--tb-page-bg);
+  background: radial-gradient(1200px 480px at 18% -12%, rgba(110, 96, 224, 0.14), transparent 60%), var(--tb-page-bg);
 }
 
 /* The shared input's own font-size/padding read as cramped in this view
@@ -262,8 +280,8 @@
   padding: 10px 18px;
   border: 1px solid var(--tb-chip-border);
   border-radius: var(--tb-radius-pill);
-  background: var(--tb-card-bg);
-  color: var(--tb-ink-soft);
+  background: var(--cs-surface);
+  color: var(--cs-text-muted);
   font-size: 14px;
   font-weight: 500;
   line-height: 1;
@@ -271,12 +289,19 @@
   transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 .cs-tb-chip:hover:not(:disabled) {
-  border-color: var(--tb-ink);
+  border-color: var(--cs-accent);
+  color: var(--cs-text);
 }
+/* The one accent-filled state in this view — matches every other
+   "active"/primary emphasis in the app, which is what keeps this page
+   from reading as a separate light UI grafted onto a dark one. Text is
+   the same dark ink the card content uses: it's the pairing that holds
+   contrast against a bright amber-gold, the way white text does not
+   (see PR description for the numbers). */
 .cs-tb-chip.cs-active {
-  background: var(--tb-ink);
-  border-color: var(--tb-ink);
-  color: #fff;
+  background: var(--cs-accent);
+  border-color: var(--cs-accent);
+  color: var(--tb-ink);
 }
 .cs-tb-chip:disabled {
   opacity: 0.4;
@@ -289,10 +314,10 @@
   justify-content: center;
   gap: 6px;
   padding: 11px 20px;
-  border: 1px solid var(--tb-ink);
+  border: 1px solid var(--cs-accent);
   border-radius: var(--tb-radius-pill);
-  background: var(--tb-ink);
-  color: #fff;
+  background: var(--cs-accent);
+  color: var(--tb-ink);
   font-size: 14px;
   font-weight: 600;
   line-height: 1;
@@ -300,8 +325,8 @@
   transition: background 120ms ease, opacity 120ms ease;
 }
 .cs-tb-btn-primary:hover:not(:disabled) {
-  background: var(--tb-ink-soft);
-  border-color: var(--tb-ink-soft);
+  background: #edb15a;
+  border-color: #edb15a;
 }
 .cs-tb-btn-primary:disabled {
   opacity: 0.45;
@@ -316,8 +341,8 @@
   padding: 10px 18px;
   border: 1px solid var(--tb-chip-border);
   border-radius: var(--tb-radius-pill);
-  background: var(--tb-card-bg);
-  color: var(--tb-ink-soft);
+  background: var(--cs-surface);
+  color: var(--cs-text-muted);
   font-size: 14px;
   font-weight: 500;
   line-height: 1;
@@ -325,8 +350,8 @@
   transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 .cs-tb-btn-ghost:hover:not(:disabled) {
-  border-color: var(--tb-ink);
-  color: var(--tb-ink);
+  border-color: var(--cs-accent);
+  color: var(--cs-text);
 }
 .cs-tb-btn-ghost:disabled {
   opacity: 0.4;
@@ -342,14 +367,14 @@
   flex: none;
   border: 1px solid var(--tb-chip-border);
   border-radius: 50%;
-  background: var(--tb-card-bg);
-  color: var(--tb-muted);
+  background: var(--cs-surface);
+  color: var(--cs-text-muted);
   cursor: pointer;
   transition: color 120ms ease, border-color 120ms ease;
 }
 .cs-tb-icon-ghost:hover:not(:disabled) {
-  color: var(--tb-ink);
-  border-color: var(--tb-ink);
+  color: var(--cs-text);
+  border-color: var(--cs-accent);
 }
 .cs-tb-icon-ghost:disabled {
   opacity: 0.4;
@@ -418,7 +443,7 @@
 }
 .cs-tb-thumb-fav .cs-icon-btn.cs-active {
   background: #fff;
-  color: #b23a3a;
+  color: var(--cs-danger);
 }
 
 .cs-tb-card-body {
@@ -427,6 +452,33 @@
   gap: 4px;
   padding: 12px 14px 14px;
   flex: 1;
+}
+
+/* Ghost buttons/icon-buttons and the visibility <select> only ever appear
+   inside this card body today (see TemplatesPanel.tsx's per-template
+   actions row) — so unlike .cs-tb-chip, which lives on the dark page,
+   these read as native controls on the card's own light ivory rather than
+   as dark chips floating on top of it. Scoped to this ancestor rather
+   than changed at the base rule so a future page-level ghost button still
+   gets the dark-chrome default. */
+.cs-tb-card-body .cs-tb-btn-ghost,
+.cs-tb-card-body .cs-tb-icon-ghost {
+  background: transparent;
+  border-color: rgba(36, 28, 17, 0.18);
+  color: var(--tb-ink-soft);
+}
+.cs-tb-card-body .cs-tb-btn-ghost:hover:not(:disabled),
+.cs-tb-card-body .cs-tb-icon-ghost:hover:not(:disabled) {
+  border-color: var(--tb-ink);
+  color: var(--tb-ink);
+}
+.cs-tb-card-body .cs-input {
+  background: rgba(36, 28, 17, 0.05);
+  border-color: rgba(36, 28, 17, 0.18);
+  color: var(--tb-ink);
+}
+.cs-tb-card-body .cs-input:focus {
+  border-color: var(--cs-accent);
 }
 
 .cs-tb-title {
