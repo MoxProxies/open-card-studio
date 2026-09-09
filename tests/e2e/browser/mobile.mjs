@@ -12,6 +12,15 @@ const phone = async () => {
   page.on("pageerror", (e) => console.log("  [pageerror]", e.message));
   await page.goto(EDITOR);
   await page.getByTestId("app-shell").waitFor();
+  // Design is the default landing tab, and a fresh design is untouched —
+  // a real visitor would dismiss the inspiration screen
+  // (DesignInspiration.tsx/AppShell.tsx) before this suite's toolbar/
+  // canvas assertions, so do the same via its own "start blank" action.
+  const inspiration = page.getByTestId("design-inspiration");
+  if (await inspiration.isVisible().catch(() => false)) {
+    await page.getByTestId("inspiration-start-blank").click();
+    await inspiration.waitFor({ state: "hidden" });
+  }
   return page;
 };
 
@@ -152,6 +161,15 @@ try {
   await tablet.goto(EDITOR);
   await tablet.getByTestId("app-shell").waitFor();
   check("a touch-capable ≥768px viewport still gets the desktop layout", 0, await tablet.getByTestId("editor-narrow").count());
+  // Another fresh context lands on an untouched design — dismiss the
+  // inspiration screen (same as `phone()` above) so the raw touch events
+  // below actually land on the resize handle instead of the overlay
+  // sitting in front of it.
+  const tabletInspiration = tablet.getByTestId("design-inspiration");
+  if (await tabletInspiration.isVisible().catch(() => false)) {
+    await tablet.getByTestId("inspiration-start-blank").click();
+    await tabletInspiration.waitFor({ state: "hidden" });
+  }
 
   const handle = tablet.locator(".cs-resize-handle").first();
   const handleBox = await handle.boundingBox();
