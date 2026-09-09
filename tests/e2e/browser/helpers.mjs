@@ -159,7 +159,9 @@ export async function saveDesignAs(page, name) {
 /** Adds a frame layer so the canvas isn't empty. */
 export async function addFrame(page) {
   await go(page, "design");
-  await page.getByRole("button", { name: "Frame", exact: true }).click();
+  // The toolbar's Frame button is icon-only; its accessible name comes
+  // from its title, not visible text (see components/Toolbar.tsx).
+  await page.getByTitle("Frame", { exact: true }).click();
   await page.locator("button.cs-swatch").first().click();
   await page.waitForFunction(() => document.querySelectorAll("[data-testid='layer-row']").length > 0);
 }

@@ -26,7 +26,9 @@ try {
 
   console.log("== build a layout: frame (chrome) + text (fill-in slot) ==");
   await addFrame(page);
-  await page.getByRole("button", { name: "Text", exact: true }).click();
+  // Text is an icon-only toolbar button; its accessible name comes from
+  // its title, not visible text (see components/Toolbar.tsx).
+  await page.getByTitle("Text", { exact: true }).click();
   await page.waitForFunction(() => document.querySelectorAll("[data-testid='layer-row']").length === 2);
   await setLocks(0, { locked: true, contentLocked: false });
   await setLocks(1, { locked: true, contentLocked: true });

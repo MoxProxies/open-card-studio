@@ -96,9 +96,11 @@ try {
   await zoomLabel.click(); // back to 100% / re-centered, for the sections below
 
   console.log("== you can actually build something on a phone ==");
-  await page.getByRole("button", { name: "Frame", exact: true }).click();
+  // Frame and Text are icon-only toolbar buttons; their accessible name
+  // comes from their title, not visible text (see components/Toolbar.tsx).
+  await page.getByTitle("Frame", { exact: true }).click();
   await page.locator("button.cs-swatch").first().click();
-  await page.getByRole("button", { name: "Text", exact: true }).click();
+  await page.getByTitle("Text", { exact: true }).click();
   await page.getByTestId("editor-sheet-layers").click();
   await page.getByTestId("editor-sheet").waitFor();
   await page.waitForFunction(() => document.querySelectorAll("[data-testid='layer-row']").length === 2);

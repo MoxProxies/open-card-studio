@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { Bell, LogIn, LogOut, User } from "lucide-react";
+import { Bell, LogIn, LogOut, User, X } from "lucide-react";
 import { App } from "../App";
 import { AccountModal } from "../components/AccountModal";
 import { ProfileModal } from "../components/ProfileModal";
@@ -254,7 +254,7 @@ export function AppShell() {
         >
           <span style={{ flex: 1 }}>{authNotice}</span>
           <button className="cs-icon-btn" onClick={() => setAuthNotice(null)} title="Dismiss">
-            ×
+            <X size={14} />
           </button>
         </div>
       )}
@@ -274,7 +274,7 @@ export function AppShell() {
         >
           <span style={{ flex: 1 }}>{authError}</span>
           <button className="cs-icon-btn" onClick={() => setAuthError(null)} title="Dismiss">
-            ×
+            <X size={14} />
           </button>
         </div>
       )}
