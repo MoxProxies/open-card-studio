@@ -1,12 +1,12 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Loader2, LayoutTemplate, Flag, FileImage, Library, Star } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Loader2, LayoutTemplate, Flag, FileImage, Library, Star, ChevronDown, Heart, FileText } from "lucide-react";
 import type { Design } from "@card-studio/scene-schema";
 import { apiErrorMessage } from "../api/client";
 import { getCurrentUser } from "../api/auth";
-import { loadProfile, type ProfilePage } from "../api/profiles";
+import { loadProfile, type ProfilePage, type PublicProfile } from "../api/profiles";
 import { loadTemplate, markTemplateUsed } from "../api/templates";
+import type { ReactableType } from "../api/gamification";
 import { designFromTemplate } from "../cardTemplates";
-import { ListRow } from "./ListRow";
 import { ReportModal } from "./ReportModal";
 import { ReactionButton } from "./ReactionButton";
 import { ProfileStats } from "./ProfileStats";
@@ -20,6 +20,15 @@ export interface ProfilePanelProps {
    * it alongside the body. See TemplatesPanel. */
   children: (slots: { title: string; body: ReactNode }) => ReactNode;
 }
+
+type TabKey = "featured" | "templates" | "collections" | "designs";
+
+const TAB_ICON: Record<TabKey, ReactNode> = {
+  featured: <Star size={16} />,
+  templates: <LayoutTemplate size={16} />,
+  collections: <Library size={16} />,
+  designs: <FileImage size={16} />,
+};
 
 /**
  * Someone's public profile: who they are, and everything they've
@@ -35,12 +44,17 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [reporting, setReporting] = useState<{ type: "template" | "user" | "collection"; id: string; label: string } | null>(null);
+  // Null until the visitor (or a "you just featured something" action)
+  // picks one explicitly — until then the active tab is computed fresh
+  // from whatever the profile actually has published, see defaultTab().
+  const [tabOverride, setTabOverride] = useState<TabKey | null>(null);
   const viewer = getCurrentUser();
 
   useEffect(() => {
     let cancelled = false;
     setPage(null);
     setError(null);
+    setTabOverride(null);
     loadProfile(username)
       .then((p) => !cancelled && setPage(p))
       .catch((e: unknown) => !cancelled && setError(apiErrorMessage(e, "Couldn't load that profile. Check your connection and try again.")));
@@ -66,16 +80,39 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
   const isSelf = viewer?.username === username;
 
   /** Featuring is level-gated server-side; a refusal comes back as a
-   * message worth showing rather than a silent no-op. */
+   * message worth showing rather than a silent no-op. Successfully
+   * featuring something jumps to the Featured tab so the result is
+   * immediately visible, rather than left wherever the click happened. */
   const toggleFeatured = async (type: "template" | "design" | "collection", id: string, featured: boolean) => {
     setError(null);
     try {
       await setFeatured(type, id, featured);
       setPage(await loadProfile(username));
+      if (featured) setTabOverride("featured");
     } catch (e) {
       setError(apiErrorMessage(e, "Couldn't change that."));
     }
   };
+
+  // Every tab always exists except Featured, which is opt-in curation and
+  // only worth a tab once something is actually on the shelf.
+  const tabs = useMemo(() => {
+    if (!page) return [] as Array<{ key: TabKey; label: string; count: number }>;
+    const all: Array<{ key: TabKey; label: string; count: number; optional?: boolean }> = [
+      { key: "featured", label: "Featured", count: page.featured.length, optional: true },
+      { key: "templates", label: "Templates", count: page.templates.length },
+      { key: "collections", label: "Collections", count: page.collections.length },
+      { key: "designs", label: "Designs", count: page.designs.length },
+    ];
+    return all.filter((t) => !t.optional || t.count > 0);
+  }, [page]);
+
+  const defaultTab = useMemo<TabKey>(() => {
+    const withContent = tabs.find((t) => t.count > 0);
+    return withContent?.key ?? "templates";
+  }, [tabs]);
+
+  const activeTab = tabOverride ?? defaultTab;
 
   return (
     <>
@@ -90,27 +127,39 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
             <Loader2 size={17} className="cs-spin" /> Loading…
           </p>
         ) : (
-          <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-              {page.profile.avatar_url && (
-                <img
-                  src={page.profile.avatar_url}
-                  alt=""
-                  style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", flex: "none", background: "var(--cs-surface-soft)" }}
-                />
-              )}
+          <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 18 }}>
+            <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+              <ProfileAvatar profile={page.profile} size={68} />
+
               <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+                  <h2
+                    className="cs-heading"
+                    style={{ margin: 0, fontSize: 21, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                    data-testid="profile-display-name"
+                  >
+                    {page.profile.name}
+                  </h2>
+                  <ChevronDown size={18} aria-hidden style={{ flex: "none", color: "var(--cs-text-muted)" }} />
+                </div>
+                <p style={{ margin: "2px 0 0", fontSize: 14, color: "var(--cs-text-muted)" }}>@{page.profile.username}</p>
+
+                <div style={{ margin: "8px 0 0" }}>
+                  <LevelPill stats={page.stats} />
+                </div>
+
                 {page.profile.bio ? (
-                  <p style={{ margin: 0, fontSize: 15, whiteSpace: "pre-wrap" }} data-testid="profile-bio-text">
+                  <p style={{ margin: "10px 0 0", fontSize: 15, whiteSpace: "pre-wrap" }} data-testid="profile-bio-text">
                     {page.profile.bio}
                   </p>
                 ) : (
-                  <p style={{ margin: 0, fontSize: 15, color: "var(--cs-text-muted)" }}>No bio yet.</p>
+                  <p style={{ margin: "10px 0 0", fontSize: 15, color: "var(--cs-text-muted)" }}>No bio yet.</p>
                 )}
                 <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--cs-text-muted)" }}>
                   Joined {new Date(page.profile.joined_at).toLocaleDateString()}
                 </p>
               </div>
+
               {viewer && !isSelf && (
                 <button
                   className="cs-icon-btn"
@@ -125,64 +174,196 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
 
             <ProfileStats stats={page.stats} badges={page.badges} />
 
-            {page.featured.length > 0 && (
-              <Section icon={<Star size={16} />} title="Featured" count={page.featured.length} testId="profile-featured">
-                {page.featured.map((f) => (
-                  <ListRow key={`${f.type}-${f.id}`} testId="featured-row" title={f.name} subtitle={f.type}>
-                    <ReactionButton type={f.type} id={f.id} count={f.reaction_count ?? 0} reacted={f.reacted ?? false} />
-                  </ListRow>
-                ))}
-              </Section>
+            {/* The one highlighted metric this app can actually back up —
+                total reactions received across everything published,
+                already summed server-side into stats.reactions_received.
+                No credits/currency exists here, so there's nothing to
+                fabricate: this simply doesn't render when the number is
+                zero. */}
+            {page.stats.reactions_received > 0 && (
+              <div
+                data-testid="profile-highlight"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "14px 16px",
+                  borderRadius: 12,
+                  background: "var(--cs-accent-soft)",
+                  border: "1px solid var(--cs-accent)",
+                }}
+              >
+                <Heart size={22} style={{ flex: "none", color: "var(--cs-accent)" }} fill="var(--cs-accent)" />
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <strong style={{ fontSize: 20, lineHeight: 1.2 }}>{page.stats.reactions_received}</strong>
+                  <span style={{ fontSize: 13, color: "var(--cs-text-muted)" }}>
+                    reaction{page.stats.reactions_received === 1 ? "" : "s"} received across everything published
+                  </span>
+                </div>
+              </div>
             )}
 
-            <Section icon={<LayoutTemplate size={16} />} title="Published templates" count={page.templates.length} testId="profile-templates">
-              {page.templates.map((t) => (
-                <ListRow key={t.id} testId="profile-row" title={t.name} subtitle={`used ${t.usageCount}× ${t.tags.length ? `· ${t.tags.join(", ")}` : ""}`}>
-                  <ReactionButton type="template" id={t.id} count={t.reactionCount} reacted={t.reacted} />
-                  {isSelf && (
-                    <button
-                      className={`cs-icon-btn${t.featured ? " cs-active" : ""}`}
-                      title={t.featured ? "Remove from your featured shelf" : "Feature this on your profile"}
-                      data-testid="feature-toggle"
-                      onClick={() => void toggleFeatured("template", t.id, !t.featured)}
-                    >
-                      <Star size={16} fill={t.featured ? "currentColor" : "none"} />
-                    </button>
-                  )}
-                  <button className="cs-btn" onClick={() => void useTemplate(t.id, t.name)} disabled={busyId === t.id} data-testid="profile-use-template">
-                    {busyId === t.id ? <Loader2 size={17} className="cs-spin" /> : <LayoutTemplate size={17} />} Use
+            <div className="cs-tb">
+              <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }} data-testid="profile-tabs">
+                {tabs.map((t) => (
+                  <button
+                    key={t.key}
+                    className={`cs-tb-chip${activeTab === t.key ? " cs-active" : ""}`}
+                    onClick={() => setTabOverride(t.key)}
+                    data-testid={`profile-tab-${t.key}`}
+                    style={{ flex: "none" }}
+                  >
+                    {TAB_ICON[t.key]} {t.label} ({t.count})
                   </button>
-                  {viewer && !isSelf && (
-                    <button className="cs-icon-btn" title="Report this template" onClick={() => setReporting({ type: "template", id: t.id, label: `“${t.name}”` })}>
-                      <Flag size={16} />
-                    </button>
-                  )}
-                </ListRow>
-              ))}
-            </Section>
+                ))}
+              </div>
 
-            <Section icon={<Library size={16} />} title="Published collections" count={page.collections.length} testId="profile-collections">
-              {page.collections.map((c) => (
-                <ListRow
-                  key={c.id}
-                  testId="profile-row"
-                  title={c.name}
-                  subtitle={`${c.designCount ?? 0} design${c.designCount === 1 ? "" : "s"}${c.description ? ` · ${c.description}` : ""}`}
-                >
-                  {viewer && !isSelf && (
-                    <button className="cs-icon-btn" title="Report this collection" onClick={() => setReporting({ type: "collection", id: c.id, label: `“${c.name}”` })}>
-                      <Flag size={16} />
-                    </button>
-                  )}
-                </ListRow>
-              ))}
-            </Section>
+              <div style={{ marginTop: 14 }}>
+                {activeTab === "featured" && (
+                  <div data-testid="profile-featured">
+                    {page.featured.length === 0 ? (
+                      <EmptyState text="Nothing featured yet." />
+                    ) : (
+                      <div className="cs-tb-grid">
+                        {page.featured.map((f, i) => (
+                          <div key={`${f.type}-${f.id}`} data-testid="featured-row" className="cs-tb-card">
+                            <div className={`cs-tb-thumb cs-tb-thumb-${i % 5}`}>
+                              {featuredIcon(f.type)}
+                              <div className="cs-tb-thumb-fav">
+                                <ReactionButton type={f.type} id={f.id} count={f.reaction_count ?? 0} reacted={f.reacted ?? false} />
+                              </div>
+                            </div>
+                            <div className="cs-tb-card-body">
+                              <div className="cs-tb-title">{f.name}</div>
+                              <div className="cs-tb-meta" style={{ textTransform: "capitalize" }}>
+                                {f.type}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
-            <Section icon={<FileImage size={16} />} title="Published designs" count={page.designs.length} testId="profile-designs">
-              {page.designs.map((d) => (
-                <ListRow key={d.id} testId="profile-row" title={d.name} subtitle={new Date(d.updated_at).toLocaleDateString()} />
-              ))}
-            </Section>
+                {activeTab === "templates" && (
+                  <div data-testid="profile-templates">
+                    {page.templates.length === 0 ? (
+                      <EmptyState text="Nothing published yet." />
+                    ) : (
+                      <div className="cs-tb-grid">
+                        {page.templates.map((t, i) => (
+                          <div key={t.id} data-testid="profile-row" className="cs-tb-card" style={{ opacity: busyId === t.id ? 0.6 : 1 }}>
+                            <div className={`cs-tb-thumb cs-tb-thumb-${i % 5}`}>
+                              <LayoutTemplate size={32} strokeWidth={1.5} />
+                              <div className="cs-tb-thumb-fav">
+                                <ReactionButton type="template" id={t.id} count={t.reactionCount} reacted={t.reacted} />
+                              </div>
+                            </div>
+                            <div className="cs-tb-card-body">
+                              <div className="cs-tb-title">{t.name}</div>
+                              <div className="cs-tb-meta">
+                                used {t.usageCount}× {t.tags.length ? `· ${t.tags.join(", ")}` : ""}
+                              </div>
+                              <div className="cs-tb-actions">
+                                {isSelf && (
+                                  <button
+                                    className="cs-tb-icon-ghost"
+                                    title={t.featured ? "Remove from your featured shelf" : "Feature this on your profile"}
+                                    data-testid="feature-toggle"
+                                    style={t.featured ? { color: "var(--cs-accent)", borderColor: "var(--cs-accent)" } : undefined}
+                                    onClick={() => void toggleFeatured("template", t.id, !t.featured)}
+                                  >
+                                    <Star size={16} fill={t.featured ? "currentColor" : "none"} />
+                                  </button>
+                                )}
+                                <div style={{ flex: 1 }} />
+                                <button
+                                  className="cs-tb-btn-primary"
+                                  onClick={() => void useTemplate(t.id, t.name)}
+                                  disabled={busyId === t.id}
+                                  data-testid="profile-use-template"
+                                >
+                                  {busyId === t.id ? <Loader2 size={17} className="cs-spin" /> : <LayoutTemplate size={17} />} Use
+                                </button>
+                                {viewer && !isSelf && (
+                                  <button
+                                    className="cs-tb-icon-ghost"
+                                    title="Report this template"
+                                    onClick={() => setReporting({ type: "template", id: t.id, label: `“${t.name}”` })}
+                                  >
+                                    <Flag size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === "collections" && (
+                  <div data-testid="profile-collections">
+                    {page.collections.length === 0 ? (
+                      <EmptyState text="Nothing published yet." />
+                    ) : (
+                      <div className="cs-tb-grid">
+                        {page.collections.map((c, i) => (
+                          <div key={c.id} data-testid="profile-row" className="cs-tb-card">
+                            <div className={`cs-tb-thumb cs-tb-thumb-${i % 5}`}>
+                              <Library size={32} strokeWidth={1.5} />
+                            </div>
+                            <div className="cs-tb-card-body">
+                              <div className="cs-tb-title">{c.name}</div>
+                              {c.description && <div className="cs-tb-meta">{c.description}</div>}
+                              <div className="cs-tb-meta">
+                                {c.designCount ?? 0} design{c.designCount === 1 ? "" : "s"}
+                              </div>
+                              {viewer && !isSelf && (
+                                <div className="cs-tb-actions">
+                                  <div style={{ flex: 1 }} />
+                                  <button
+                                    className="cs-tb-icon-ghost"
+                                    title="Report this collection"
+                                    onClick={() => setReporting({ type: "collection", id: c.id, label: `“${c.name}”` })}
+                                  >
+                                    <Flag size={16} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === "designs" && (
+                  <div data-testid="profile-designs">
+                    {page.designs.length === 0 ? (
+                      <EmptyState text="Nothing published yet." />
+                    ) : (
+                      <div className="cs-tb-grid">
+                        {page.designs.map((d, i) => (
+                          <div key={d.id} data-testid="profile-row" className="cs-tb-card">
+                            <div className={`cs-tb-thumb cs-tb-thumb-${i % 5}`}>
+                              <FileImage size={32} strokeWidth={1.5} />
+                            </div>
+                            <div className="cs-tb-card-body">
+                              <div className="cs-tb-title">{d.name}</div>
+                              <div className="cs-tb-meta">{new Date(d.updated_at).toLocaleDateString()}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
           </>
@@ -194,13 +375,91 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
   );
 }
 
-function Section({ icon, title, count, testId, children }: { icon: React.ReactNode; title: string; count: number; testId: string; children: React.ReactNode }) {
+function EmptyState({ text }: { text: string }) {
+  return <p style={{ margin: 0, fontSize: 15, color: "var(--cs-text-muted)", padding: "20px 4px" }}>{text}</p>;
+}
+
+function featuredIcon(type: ReactableType) {
+  switch (type) {
+    case "template":
+      return <LayoutTemplate size={32} strokeWidth={1.5} />;
+    case "collection":
+      return <Library size={32} strokeWidth={1.5} />;
+    case "post":
+      return <FileText size={32} strokeWidth={1.5} />;
+    default:
+      return <FileImage size={32} strokeWidth={1.5} />;
+  }
+}
+
+/** A compact, accent-colored pill under the name — the "plan/tier badge"
+ * a lot of profile pages carry, mapped to what this app actually has: no
+ * subscription tiers, but a real level everyone earns by using it. */
+function LevelPill({ stats }: { stats: ProfilePage["stats"] }) {
   return (
-    <div data-testid={testId}>
-      <h3 className="cs-heading" style={{ fontSize: 15, fontWeight: 600, margin: "0 0 6px", display: "flex", alignItems: "center", gap: 6 }}>
-        {icon} {title} ({count})
-      </h3>
-      {count === 0 ? <p style={{ margin: 0, fontSize: 14, color: "var(--cs-text-muted)" }}>Nothing published yet.</p> : children}
+    <span
+      data-testid="profile-level-pill"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        fontSize: 13,
+        fontWeight: 600,
+        padding: "3px 10px",
+        borderRadius: 999,
+        color: "var(--cs-accent)",
+        background: "var(--cs-accent-soft)",
+        border: "1px solid var(--cs-accent)",
+      }}
+    >
+      <Star size={12} fill="currentColor" /> Level {stats.level} · {stats.level_name}
+    </span>
+  );
+}
+
+const AVATAR_COLORS = ["#ab8457", "#5c7f74", "#7c5d95", "#a85b4a", "#4f6690"];
+
+function avatarColor(seed: string) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+/** A circular avatar — the real photo when one's set, otherwise a
+ * colored circle with the account's initial, colored deterministically
+ * from their handle so the same person always gets the same color. */
+function ProfileAvatar({ profile, size }: { profile: PublicProfile; size: number }) {
+  if (profile.avatar_url) {
+    return (
+      <img
+        src={profile.avatar_url}
+        alt=""
+        style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flex: "none", background: "var(--cs-surface-soft)" }}
+      />
+    );
+  }
+
+  const initial = (profile.name || profile.username || "?").trim().charAt(0).toUpperCase() || "?";
+  return (
+    <div
+      aria-hidden
+      data-testid="profile-avatar-fallback"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        flex: "none",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: avatarColor(profile.username || profile.name || "?"),
+        color: "#fff",
+        fontWeight: 700,
+        fontSize: Math.round(size * 0.42),
+        fontFamily: "var(--cs-font-heading)",
+      }}
+    >
+      {initial}
     </div>
   );
 }
