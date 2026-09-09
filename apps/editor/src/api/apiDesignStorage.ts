@@ -14,6 +14,16 @@ interface CardDesignRow extends CardDesignSummaryRow {
   visibility: string;
 }
 
+/** Exported so a caller with its own rows shaped like a design listing
+ * (the global search endpoint's `designs` array — see api/search.ts) can
+ * reuse this mapping instead of a second copy of it. */
+export const toDesignSummary = (row: CardDesignSummaryRow): DesignSummary => ({
+  id: row.id,
+  name: row.name,
+  updatedAt: row.updated_at,
+  visibility: row.visibility as DesignSummary["visibility"],
+});
+
 /**
  * The backend-backed DesignStorage implementation — see designStorage.ts's
  * doc comment for why this is a drop-in swap rather than a rewrite of any
@@ -37,7 +47,7 @@ export const apiDesignStorage: DesignStorage = {
   async list(): Promise<DesignSummary[]> {
     const rows = await api.get<CardDesignSummaryRow[]>("/api/card-designs");
 
-    return rows.map((row) => ({ id: row.id, name: row.name, updatedAt: row.updated_at, visibility: row.visibility as DesignSummary["visibility"] }));
+    return rows.map(toDesignSummary);
   },
 
   async load(id: string): Promise<Design | undefined> {
@@ -56,7 +66,7 @@ export const apiDesignStorage: DesignStorage = {
       design,
     });
 
-    return { id: row.id, name: row.name, updatedAt: row.updated_at, visibility: row.visibility as DesignSummary["visibility"] };
+    return toDesignSummary(row);
   },
 
   async remove(id: string): Promise<void> {
