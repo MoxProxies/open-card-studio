@@ -46,7 +46,7 @@ export function AccountButton({ onViewProfile }: { onViewProfile: (username: str
         <button
           className="cs-btn"
           onClick={() => setShowProfile(true)}
-          title={`Signed in as ${user.email} — edit your public profile`}
+          title={`Signed in as ${user.email}: edit your public profile`}
           data-testid="account-button"
         >
           <User size={16} /> {user.name}

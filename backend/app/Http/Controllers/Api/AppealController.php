@@ -48,7 +48,7 @@ class AppealController extends Controller
         // Only a suspended account has anything to appeal. Anyone else
         // asking is either confused or probing, and either way there's no
         // decision for a moderator to make.
-        abort_if($user->moderation_state !== User::SUSPENDED, 422, 'There is nothing to appeal — this account is in good standing.');
+        abort_if($user->moderation_state !== User::SUSPENDED, 422, 'There is nothing to appeal: this account is in good standing.');
 
         // One open appeal at a time: a queue where one person can file
         // fifty is a queue nobody reads. Re-appealing after a denial is

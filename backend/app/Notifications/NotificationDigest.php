@@ -42,8 +42,8 @@ class NotificationDigest extends Notification
 
         return $message
             ->action('Open card studio', rtrim((string) (config('frontend_urls')[0] ?? ''), '/'))
-            ->line('Not interested in these? [Turn them off]('.self::unsubscribeUrl($notifiable).') — one click, no sign-in needed.')
-            ->salutation('— open-card-studio');
+            ->line('Not interested in these? [Turn them off]('.self::unsubscribeUrl($notifiable).'), one click, no sign-in needed.')
+            ->salutation('- open-card-studio');
     }
 
     /** Deliberately long-lived: an unsubscribe link that has expired by

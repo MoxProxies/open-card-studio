@@ -34,7 +34,7 @@ class FeatureController extends Controller
         abort_if(
             $data['featured'] && $progress['level'] < $minimum,
             403,
-            "Featuring unlocks at level {$minimum} — you're level {$progress['level']}.",
+            "Featuring unlocks at level {$minimum}; you're level {$progress['level']}.",
         );
 
         $limit = config('gamification.feature_limit');

@@ -29,7 +29,7 @@ export function ReportModal({ type, id, label, onClose }: ReportModalProps) {
       await reportContent(type, id, reason, details);
       setDone(true);
     } catch (e) {
-      setError(apiErrorMessage(e, "Couldn't send that report — check your connection and try again."));
+      setError(apiErrorMessage(e, "Couldn't send that report. Check your connection and try again."));
     } finally {
       setSubmitting(false);
     }
@@ -62,7 +62,7 @@ export function ReportModal({ type, id, label, onClose }: ReportModalProps) {
       <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16 }}>
         {done ? (
           <p style={{ margin: 0, fontSize: 13 }} data-testid="report-done">
-            Thanks — this has been sent for review. Nothing is hidden automatically; someone will look at it.
+            Thanks. This has been sent for review. Nothing is hidden automatically; someone will look at it.
           </p>
         ) : (
           <>

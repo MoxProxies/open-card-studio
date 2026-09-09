@@ -43,7 +43,7 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
     setError(null);
     loadProfile(username)
       .then((p) => !cancelled && setPage(p))
-      .catch((e: unknown) => !cancelled && setError(apiErrorMessage(e, "Couldn't load that profile — check your connection and try again.")));
+      .catch((e: unknown) => !cancelled && setError(apiErrorMessage(e, "Couldn't load that profile. Check your connection and try again.")));
     return () => {
       cancelled = true;
     };

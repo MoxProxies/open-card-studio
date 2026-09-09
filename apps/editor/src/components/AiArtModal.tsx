@@ -36,7 +36,7 @@ export function AiArtModal({ onGenerated, onClose }: AiArtModalProps) {
       const src = await requestAiArt(rootRef.current, trimmed);
       onGenerated(src);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Image generation failed — please try again.");
+      setError(err instanceof Error ? err.message : "Image generation failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -48,7 +48,7 @@ export function AiArtModal({ onGenerated, onClose }: AiArtModalProps) {
     <Modal title="Generate AI Art" onClose={onClose} dismissable={!loading} rootRef={rootRef}>
       <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
         <p style={{ margin: 0, fontSize: 13, color: "var(--cs-text-muted)" }}>
-          Describe the illustration you want — framing, style, and aspect ratio are handled automatically.
+          Describe the illustration you want: framing, style, and aspect ratio are handled automatically.
         </p>
         <textarea
           className="cs-input"

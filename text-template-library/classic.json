@@ -50,7 +50,7 @@
   {
     "id": "typeline",
     "label": "Typeline",
-    "defaultContent": "Creature — Human Wizard",
+    "defaultContent": "Creature - Human Wizard",
     "x": 2.5,
     "y": 51,
     "width": 58,

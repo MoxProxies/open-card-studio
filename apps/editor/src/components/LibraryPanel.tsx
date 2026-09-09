@@ -49,7 +49,7 @@ export function LibraryPanel({ design, onRename, onSave, onNew, onLoad, children
     designStorage
       .list()
       .then(setSummaries)
-      .catch((e: unknown) => setListError(apiErrorMessage(e, "Couldn't load your saved designs — check your connection and try again.")))
+      .catch((e: unknown) => setListError(apiErrorMessage(e, "Couldn't load your saved designs. Check your connection and try again.")))
       .finally(() => setListLoading(false));
   };
 
@@ -66,7 +66,7 @@ export function LibraryPanel({ design, onRename, onSave, onNew, onLoad, children
       await onSave();
       refresh();
     } catch (e) {
-      setActionError(apiErrorMessage(e, "Couldn't save — check your connection and try again."));
+      setActionError(apiErrorMessage(e, "Couldn't save. Check your connection and try again."));
     } finally {
       setSaving(false);
     }
@@ -80,9 +80,9 @@ export function LibraryPanel({ design, onRename, onSave, onNew, onLoad, children
     try {
       const loaded = await designStorage.load(id);
       if (loaded) onLoad(loaded);
-      else setActionError("That design couldn't be found — it may have been deleted elsewhere.");
+      else setActionError("That design couldn't be found. It may have been deleted elsewhere.");
     } catch (e) {
-      setActionError(apiErrorMessage(e, "Couldn't load that design — check your connection and try again."));
+      setActionError(apiErrorMessage(e, "Couldn't load that design. Check your connection and try again."));
     } finally {
       setLoadingId(null);
     }
@@ -96,7 +96,7 @@ export function LibraryPanel({ design, onRename, onSave, onNew, onLoad, children
       await designStorage.remove(id);
       refresh();
     } catch (err) {
-      setActionError(apiErrorMessage(err, "Couldn't delete — check your connection and try again."));
+      setActionError(apiErrorMessage(err, "Couldn't delete. Check your connection and try again."));
     }
   };
 
@@ -184,7 +184,7 @@ export function LibraryPanel({ design, onRename, onSave, onNew, onLoad, children
                   ) : listError ? (
                     <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "6px 8px" }}>{listError}</p>
                   ) : summaries.length === 0 ? (
-                    <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>No saved designs yet — click Save above.</p>
+                    <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>No saved designs yet. Click Save above.</p>
                   ) : (
                     summaries.map((s) => (
                       <ListRow

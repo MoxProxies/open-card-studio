@@ -71,7 +71,7 @@
     {
       "id": "typeline",
       "label": "Typeline",
-      "defaultContent": "Creature — Creature Type",
+      "defaultContent": "Creature - Creature Type",
       "x": 5.3,
       "y": 50.8,
       "width": 52.4,
@@ -260,7 +260,7 @@
       {
         "id": "typeline",
         "label": "Typeline",
-        "defaultContent": "Creature — Human Wizard",
+        "defaultContent": "Creature - Human Wizard",
         "x": 2.5,
         "y": 51,
         "width": 58,

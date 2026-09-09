@@ -95,7 +95,7 @@ export function ModerationView() {
     <Page
       testId="page-moderation"
       title="Moderation"
-      subtitle="Reports people have filed. Nothing here is automatic — every action is yours, and every action is logged."
+      subtitle="Reports people have filed. Nothing here is automatic: every action is yours, and every action is logged."
       toolbar={
         <>
           <button className={`cs-btn${tab === "queue" ? " cs-active" : ""}`} onClick={() => setTab("queue")} data-testid="mod-tab-queue">
@@ -142,7 +142,7 @@ export function ModerationView() {
               key={a.id}
               testId="appeal-row"
               attrs={{ "data-appeal-id": a.id }}
-              title={`${a.user.name ?? "someone"} — “${a.message}”`}
+              title={`${a.user.name ?? "someone"}: “${a.message}”`}
               subtitle={`appealed ${new Date(a.submitted_at).toLocaleDateString()}${a.user.suspended ? "" : " · already reinstated"}`}
             >
               <button className="cs-btn" disabled={busy} onClick={() => decide(a, true)} data-testid="appeal-grant" title="Grant and reinstate">
@@ -212,7 +212,7 @@ export function ModerationView() {
             )}
             <button
               className="cs-icon-btn"
-              title="Dismiss — no action needed"
+              title="Dismiss: no action needed"
               disabled={busy}
               onClick={() => void act(() => resolveReport(r.id, "dismissed"), "Couldn't dismiss.")}
               data-testid="mod-dismiss"

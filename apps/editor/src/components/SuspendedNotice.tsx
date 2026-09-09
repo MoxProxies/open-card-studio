@@ -33,7 +33,7 @@ export function SuspendedNotice() {
     try {
       setAppeal(await submitAppeal(message.trim()));
     } catch (e) {
-      setError(apiErrorMessage(e, "Couldn't send that — try again shortly."));
+      setError(apiErrorMessage(e, "Couldn't send that. Try again shortly."));
     } finally {
       setSending(false);
     }
@@ -84,7 +84,7 @@ export function SuspendedNotice() {
 
         {pending && (
           <p style={{ margin: 0 }} data-testid="appeal-pending">
-            Your appeal is with us — sent {new Date(appeal.submitted_at).toLocaleDateString()}. You'll see the answer here.
+            Your appeal is with us, sent {new Date(appeal.submitted_at).toLocaleDateString()}. You'll see the answer here.
           </p>
         )}
 

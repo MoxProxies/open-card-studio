@@ -43,7 +43,7 @@ export function ReauthModal({
       await onConfirm(byPassword ? { password: value } : { code: value.trim() });
       onClose();
     } catch (e) {
-      setError(apiErrorMessage(e, "That didn't work — check what you entered."));
+      setError(apiErrorMessage(e, "That didn't work. Check what you entered."));
       setBusy(false);
     }
   };

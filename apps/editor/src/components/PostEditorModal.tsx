@@ -43,7 +43,7 @@ export function PostEditorModal({ existing, onSaved, onClose }: { existing?: Pos
         })
       );
     } catch (e) {
-      setError(apiErrorMessage(e, "Couldn't save that guide — check your connection and try again."));
+      setError(apiErrorMessage(e, "Couldn't save that guide. Check your connection and try again."));
     } finally {
       setSaving(false);
     }
@@ -76,7 +76,7 @@ export function PostEditorModal({ existing, onSaved, onClose }: { existing?: Pos
         <label style={label}>
           Title
           <input className="cs-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="How I cut cards at home" data-testid="post-title" />
-          {existing && <span style={{ fontSize: 11 }}>The link stays /{existing.slug} — renaming won't break links people already shared.</span>}
+          {existing && <span style={{ fontSize: 11 }}>The link stays /{existing.slug}; renaming won't break links people already shared.</span>}
         </label>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -109,7 +109,7 @@ export function PostEditorModal({ existing, onSaved, onClose }: { existing?: Pos
         </label>
 
         <label style={label}>
-          Body — markdown: # headings, **bold**, *italic*, `code`, - lists, &gt; quotes, [links](url)
+          Body (markdown): # headings, **bold**, *italic*, `code`, - lists, &gt; quotes, [links](url)
           {preview ? (
             <div
               style={{ border: "1px solid var(--cs-border)", borderRadius: 8, padding: 12, minHeight: 240, background: "var(--cs-surface)", color: "var(--cs-text)" }}

@@ -20,7 +20,7 @@ export function TemplatesView() {
       onViewProfile={(username) => navigate({ tab: "profile", username })}
     >
       {({ toolbar, body }) => (
-        <Page testId="page-templates" title="Templates" subtitle="Layouts published by the community — start a design from one, or share your own." toolbar={toolbar}>
+        <Page testId="page-templates" title="Templates" subtitle="Layouts published by the community. Start a design from one, or share your own." toolbar={toolbar}>
           {body}
         </Page>
       )}

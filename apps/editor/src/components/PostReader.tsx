@@ -134,7 +134,7 @@ export function PostReader({ slug, onBack, onViewProfile }: { slug: string; onBa
           <div style={{ border: "1px solid var(--cs-border)", borderRadius: 8, padding: 12, marginBottom: 14 }} data-testid="post-revisions">
             <strong style={{ fontSize: 12 }}>Edit history</strong>
             {revisions.length === 0 ? (
-              <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--cs-text-muted)" }}>No edits yet — this is the original.</p>
+              <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--cs-text-muted)" }}>No edits yet, this is the original.</p>
             ) : (
               revisions.map((r) => (
                 <details key={r.id} style={{ marginTop: 8, fontSize: 12 }}>
