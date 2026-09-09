@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Loader2, LayoutTemplate, Flag, FileImage, Library, Star, ChevronDown, Heart, FileText } from "lucide-react";
+import { Loader2, LayoutTemplate, Flag, FileImage, Library, Star, ChevronDown, Heart, FileText, Bell, Settings, SquarePen } from "lucide-react";
 import type { Design } from "@card-studio/scene-schema";
 import { apiErrorMessage } from "../api/client";
 import { getCurrentUser } from "../api/auth";
@@ -19,6 +19,17 @@ export interface ProfilePanelProps {
   /** Render prop — the title depends on loaded data, so the wrapper gets
    * it alongside the body. See TemplatesPanel. */
   children: (slots: { title: string; body: ReactNode }) => ReactNode;
+  /** Entry points into your own profile's subviews (edit / notifications
+   * / settings) — shown next to the header only when this is your own
+   * profile (`isSelf`) *and* the caller passes them. Undefined here (the
+   * embed's PublicProfileModal doesn't pass any) means none render — this
+   * shared panel has no route of its own to send them to, only the
+   * standalone shell's ProfileView does. */
+  onEditProfile?: () => void;
+  onOpenNotifications?: () => void;
+  onOpenSettings?: () => void;
+  /** For the notifications entry point's badge — see onOpenNotifications. */
+  unreadCount?: number;
 }
 
 type TabKey = "featured" | "templates" | "collections" | "designs";
@@ -39,7 +50,15 @@ const TAB_ICON: Record<TabKey, ReactNode> = {
  * Only published content appears; the backend's `published` scope decides
  * that, not this component.
  */
-export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanelProps) {
+export function ProfilePanel({
+  username,
+  onUseTemplate,
+  children,
+  onEditProfile,
+  onOpenNotifications,
+  onOpenSettings,
+  unreadCount = 0,
+}: ProfilePanelProps) {
   const [page, setPage] = useState<ProfilePage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -169,6 +188,57 @@ export function ProfilePanel({ username, onUseTemplate, children }: ProfilePanel
                 >
                   <Flag size={17} />
                 </button>
+              )}
+
+              {/* Your own profile's way into edit-profile / notifications /
+                  settings — no bell, no separate account button in the top
+                  bar any more (see AppShell.tsx), so this is the one place
+                  those live now. */}
+              {isSelf && (onOpenNotifications || onEditProfile || onOpenSettings) && (
+                <div style={{ display: "flex", gap: 6, flex: "none" }}>
+                  {onOpenNotifications && (
+                    <button
+                      className="cs-icon-btn"
+                      title={unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}` : "Notifications"}
+                      data-testid="profile-notifications-button"
+                      onClick={onOpenNotifications}
+                      style={{ position: "relative" }}
+                    >
+                      <Bell size={18} />
+                      {unreadCount > 0 && (
+                        <span
+                          data-testid="profile-notifications-badge"
+                          style={{
+                            position: "absolute",
+                            top: -2,
+                            right: -2,
+                            minWidth: 16,
+                            height: 16,
+                            padding: "0 3px",
+                            borderRadius: 8,
+                            background: "var(--cs-accent)",
+                            color: "var(--cs-surface)",
+                            fontSize: 11,
+                            lineHeight: "16px",
+                            textAlign: "center",
+                          }}
+                        >
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </button>
+                  )}
+                  {onEditProfile && (
+                    <button className="cs-icon-btn" title="Edit profile" data-testid="profile-edit-button" onClick={onEditProfile}>
+                      <SquarePen size={18} />
+                    </button>
+                  )}
+                  {onOpenSettings && (
+                    <button className="cs-icon-btn" title="Settings" data-testid="profile-settings-button" onClick={onOpenSettings}>
+                      <Settings size={18} />
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 

@@ -55,8 +55,10 @@ try {
   await staff.reload();
   // The shell renders before the stored session is restored, and the
   // moderation tab only exists once the account comes back as staff — so
-  // wait for the signed-in state, not just for the app.
-  await staff.getByTestId("account-button").waitFor();
+  // wait for the signed-in state, not just for the app. Signing up landed
+  // on the Profile tab, and that route survives the reload, so this is
+  // where the restored session shows up first.
+  await staff.getByTestId("profile-edit-button").waitFor();
   check("the moderation tab appears for staff", 1, await staff.getByTestId("tab-moderation").count());
   await go(staff, "moderation");
   const report = staff.locator(`[data-testid='report-row']:has-text("${TEMPLATE}")`).last();

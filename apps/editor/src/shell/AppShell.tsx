@@ -1,17 +1,15 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { Bell, LogIn, LogOut, User, X } from "lucide-react";
+import { LogIn, X } from "lucide-react";
 import { createEmptyDesign, STANDARD_CARD_SIZE_MM } from "@card-studio/scene-schema";
 import { App } from "../App";
 import { AccountModal } from "../components/AccountModal";
 import { DesignInspiration } from "../components/DesignInspiration";
 import { GlobalSearch } from "../components/GlobalSearch";
-import { ProfileModal } from "../components/ProfileModal";
 import { ResetPasswordModal } from "../components/ResetPasswordModal";
 import { SuspendedNotice } from "../components/SuspendedNotice";
 import { TwoFactorPrompt } from "../components/TwoFactorPrompt";
-import { NotificationsModal } from "../components/NotificationsModal";
 import { loadNotifications } from "../api/notifications";
-import { consumeSocialRedirect, getCurrentUser, getSuspended, logout, restoreSession, subscribe } from "../api/auth";
+import { consumeSocialRedirect, getCurrentUser, getSuspended, restoreSession, subscribe } from "../api/auth";
 import { apiDesignStorage } from "../api/apiDesignStorage";
 import { localStorageDesignStorage, setActiveDesignStorage } from "../designStorage";
 import { useIsNarrow } from "../hooks/useIsNarrow";
@@ -76,14 +74,16 @@ export function AppShell() {
   const showInspiration = !hasLayers && !hasHistory && dismissedDesignId !== designId;
 
   const [showSignIn, setShowSignIn] = useState(false);
-  const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [resetting, setResetting] = useState<{ token: string; email: string } | null>(null);
   // Set when a password (or a provider round-trip) came back with a
   // second-factor challenge instead of a session.
   const [challenge, setChallenge] = useState<string | null>(null);
-  const [showNotifications, setShowNotifications] = useState(false);
+  // Unread notifications. There's no bell in the top bar any more — the
+  // count surfaces as a dot on the Profile tab/destination itself (see
+  // Nav.tsx's DestinationIcon), and the full list is a Profile subview
+  // (shell/views/NotificationsView.tsx) rather than a modal.
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
@@ -177,65 +177,21 @@ export function AppShell() {
     setActiveDesignStorage(user ? apiDesignStorage : localStorageDesignStorage);
   }, [user]);
 
-  // Nothing in the account slot while suspended: they aren't signed out,
-  // so "Sign in" would be a lie, and the notice below is the whole story.
-  const account = suspended ? null : user ? (
-    <div style={{ display: "flex", gap: 4 }}>
-      <button
-        className="cs-btn"
-        onClick={() => setShowNotifications(true)}
-        data-testid="notifications-button"
-        title={unread > 0 ? `${unread} unread` : "Notifications"}
-        style={{ position: "relative" }}
-      >
-        <Bell size={19} />
-        {unread > 0 && (
-          <span
-            data-testid="notifications-badge"
-            style={{
-              position: "absolute",
-              top: -4,
-              right: -4,
-              minWidth: 18,
-              height: 18,
-              padding: "0 4px",
-              borderRadius: 9,
-              background: "var(--cs-accent)",
-              color: "var(--cs-surface)",
-              fontSize: 12,
-              lineHeight: "18px",
-              textAlign: "center",
-            }}
-          >
-            {unread > 9 ? "9+" : unread}
-          </span>
-        )}
-      </button>
-      <button className="cs-btn" onClick={() => setShowProfileEditor(true)} data-testid="account-button" title={`Signed in as ${user.email}`}>
-        <User size={19} />
-        {/* Capped and truncated on the phone header only — search now sits in
-            that same limited width, and an unbounded name was the one part
-            of this row that could still push the row wide enough to wrap. */}
-        <span style={narrow ? { maxWidth: 84, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } : undefined}>{user.name}</span>
-      </button>
-      <button
-        className="cs-icon-btn"
-        data-testid="sign-out"
-        title="Sign out"
-        onClick={() => {
-          if (window.confirm("Sign out? You'll go back to designs saved only in this browser.")) void logout();
-        }}
-      >
-        <LogOut size={17} />
-      </button>
-    </div>
-  ) : (
+  // The account slot, once notifications (a bell), edit-profile (the
+  // "Phil" pill) and sign-out all moved out of it: for a signed-in
+  // account there's nothing left to put here. Both TopNav and BottomTabs
+  // already render a "Profile" destination — that's the way in, same as
+  // Design or Library — and the unread count now lives on that
+  // destination's own icon (Nav.tsx's DestinationIcon) rather than a
+  // second, competing indicator up here. Signed out still needs exactly
+  // one affordance, so that's the only thing this ever renders now.
+  // Nothing in the account slot while suspended either: they aren't
+  // signed out, so "Sign in" would be a lie, and the notice below is the
+  // whole story.
+  const account = suspended || user ? null : (
     // Icon-only: this sits beside GlobalSearch in the header now (both the
     // desktop TopNav and the mobile header below), and the text label
-    // "Sign in" no longer fits alongside it on a phone-width bar. The
-    // signed-in branch above keeps its label — it's a separate render
-    // branch, and there's no search icon competing with it there since
-    // GlobalSearch is rendered once, next to whichever branch is active.
+    // "Sign in" no longer fits alongside it on a phone-width bar.
     <button className="cs-icon-btn" onClick={() => setShowSignIn(true)} data-testid="sign-in" title="Sign in" aria-label="Sign in">
       <LogIn size={19} />
     </button>
@@ -243,7 +199,7 @@ export function AppShell() {
 
   return (
     <div className="cs-root" style={{ display: "flex", flexDirection: "column", height: "100%", fontFamily: "system-ui, sans-serif" }} data-testid="app-shell">
-      {!narrow && <TopNav account={account} />}
+      {!narrow && <TopNav account={account} unread={unread} />}
 
       {narrow && (
         // The phone header is just a title and the account — navigation
@@ -295,7 +251,7 @@ export function AppShell() {
             {route.tab === "library" && <LibraryView />}
             {route.tab === "templates" && <TemplatesView />}
             {route.tab === "guides" && <GuidesView />}
-            {route.tab === "profile" && <ProfileView onSignIn={() => setShowSignIn(true)} />}
+            {route.tab === "profile" && <ProfileView onSignIn={() => setShowSignIn(true)} unread={unread} onUnreadChange={setUnread} />}
             {route.tab === "moderation" && <ModerationView />}
           </div>
         )}
@@ -341,11 +297,9 @@ export function AppShell() {
         </div>
       )}
 
-      {showNotifications && <NotificationsModal onClose={() => setShowNotifications(false)} onRead={setUnread} />}
-
       {suspended && <SuspendedNotice />}
 
-      {narrow && <BottomTabs />}
+      {narrow && <BottomTabs unread={unread} />}
 
       {showSignIn && (
         <AccountModal
@@ -381,17 +335,6 @@ export function AppShell() {
             setShowSignIn(true);
           }}
           onClose={() => setResetting(null)}
-        />
-      )}
-
-      {showProfileEditor && user && (
-        <ProfileModal
-          user={user}
-          onClose={() => setShowProfileEditor(false)}
-          onViewPublic={(username) => {
-            setShowProfileEditor(false);
-            navigate({ tab: "profile", username });
-          }}
         />
       )}
     </div>

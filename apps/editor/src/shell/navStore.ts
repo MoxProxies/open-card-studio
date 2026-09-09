@@ -10,15 +10,28 @@ import { useSyncExternalStore } from "react";
  */
 export type Tab = "design" | "library" | "templates" | "guides" | "profile" | "moderation";
 
+/** A subview of your own profile — edit-profile, notifications, and
+ * settings all used to be modals (ProfileModal, NotificationsModal)
+ * popped over everything; they're real destinations now, reached from
+ * ProfilePanel's own-profile header (see components/ProfilePanel.tsx),
+ * so the back button and a reload both land somewhere sensible instead
+ * of just closing an overlay. Only meaningful with no `username` set —
+ * these exist for *your* profile, not one you're visiting. */
+export type ProfileSubview = "edit" | "notifications" | "settings";
+
 export interface Route {
   tab: Tab;
   /** Whose profile — unset means the signed-in account's own. */
   username?: string;
   /** Which guide is open, by slug — unset means the index. */
   slug?: string;
+  /** See ProfileSubview. Only read when `tab` is "profile" and `username` is unset. */
+  view?: ProfileSubview;
 }
 
 const DEFAULT: Route = { tab: "design" };
+
+const PROFILE_VIEWS: ProfileSubview[] = ["edit", "notifications", "settings"];
 
 /**
  * Routes are mirrored into the URL hash so a profile or a guide can be
@@ -29,6 +42,7 @@ const DEFAULT: Route = { tab: "design" };
  */
 export function toHash(route: Route): string {
   if (route.tab === "profile" && route.username) return `#/u/${route.username}`;
+  if (route.tab === "profile" && route.view) return `#/profile/${route.view}`;
   if (route.tab === "guides" && route.slug) return `#/guides/${route.slug}`;
 
   return `#/${route.tab}`;
@@ -39,6 +53,10 @@ export function fromHash(hash: string): Route {
 
   if (parts[0] === "u" && parts[1]) return { tab: "profile", username: decodeURIComponent(parts[1]) };
   if (parts[0] === "guides") return parts[1] ? { tab: "guides", slug: decodeURIComponent(parts[1]) } : { tab: "guides" };
+  if (parts[0] === "profile" && parts[1]) {
+    const view = PROFILE_VIEWS.find((v) => v === parts[1]);
+    if (view) return { tab: "profile", view };
+  }
 
   const tabs: Tab[] = ["design", "library", "templates", "guides", "profile", "moderation"];
   const tab = tabs.find((t) => t === parts[0]);

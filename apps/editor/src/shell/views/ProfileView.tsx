@@ -5,13 +5,22 @@ import { ProfilePanel } from "../../components/ProfilePanel";
 import { getCurrentUser, subscribe } from "../../api/auth";
 import { navigate, useRoute } from "../navStore";
 import { Page } from "../Page";
+import { EditProfileView } from "./EditProfileView";
+import { NotificationsView } from "./NotificationsView";
+import { SettingsView } from "./SettingsView";
 
 /**
  * Someone's public profile — the signed-in account's own when the route
  * carries no username. Signed out and with no username, there's nothing
  * to show, so it offers the sign-in instead of erroring.
+ *
+ * Edit-profile, notifications and settings all live here too, as
+ * subviews keyed by `route.view` (see navStore.ts) rather than modals:
+ * `unread`/`onUnreadChange` are threaded down from AppShell, which is
+ * also the only other place the count is read (the Profile tab's own
+ * badge — there's no bell in the top bar any more).
  */
-export function ProfileView({ onSignIn }: { onSignIn: () => void }) {
+export function ProfileView({ onSignIn, unread, onUnreadChange }: { onSignIn: () => void; unread: number; onUnreadChange: (unread: number) => void }) {
   const route = useRoute();
   const user = useSyncExternalStore(subscribe, getCurrentUser);
   const loadDesign = useDesignStore((s) => s.loadDesign);
@@ -94,6 +103,14 @@ export function ProfileView({ onSignIn }: { onSignIn: () => void }) {
     );
   }
 
+  // Edit-profile, notifications, and settings only exist for your own
+  // profile (reached with no username in the route — see navStore.ts's
+  // ProfileSubview comment), which `username` above already resolved to
+  // `user.username` in that case.
+  if (user && route.view === "edit") return <EditProfileView user={user} />;
+  if (user && route.view === "notifications") return <NotificationsView onUnreadChange={onUnreadChange} />;
+  if (user && route.view === "settings") return <SettingsView user={user} />;
+
   return (
     <ProfilePanel
       key={username}
@@ -102,6 +119,10 @@ export function ProfileView({ onSignIn }: { onSignIn: () => void }) {
         loadDesign(fromTemplate);
         navigate({ tab: "design" });
       }}
+      onEditProfile={() => navigate({ tab: "profile", view: "edit" })}
+      onOpenNotifications={() => navigate({ tab: "profile", view: "notifications" })}
+      onOpenSettings={() => navigate({ tab: "profile", view: "settings" })}
+      unreadCount={unread}
     >
       {({ title, body }) => (
         <Page testId="page-profile" title={title}>

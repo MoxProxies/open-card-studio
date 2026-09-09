@@ -2,7 +2,7 @@
 // unconfirmed-email prompt, and the password-reset link end to end.
 import { chromium } from "playwright";
 import { readFile } from "node:fs/promises";
-import { reporter, openApp, go, signUp, signIn, statusAs, me as whoami, resetLinkFor, totp, API, SHOT_DIR, EDITOR } from "./helpers.mjs";
+import { reporter, openApp, go, signUp, signIn, openSettings, statusAs, me as whoami, resetLinkFor, totp, API, SHOT_DIR, EDITOR } from "./helpers.mjs";
 
 const stamp = Date.now();
 const EMAIL = `authui${stamp}@example.com`;
@@ -30,26 +30,34 @@ try {
 
   console.log("== sign up, and be told the address isn't confirmed ==");
   await signUp(page, "Auth Tester", EMAIL);
-  await page.getByTestId("account-button").click();
+  // The unverified-email banner is an account setting now, not a
+  // presentation field — it moved from the profile editor to Settings,
+  // which used to be part of the same modal (ProfileModal) and is a
+  // Profile subview now (see AppShell.tsx/SettingsView.tsx).
+  await openSettings(page);
   await page.getByTestId("unverified-email").waitFor();
   check("the profile flags an unconfirmed address", true, (await page.getByTestId("unverified-email").innerText()).includes(EMAIL));
   await page.getByTestId("resend-verification").click();
   await page.waitForTimeout(600);
   check("and can resend the confirmation", true, (await page.getByTestId("unverified-email").innerText()).includes("Confirmation email sent"));
   await page.screenshot({ path: `${SHOT_DIR}/a1-unverified.png` });
-  await page.keyboard.press("Escape");
 
   console.log("== sign out everywhere ==");
-  await page.getByTestId("account-button").click();
+  // Still on the Settings page from the section above — it's a real
+  // destination now, not a dialog to reopen for every check.
   check("the control is offered", 1, await page.getByTestId("sign-out-everywhere").count());
-  await page.keyboard.press("Escape");
 
   console.log("== signed-in devices ==");
   // A second browser context is a second session on the same account —
   // the case the list exists for.
   const second = await openApp(browser);
   await signIn(second, EMAIL, "password123");
-  await page.getByTestId("account-button").click();
+  // AccountSessions only fetches on mount, and Settings being a page
+  // rather than a modal means it isn't remounted just by looking at it
+  // again — force a fresh one the same way the old "close and reopen the
+  // modal" did, so the list actually picks up "second".
+  await go(page, "profile");
+  await openSettings(page);
   await page.getByTestId("account-sessions").waitFor();
   check("both sessions are listed", 2, await page.getByTestId("session-row").count());
   check("exactly one is this device", 1, await page.locator("[data-testid='session-row'][data-current='true']").count());
@@ -61,10 +69,9 @@ try {
   check("revoking one leaves only this device", 1, await page.getByTestId("session-row").count());
   check("and the other browser's token is dead", 401, await statusAs(second, "/api/auth/me"));
   check("while this one still works", 200, await statusAs(page, "/api/auth/me"));
-  await page.keyboard.press("Escape");
 
   console.log("== two-factor authentication ==");
-  await page.getByTestId("account-button").click();
+  // Still on Settings — no remount needed for this one.
   await page.getByTestId("two-factor-enable").click();
   await page.getByTestId("two-factor-setup").waitFor();
   await page.getByTestId("two-factor-qr").waitFor();
@@ -87,7 +94,6 @@ try {
   await page.screenshot({ path: `${SHOT_DIR}/a4-2fa-recovery.png` });
   await page.getByTestId("recovery-codes-done").click();
   check("and the profile says it's on", 1, await page.getByTestId("two-factor-on").count());
-  await page.keyboard.press("Escape");
 
   console.log("== signing in now takes a code ==");
   const phone = await openApp(browser);
@@ -96,21 +102,21 @@ try {
   await phone.getByPlaceholder("Password", { exact: true }).fill("password123");
   await phone.locator("form").getByRole("button", { name: "Sign in", exact: true }).click();
   await phone.getByTestId("two-factor-prompt").waitFor();
-  check("the password alone stops at the code prompt", 0, await phone.getByTestId("account-button").count());
+  check("the password alone stops at the code prompt", 0, await phone.getByTestId("profile-edit-button").count());
   await phone.getByTestId("two-factor-code").fill("000000");
   await phone.getByTestId("two-factor-submit").click();
   await phone.waitForTimeout(700);
-  check("a wrong code is refused", 0, await phone.getByTestId("account-button").count());
+  check("a wrong code is refused", 0, await phone.getByTestId("profile-edit-button").count());
   // A recovery code goes in the same field — the case someone reaches for
   // when the phone with the app on it is the thing they've lost.
   await phone.getByTestId("two-factor-code").fill(recoveryCodes[0]);
   await phone.getByTestId("two-factor-submit").click();
-  await phone.getByTestId("account-button").waitFor();
-  check("a recovery code signs you in", true, await phone.getByTestId("account-button").isVisible());
+  await phone.getByTestId("profile-edit-button").waitFor();
+  check("a recovery code signs you in", true, await phone.getByTestId("profile-edit-button").isVisible());
   await phone.screenshot({ path: `${SHOT_DIR}/a5-2fa-signed-in.png` });
 
   console.log("== and it can be turned back off ==");
-  await page.getByTestId("account-button").click();
+  // Still on `page`'s Settings — untouched since the two-factor section above.
   await page.getByTestId("two-factor-disable").click();
   await page.getByTestId("reauth").waitFor();
   await page.getByTestId("reauth-value").fill("wrong-password");
@@ -122,10 +128,9 @@ try {
   await page.getByTestId("two-factor-notice").waitFor();
   check("turning it off says so", true, (await page.getByTestId("two-factor-notice").innerText()).includes("off"));
   check("and the enable button is back", 1, await page.getByTestId("two-factor-enable").count());
-  await page.keyboard.press("Escape");
 
   console.log("== data rights ==");
-  await page.getByTestId("account-button").click();
+  // Still on Settings.
   const download = page.waitForEvent("download");
   await page.getByTestId("export-data").click();
   const file = await download;
@@ -142,7 +147,8 @@ try {
   await page.getByTestId("delete-account-confirm").click();
   await page.waitForTimeout(600);
   check("a wrong password is refused", true, (await page.getByTestId("delete-account").innerText()).includes("incorrect"));
-  await page.keyboard.press("Escape");
+  // Only the DeleteAccountModal to dismiss — Settings underneath is a
+  // page, not a second dialog stacked below it.
   await page.keyboard.press("Escape");
   check("and the account survives it", 200, await statusAs(page, "/api/auth/me"));
 
@@ -169,12 +175,12 @@ try {
   await fresh.getByPlaceholder("Email", { exact: true }).fill(EMAIL);
   await fresh.getByPlaceholder("Password", { exact: true }).fill("brandnew123");
   await fresh.locator("form").getByRole("button", { name: "Sign in", exact: true }).click();
-  await fresh.getByTestId("account-button").waitFor();
-  check("the new password signs in", true, await fresh.getByTestId("account-button").isVisible());
+  await fresh.getByTestId("profile-edit-button").waitFor();
+  check("the new password signs in", true, await fresh.getByTestId("profile-edit-button").isVisible());
   await fresh.screenshot({ path: `${SHOT_DIR}/a7-signed-in-again.png` });
 
   console.log("== and the account can be closed for good ==");
-  await fresh.getByTestId("account-button").click();
+  await openSettings(fresh);
   await fresh.getByTestId("delete-account-open").click();
   await fresh.getByTestId("delete-account-confirmation").fill("brandnew123");
   await fresh.getByTestId("delete-account-confirm").click();
