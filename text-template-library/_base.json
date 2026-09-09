@@ -29,6 +29,8 @@
     "align": "right",
     "color": "#111111",
     "isItalic": false,
+    "manaDigitScale": 1.7,
+    "fontFamily": "MPlantin",
     "shadow": { "color": "#000000", "offsetXPt": 0, "offsetYPt": 0, "blurPt": 1, "opacity": 0.6 }
   },
   {
@@ -52,7 +54,7 @@
   {
     "id": "typeline",
     "label": "Typeline",
-    "defaultContent": "Creature - Creature Type",
+    "defaultContent": "Creature — Creature Type",
     "x": 5.3,
     "y": 50.8,
     "width": 52.4,
@@ -81,9 +83,9 @@
     "isItalic": false,
     "minFontSizePt": 5,
     "maxFontSizePt": 10,
-    "gapAboveTypelineMm": 2,
-    "gapAboveLegalMm": 2,
-    "flavorGapLines": 2,
+    "gapAboveTypelineMm": 0.8,
+    "gapAboveLegalMm": 1,
+    "flavorGapLines": 1,
     "shadow": { "color": "#000000", "offsetXPt": 0, "offsetYPt": 0, "blurPt": 1, "opacity": 0.6 }
   },
   {
