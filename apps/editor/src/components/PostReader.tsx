@@ -7,6 +7,7 @@ import { Markdown } from "../markdown";
 import { ReactionButton } from "./ReactionButton";
 import { ReportModal } from "./ReportModal";
 import { PostEditorModal } from "./PostEditorModal";
+import { Skeleton } from "./Skeleton";
 
 /** One guide, its comments, and — for its author — edit history and the
  * controls to change or delete it. */
@@ -61,10 +62,21 @@ export function PostReader({ slug, onBack, onViewProfile }: { slug: string; onBa
 
   if (error && !post) return <p style={{ padding: 16, fontSize: 15, color: "var(--cs-danger)" }}>{error}</p>;
   if (!post) {
+    // Echoes the article below: a title line, a shorter byline/meta line,
+    // and a few body-paragraph lines — not just a spinner in an empty box.
     return (
-      <p style={{ padding: 16, fontSize: 15, color: "var(--cs-text-muted)", display: "flex", gap: 6, alignItems: "center" }}>
-        <Loader2 size={17} className="cs-spin" /> Loading…
-      </p>
+      <div aria-hidden data-testid="post-loading" style={{ padding: "8px 8px 24px" }}>
+        <div style={{ padding: "0 8px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <Skeleton height={24} width="60%" />
+          <Skeleton height={14} width="35%" />
+          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+            <Skeleton height={14} width="100%" />
+            <Skeleton height={14} width="95%" />
+            <Skeleton height={14} width="88%" />
+            <Skeleton height={14} width="60%" />
+          </div>
+        </div>
+      </div>
     );
   }
 

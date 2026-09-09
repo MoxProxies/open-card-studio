@@ -19,6 +19,7 @@ import { VISIBILITIES, VISIBILITY_LABELS } from "../visibility";
 import { SaveAsTemplateModal } from "./SaveAsTemplateModal";
 import { ReportModal } from "./ReportModal";
 import { ReactionButton } from "./ReactionButton";
+import { SkeletonCardGrid } from "./Skeleton";
 
 export interface TemplatesPanelProps {
   /** The design currently open in the editor — what "Save current design as template" publishes. */
@@ -244,18 +245,7 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
               {!canList ? (
                 <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: "6px 8px" }}>Sign in to see the templates you've saved.</p>
               ) : listLoading ? (
-                <p
-                  style={{
-                    color: "var(--cs-text-muted)",
-                    fontSize: 15,
-                    padding: "6px 8px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <Loader2 size={17} className="cs-spin" /> Loading…
-                </p>
+                <SkeletonCardGrid />
               ) : listError ? (
                 <p style={{ color: "var(--cs-danger)", fontSize: 15, padding: "6px 8px" }}>{listError}</p>
               ) : templates.length === 0 ? (

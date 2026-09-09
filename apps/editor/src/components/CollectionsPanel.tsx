@@ -16,6 +16,7 @@ import type { Visibility } from "../visibility";
 import { ListRow } from "./ListRow";
 import { VisibilitySelect } from "./VisibilitySelect";
 import { randomUUID } from "../uuid";
+import { SkeletonListRows } from "./Skeleton";
 
 interface CollectionsPanelProps {
   /** The design open in the editor — "add to collection" files this one. */
@@ -171,9 +172,7 @@ export function CollectionsPanel({ currentDesignId, currentDesignName, signedIn 
       {error && <p style={{ color: "var(--cs-danger)", fontSize: 15, padding: "0 8px 8px", margin: 0 }}>{error}</p>}
 
       {loading ? (
-        <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
-          <Loader2 size={17} className="cs-spin" /> Loading…
-        </p>
+        <SkeletonListRows />
       ) : collections.length === 0 ? (
         <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: "6px 8px" }}>No collections yet. Name one above to start a binder.</p>
       ) : (

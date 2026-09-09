@@ -11,6 +11,7 @@ import { ReportModal } from "./ReportModal";
 import { ReactionButton } from "./ReactionButton";
 import { ProfileStats } from "./ProfileStats";
 import { setFeatured } from "../api/gamification";
+import { Skeleton, SkeletonCardGrid } from "./Skeleton";
 
 export interface ProfilePanelProps {
   username: string;
@@ -142,12 +143,26 @@ export function ProfilePanel({
         {error ? (
           <p style={{ color: "var(--cs-danger)", fontSize: 15, padding: 16 }}>{error}</p>
         ) : !page ? (
-          <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: 16, display: "flex", alignItems: "center", gap: 6 }}>
-            <Loader2 size={17} className="cs-spin" /> Loading…
-          </p>
+          // Echoes the loaded layout below: an avatar circle, name/handle
+          // lines, and a card grid standing in for whatever tab ends up
+          // active — so nothing jumps around once the real profile lands.
+          <div aria-hidden data-testid="profile-loading" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 18 }}>
+            <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+              <Skeleton circle width={68} height={68} />
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                <Skeleton height={21} width="45%" />
+                <Skeleton height={14} width="30%" />
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <Skeleton height={20} width={110} radius={999} />
+              <Skeleton height={15} width="80%" />
+            </div>
+            <SkeletonCardGrid count={4} />
+          </div>
         ) : (
           <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 18 }}>
-            <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+            <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
               <ProfileAvatar profile={page.profile} size={68} />
 
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -162,21 +177,6 @@ export function ProfilePanel({
                   <ChevronDown size={18} aria-hidden style={{ flex: "none", color: "var(--cs-text-muted)" }} />
                 </div>
                 <p style={{ margin: "2px 0 0", fontSize: 14, color: "var(--cs-text-muted)" }}>@{page.profile.username}</p>
-
-                <div style={{ margin: "8px 0 0" }}>
-                  <LevelPill stats={page.stats} />
-                </div>
-
-                {page.profile.bio ? (
-                  <p style={{ margin: "10px 0 0", fontSize: 15, whiteSpace: "pre-wrap" }} data-testid="profile-bio-text">
-                    {page.profile.bio}
-                  </p>
-                ) : (
-                  <p style={{ margin: "10px 0 0", fontSize: 15, color: "var(--cs-text-muted)" }}>No bio yet.</p>
-                )}
-                <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--cs-text-muted)" }}>
-                  Joined {new Date(page.profile.joined_at).toLocaleDateString()}
-                </p>
               </div>
 
               {viewer && !isSelf && (
@@ -242,6 +242,27 @@ export function ProfilePanel({
               )}
             </div>
 
+            {/* Level pill, bio and joined-date sit in their own full-width
+                block below the tight avatar/name/actions row above, rather
+                than squeezed into that row's shrunk middle column — on a
+                narrow screen the row above has little room to spare once
+                the avatar and (on your own profile) the icon cluster are
+                both fixed-width. */}
+            <div>
+              <LevelPill stats={page.stats} />
+
+              {page.profile.bio ? (
+                <p style={{ margin: "10px 0 0", fontSize: 15, whiteSpace: "pre-wrap" }} data-testid="profile-bio-text">
+                  {page.profile.bio}
+                </p>
+              ) : (
+                <p style={{ margin: "10px 0 0", fontSize: 15, color: "var(--cs-text-muted)" }}>No bio yet.</p>
+              )}
+              <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--cs-text-muted)" }}>
+                Joined {new Date(page.profile.joined_at).toLocaleDateString()}
+              </p>
+            </div>
+
             <ProfileStats stats={page.stats} badges={page.badges} />
 
             {/* The one highlighted metric this app can actually back up —
@@ -274,7 +295,11 @@ export function ProfilePanel({
             )}
 
             <div className="cs-tb">
-              <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }} data-testid="profile-tabs">
+              {/* paddingBottom: 14 (not the usual 2px) gives a visible
+                  scrollbar room to sit below the buttons instead of on top
+                  of them — same fix as .cs-insp-carousel in styles.css for
+                  the same reason. */}
+              <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 14 }} data-testid="profile-tabs">
                 {tabs.map((t) => (
                   <button
                     key={t.key}

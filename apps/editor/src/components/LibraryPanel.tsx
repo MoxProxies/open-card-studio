@@ -10,6 +10,7 @@ import { ListRow } from "./ListRow";
 import { VisibilitySelect } from "./VisibilitySelect";
 import { CollectionsPanel } from "./CollectionsPanel";
 import { ArtPanel } from "./ArtPanel";
+import { SkeletonListRows } from "./Skeleton";
 
 export interface LibraryPanelProps {
   design: Design;
@@ -178,9 +179,7 @@ export function LibraryPanel({ design, onRename, onSave, onNew, onLoad, children
 
                 <div style={{ padding: 8 }}>
                   {listLoading ? (
-                    <p style={{ color: "var(--cs-text-muted)", fontSize: 15, padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
-                      <Loader2 size={17} className="cs-spin" /> Loading…
-                    </p>
+                    <SkeletonListRows />
                   ) : listError ? (
                     <p style={{ color: "var(--cs-danger)", fontSize: 15, padding: "6px 8px" }}>{listError}</p>
                   ) : summaries.length === 0 ? (
