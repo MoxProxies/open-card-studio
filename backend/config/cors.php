@@ -13,7 +13,13 @@ return [
     // allowed_origins_patterns matching against credentialed requests.
     'allowed_origins' => array_filter(explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173'))),
 
-    'allowed_origins_patterns' => [],
+    // Mirrors the editor's own `allowedHosts` in vite.config.ts: ngrok's
+    // free-tier tunnel domains get a random subdomain per run, so they
+    // can't go in the static allowlist above. Matched by pattern instead
+    // of listing exact origins.
+    'allowed_origins_patterns' => [
+        '#^https://[a-z0-9-]+\.ngrok-free\.(app|dev)$#i',
+    ],
 
     'allowed_headers' => ['*'],
 
