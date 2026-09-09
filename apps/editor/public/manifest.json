@@ -3,8 +3,8 @@
   "short_name": "Card Studio",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fffdf7",
-  "theme_color": "#935e13",
+  "background_color": "#1c1e26",
+  "theme_color": "#e2a13d",
   "icons": [
     {
       "src": "/icon-192.png",

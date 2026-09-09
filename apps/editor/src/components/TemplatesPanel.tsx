@@ -242,11 +242,11 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
 
             <div style={{ padding: 16, overflowY: "auto", flex: 1 }}>
               {!canList ? (
-                <p style={{ color: "var(--tb-muted)", fontSize: 13, padding: "6px 8px" }}>Sign in to see the templates you've saved.</p>
+                <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>Sign in to see the templates you've saved.</p>
               ) : listLoading ? (
                 <p
                   style={{
-                    color: "var(--tb-muted)",
+                    color: "var(--cs-text-muted)",
                     fontSize: 13,
                     padding: "6px 8px",
                     display: "flex",
@@ -259,7 +259,7 @@ export function TemplatesPanel({ design, onUseTemplate, onViewProfile, children 
               ) : listError ? (
                 <p style={{ color: "var(--cs-danger)", fontSize: 13, padding: "6px 8px" }}>{listError}</p>
               ) : templates.length === 0 ? (
-                <p style={{ color: "var(--tb-muted)", fontSize: 13, padding: "6px 8px" }}>
+                <p style={{ color: "var(--cs-text-muted)", fontSize: 13, padding: "6px 8px" }}>
                   {tab === "mine"
                     ? "You haven't saved any templates yet — lock the layers you want fixed, then use the button above."
                     : "No published templates match that search yet."}

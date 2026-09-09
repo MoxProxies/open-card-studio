@@ -423,7 +423,14 @@ export function CanvasStage({ stageRef }: { stageRef: RefObject<Konva.Stage> }) 
     <div
       ref={containerRef}
       className="cs-root"
-      style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", background: "#e3d9c0", cursor, touchAction: "none" }}
+      // The workspace backdrop around the card stays a neutral, uncolored
+      // gray on purpose — not one of the app's dark theme tokens. A
+      // designer picking colors for their card needs to trust what they
+      // see; tinting this with the app's cool-dark chrome would cast a
+      // color bias over every judgment made here, the same reason
+      // Figma/Photoshop keep the canvas surround neutral while the chrome
+      // around it goes dark.
+      style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", background: "#46464c", cursor, touchAction: "none" }}
     >
       <Stage
         ref={stageRef}
@@ -557,7 +564,7 @@ export function CanvasStage({ stageRef }: { stageRef: RefObject<Konva.Stage> }) 
         </KonvaLayer>
       </Stage>
 
-      <div style={{ position: "absolute", right: 12, bottom: 12, display: "flex", gap: 4, background: "var(--cs-surface)", border: "1px solid var(--cs-border)", borderRadius: 8, padding: 4, boxShadow: "0 2px 8px rgba(58,38,15,0.18)" }}>
+      <div style={{ position: "absolute", right: 12, bottom: 12, display: "flex", gap: 4, background: "var(--cs-surface)", border: "1px solid var(--cs-border)", borderRadius: 8, padding: 4, boxShadow: "0 2px 8px var(--cs-shadow)" }}>
         <button className="cs-icon-btn" title="Zoom out" onClick={() => setZoom(zoom / BUTTON_ZOOM_STEP, zoomFocal())}>
           <ZoomOut size={16} />
         </button>
