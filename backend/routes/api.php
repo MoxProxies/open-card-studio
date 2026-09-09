@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReactionController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SocialAuthController;
 use App\Http\Controllers\Api\TemplateController;
 use App\Http\Controllers\Api\TwoFactorController;
@@ -110,6 +111,13 @@ Route::get('/collections/{id}', [CollectionController::class, 'show']);
 Route::get('/posts', [PostController::class, 'browse']);
 Route::get('/posts/{slug}', [PostController::class, 'show']);
 Route::get('/posts/{slug}/comments', [CommentController::class, 'index']);
+
+// The global search bar. Public for the same reason /templates/browse and
+// /posts are: it's a discovery surface. SearchController reads a bearer
+// token when one *is* sent (->user('sanctum'), same trick as
+// TemplateController::show) so a signed-in caller's own library is
+// included, but nothing here requires an account.
+Route::get('/search', [SearchController::class, 'index']);
 
 // Authenticated, but *not* behind BlockSuspendedUsers — the three things
 // a suspended account still has to be able to do. Signing out must always
