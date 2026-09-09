@@ -1,7 +1,9 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Bell, LogIn, LogOut, User, X } from "lucide-react";
+import { createEmptyDesign, STANDARD_CARD_SIZE_MM } from "@card-studio/scene-schema";
 import { App } from "../App";
 import { AccountModal } from "../components/AccountModal";
+import { DesignInspiration } from "../components/DesignInspiration";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { ProfileModal } from "../components/ProfileModal";
 import { ResetPasswordModal } from "../components/ResetPasswordModal";
@@ -13,6 +15,8 @@ import { consumeSocialRedirect, getCurrentUser, getSuspended, logout, restoreSes
 import { apiDesignStorage } from "../api/apiDesignStorage";
 import { localStorageDesignStorage, setActiveDesignStorage } from "../designStorage";
 import { useIsNarrow } from "../hooks/useIsNarrow";
+import { useDesignStore } from "../store/DesignProvider";
+import { randomUUID } from "../uuid";
 import { BottomTabs, TopNav } from "./Nav";
 import { navigate, syncFromLocation, useNavEpoch, useRoute } from "./navStore";
 import { LibraryView } from "./views/LibraryView";
@@ -45,6 +49,32 @@ export function AppShell() {
   const epoch = useNavEpoch();
   const narrow = useIsNarrow();
   const user = useSyncExternalStore(subscribe, getCurrentUser);
+
+  // The Design tab's inspiration screen (components/DesignInspiration.tsx):
+  // shown in place of the canvas for a design nobody has touched yet.
+  // "Untouched" reuses state the store already tracks rather than a new
+  // parallel flag — a design fresh out of createEmptyDesign has no layers
+  // and no undo history (same `past.length` Toolbar.tsx already reads for
+  // canUndo), and every mutating store action pushes onto `past` before
+  // this ever renders again, so the screen gets out of the way the moment
+  // there's anything to look at.
+  //
+  // That alone can't tell "still blank because nothing's happened yet"
+  // apart from "blank because the user just chose to start blank" —
+  // both leave layers/past exactly where createEmptyDesign left them. So
+  // this also remembers *which* design id was explicitly dismissed
+  // (starting blank, or picking a template here) — cleared implicitly the
+  // moment a different design loads (a different id just doesn't match),
+  // which is also why a genuinely new blank design (the toolbar's own
+  // "New") shows this screen again: it mints a fresh id this component
+  // has never seen dismissed.
+  const designId = useDesignStore((s) => s.design.id);
+  const hasLayers = useDesignStore((s) => s.design.layers.length > 0);
+  const hasHistory = useDesignStore((s) => s.past.length > 0);
+  const loadDesign = useDesignStore((s) => s.loadDesign);
+  const [dismissedDesignId, setDismissedDesignId] = useState<string | null>(null);
+  const showInspiration = !hasLayers && !hasHistory && dismissedDesignId !== designId;
+
   const [showSignIn, setShowSignIn] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -236,6 +266,27 @@ export function AppShell() {
       <main style={{ flex: 1, minHeight: 0, position: "relative" }}>
         <div data-testid="page-design" style={{ position: "absolute", inset: 0, visibility: route.tab === "design" ? "visible" : "hidden" }}>
           <App />
+          {/* Sits in front of the canvas rather than replacing <App/> in
+              the tree — the editor underneath stays mounted exactly like
+              every other tab switch (see the comment above `main`), it's
+              just covered until there's something to look at. */}
+          {showInspiration && (
+            <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
+              <DesignInspiration
+                onStartBlank={() => {
+                  const fresh = createEmptyDesign(randomUUID(), STANDARD_CARD_SIZE_MM);
+                  loadDesign(fresh);
+                  setDismissedDesignId(fresh.id);
+                }}
+                onUseTemplate={(fromTemplate) => {
+                  loadDesign(fromTemplate);
+                  setDismissedDesignId(fromTemplate.id);
+                }}
+                onViewProfile={(username) => navigate({ tab: "profile", username })}
+                onBrowseAll={() => navigate({ tab: "templates" })}
+              />
+            </div>
+          )}
         </div>
         {route.tab !== "design" && (
           // Keyed by the nav epoch so re-selecting the current tab

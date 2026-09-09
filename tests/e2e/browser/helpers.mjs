@@ -59,6 +59,21 @@ export const go = async (page, tab) => {
   // The editor stays mounted and is hidden rather than unmounted (see
   // AppShell), so wait for it to become visible rather than attached.
   await page.getByTestId(`page-${tab}`).waitFor({ state: "visible" });
+
+  // A fresh, untouched design shows the inspiration screen in front of
+  // the canvas (DesignInspiration.tsx/AppShell.tsx) — a real visitor
+  // would dismiss it before touching the toolbar, so every suite that
+  // lands on "design" and expects the canvas immediately does the same
+  // thing here: take the screen's own "start blank" action. It only ever
+  // shows once per untouched design, so this is a no-op on every later
+  // call once something's been added.
+  if (tab === "design") {
+    const inspiration = page.getByTestId("design-inspiration");
+    if (await inspiration.isVisible().catch(() => false)) {
+      await page.getByTestId("inspiration-start-blank").click();
+      await inspiration.waitFor({ state: "hidden" });
+    }
+  }
 };
 
 export async function signUp(page, name, email) {
