@@ -24,6 +24,7 @@ import {
   Menu,
   PlusSquare,
   FolderOpen,
+  Lock,
 } from "lucide-react";
 import { useDesignStore } from "../store/DesignProvider";
 import { PRINT_DPI, createEmptyDesign, STANDARD_CARD_SIZE_MM } from "@card-studio/scene-schema";
@@ -32,6 +33,7 @@ import { FrameLibraryModal } from "./FrameLibraryModal";
 import { TextTemplateMenu } from "./TextTemplateMenu";
 import { ToolbarDrawer, DrawerSection, drawerRowStyle } from "./ToolbarDrawer";
 import { AiArtModal } from "./AiArtModal";
+import { PremiumFeatureModal } from "./PremiumFeatureModal";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 import { TemplateBrowserModal } from "./TemplateBrowserModal";
 import { PublicProfileModal } from "./PublicProfileModal";
@@ -99,6 +101,12 @@ export function Toolbar({
   const [showAiArtModal, setShowAiArtModal] = useState(false);
   const [showDesignLibrary, setShowDesignLibrary] = useState(false);
   const [showTemplateBrowser, setShowTemplateBrowser] = useState(false);
+  // Set whenever a viewer without the entitlement taps a premium-gated
+  // control below (the Rarity picker, the AI Art button) — see
+  // PremiumFeatureModal.tsx. A disabled control never fires a click at
+  // all, which is why these stay enabled and get intercepted here instead
+  // of using `disabled`.
+  const [premiumPrompt, setPremiumPrompt] = useState<{ feature: string; description?: string } | null>(null);
   const narrow = useIsNarrow();
   // The narrow-only hamburger menu (see the return below) — closed
   // whenever a drawer item's action hands off to something that owns the
@@ -266,6 +274,17 @@ export function Toolbar({
   // free, only changing it afterward is locked" inconsistency.
   const rarityContentLocked = rarityLayer ? rarityLayer.contentLocked : RARITY_DEFAULT_CONTENT_LOCKED;
   const rarityLocked = rarityContentLocked && !entitlements.canEditLockedContent;
+
+  const showRarityPremiumPrompt = () =>
+    setPremiumPrompt({
+      feature: "Changing the rarity symbol",
+      description: "This template ships its rarity symbol content-locked by default. Changing it requires a premium account.",
+    });
+  const showAiArtPremiumPrompt = () =>
+    setPremiumPrompt({
+      feature: "AI Art generation",
+      description: "Generate an illustration from a text prompt. This feature requires a premium account.",
+    });
   const orderedRarities = [...RARITY_ASSETS].sort((a, b) => {
     const ai = RARITY_DISPLAY_ORDER.indexOf(a.id);
     const bi = RARITY_DISPLAY_ORDER.indexOf(b.id);
@@ -775,17 +794,38 @@ export function Toolbar({
               />
             </label>
           )}
+          {/* Not `disabled` when locked: a disabled control never fires a
+              click, which is exactly what stood between a viewer and any
+              explanation. Kept enabled, and its own open-the-dropdown
+              behavior is intercepted instead — mousedown for a pointer,
+              the keys that would open it for a keyboard — so tapping/
+              clicking it always does *something*: normal picking when
+              entitled, PremiumFeatureModal when not. */}
           <select
             className="cs-input"
             style={{ width: 130 }}
             value={currentRarityId}
-            onChange={(e) => setRarity(e.target.value)}
-            disabled={rarityLocked}
+            onChange={(e) => {
+              if (!rarityLocked) setRarity(e.target.value);
+            }}
+            onMouseDown={(e) => {
+              if (rarityLocked) {
+                e.preventDefault();
+                showRarityPremiumPrompt();
+              }
+            }}
+            onKeyDown={(e) => {
+              if (rarityLocked && [" ", "Enter", "ArrowDown", "ArrowUp"].includes(e.key)) {
+                e.preventDefault();
+                showRarityPremiumPrompt();
+              }
+            }}
             title={
               rarityLocked
                 ? "Content-locked by default: requires a premium account to change"
                 : "Rarity symbol: prefills its position from RARITY_SYMBOL_BOX in rarityConfig.ts"
             }
+            data-testid="toolbar-rarity-select"
           >
             <option value="">Rarity…</option>
             {orderedRarities.map((r) => (
@@ -794,6 +834,7 @@ export function Toolbar({
               </option>
             ))}
           </select>
+          {rarityLocked && <Lock size={14} color="var(--cs-text-muted)" style={{ flex: "none" }} data-testid="rarity-lock-icon" />}
           {activeImportSource && (
             <button
               className="cs-btn"
@@ -805,11 +846,18 @@ export function Toolbar({
           )}
           <button
             className="cs-btn"
-            onClick={() => setShowAiArtModal(true)}
-            disabled={!entitlements.canGenerateAiArt}
-            title={entitlements.canGenerateAiArt ? "Generate an illustration from a text prompt" : "Premium feature: upgrade for AI art generation"}
+            onClick={() => {
+              if (!entitlements.canGenerateAiArt) {
+                showAiArtPremiumPrompt();
+                return;
+              }
+              setShowAiArtModal(true);
+            }}
+            title={entitlements.canGenerateAiArt ? "Generate an illustration from a text prompt" : "Premium feature: requires a premium account"}
+            data-testid="toolbar-ai-art-button"
           >
             <Sparkles size={19} /> AI Art
+            {!entitlements.canGenerateAiArt && <Lock size={13} color="var(--cs-text-muted)" data-testid="ai-art-lock-icon" />}
           </button>
 
           <div className="cs-divider" />
@@ -975,20 +1023,41 @@ export function Toolbar({
             )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "6px 8px 2px" }}>
-              <label htmlFor="toolbar-rarity-select" style={{ fontSize: 13, color: "var(--cs-text-muted)" }}>
+              <label
+                htmlFor="toolbar-drawer-rarity-select"
+                style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "var(--cs-text-muted)" }}
+              >
                 Rarity
+                {rarityLocked && <Lock size={12} color="var(--cs-text-muted)" data-testid="rarity-lock-icon-drawer" />}
               </label>
+              {/* Same enabled-but-intercepted treatment as the desktop
+                  select above (see its comment) — two copies since the
+                  mobile rework, both need to stop being `disabled`. */}
               <select
-                id="toolbar-rarity-select"
+                id="toolbar-drawer-rarity-select"
                 className="cs-input"
                 value={currentRarityId}
-                onChange={(e) => setRarity(e.target.value)}
-                disabled={rarityLocked}
+                onChange={(e) => {
+                  if (!rarityLocked) setRarity(e.target.value);
+                }}
+                onMouseDown={(e) => {
+                  if (rarityLocked) {
+                    e.preventDefault();
+                    showRarityPremiumPrompt();
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (rarityLocked && [" ", "Enter", "ArrowDown", "ArrowUp"].includes(e.key)) {
+                    e.preventDefault();
+                    showRarityPremiumPrompt();
+                  }
+                }}
                 title={
                   rarityLocked
                     ? "Content-locked by default: requires a premium account to change"
                     : "Rarity symbol: prefills its position from RARITY_SYMBOL_BOX in rarityConfig.ts"
                 }
+                data-testid="toolbar-rarity-select-drawer"
               >
                 <option value="">Rarity…</option>
                 {orderedRarities.map((r) => (
@@ -1016,14 +1085,19 @@ export function Toolbar({
             <button
               className="cs-btn"
               style={drawerRowStyle}
-              disabled={!entitlements.canGenerateAiArt}
-              title={entitlements.canGenerateAiArt ? "Generate an illustration from a text prompt" : "Premium feature: upgrade for AI art generation"}
+              title={entitlements.canGenerateAiArt ? "Generate an illustration from a text prompt" : "Premium feature: requires a premium account"}
+              data-testid="toolbar-ai-art-button-drawer"
               onClick={() => {
+                if (!entitlements.canGenerateAiArt) {
+                  showAiArtPremiumPrompt();
+                  return;
+                }
                 setShowAiArtModal(true);
                 closeDrawer();
               }}
             >
               <Sparkles size={19} /> AI Art
+              {!entitlements.canGenerateAiArt && <Lock size={13} color="var(--cs-text-muted)" style={{ marginLeft: "auto" }} data-testid="ai-art-lock-icon-drawer" />}
             </button>
           </DrawerSection>
 
@@ -1195,6 +1269,10 @@ export function Toolbar({
       )}
 
       {showAiArtModal && <AiArtModal onGenerated={addAiArtLayer} onClose={() => setShowAiArtModal(false)} />}
+
+      {premiumPrompt && (
+        <PremiumFeatureModal feature={premiumPrompt.feature} description={premiumPrompt.description} onClose={() => setPremiumPrompt(null)} />
+      )}
     </>
   );
 }

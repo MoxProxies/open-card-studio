@@ -95,9 +95,31 @@ try {
   await layerRows().nth(1).click();
   const chromePanel = page.getByTestId("properties-panel");
   check("chrome's X input is disabled", true, await chromePanel.locator("input").nth(1).isDisabled());
-  check("chrome's Change frame… is disabled", true, await chromePanel.getByRole("button", { name: "Change frame…" }).isDisabled());
-  check("chrome's content lock can't be undone without premium", true, await chromePanel.getByTestId("content-lock-toggle").isDisabled());
   await shot("07-chrome-layer-locked");
+
+  console.log("== content-locked controls stay clickable, and open a premium prompt instead of doing nothing ==");
+  const changeFrameButton = chromePanel.getByRole("button", { name: "Change frame…" });
+  check("chrome's Change frame… is NOT disabled (still clickable)", false, await changeFrameButton.isDisabled());
+  check("it shows a lock icon since this viewer has no premium entitlement", true, await changeFrameButton.getByTestId("change-frame-lock-icon").isVisible());
+  await changeFrameButton.click();
+  const premiumModal = page.getByTestId("premium-feature-modal");
+  await premiumModal.waitFor();
+  check("clicking it opens the premium prompt instead of the frame library", true, await premiumModal.isVisible());
+  check("prompt names the gated feature", true, (await premiumModal.getByTestId("premium-feature-modal-title").innerText()).includes("Changing this frame"));
+  check("frame library did NOT open behind it", 0, await page.getByRole("heading", { name: "Frame library" }).count());
+  await page.keyboard.press("Escape");
+  await premiumModal.waitFor({ state: "hidden" });
+
+  const contentLockToggle = chromePanel.getByTestId("content-lock-toggle");
+  check("chrome's content-lock toggle is NOT disabled (still clickable)", false, await contentLockToggle.isDisabled());
+  check("it shows a lock icon since this viewer has no premium entitlement", true, await contentLockToggle.getByTestId("content-lock-toggle-premium-badge").isVisible());
+  await contentLockToggle.click();
+  await premiumModal.waitFor();
+  check("chrome's content lock can't be undone without premium: opens the prompt instead", true, await premiumModal.isVisible());
+  await page.keyboard.press("Escape");
+  await premiumModal.waitFor({ state: "hidden" });
+  check("clicking it did NOT actually unlock the content", true, await contentLockToggle.getByTestId("content-lock-toggle-premium-badge").isVisible());
+  await shot("07b-premium-prompt-on-locked-content");
 
   await go(page, "library");
   check("new design is named after the template", TEMPLATE_NAME, await page.getByPlaceholder("Design name").inputValue());

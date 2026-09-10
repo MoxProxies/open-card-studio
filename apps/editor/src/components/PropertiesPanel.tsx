@@ -27,6 +27,7 @@ import { useDesignStore } from "../store/DesignProvider";
 import { getFrameAsset, getFrameAssetUrl } from "../frameAssets";
 import { EMBEDDED_FONT_FAMILIES, SYSTEM_FONT_FALLBACKS } from "../fontAssets";
 import { FrameLibraryModal } from "./FrameLibraryModal";
+import { PremiumFeatureModal } from "./PremiumFeatureModal";
 import { useActiveFrameCategory } from "../hooks/useActiveFrameCategory";
 import { getTextTemplates } from "../textTemplates";
 import { computeRulesFlavorPatch } from "../rulesFlavorFit";
@@ -60,6 +61,11 @@ export function PropertiesPanel({ width }: { width: number | string }) {
   const groupLayers = useDesignStore((s) => s.groupLayers);
   const entitlements = useDesignStore((s) => s.entitlements);
   const [showFrameLibrary, setShowFrameLibrary] = useState(false);
+  // Set whenever a viewer without canEditLockedContent taps a
+  // content-locked control below — see PremiumFeatureModal.tsx and
+  // Toolbar.tsx's identical pattern. These fields stay enabled (not
+  // `disabled`) specifically so tapping them has something to intercept.
+  const [premiumPrompt, setPremiumPrompt] = useState<{ feature: string; description?: string } | null>(null);
   const textTemplates = getTextTemplates(useActiveFrameCategory());
 
   const selectedLayers = design.layers.filter((l) => selectedLayerIds.includes(l.id));
@@ -251,7 +257,7 @@ export function PropertiesPanel({ width }: { width: number | string }) {
         <button
           className={`cs-icon-btn${layer.contentLocked ? " cs-active" : ""}`}
           data-testid="content-lock-toggle"
-          disabled={layer.contentLocked && !entitlements.canEditLockedContent}
+          style={{ position: "relative" }}
           title={
             layer.contentLocked
               ? entitlements.canEditLockedContent
@@ -259,9 +265,26 @@ export function PropertiesPanel({ width }: { width: number | string }) {
                 : "Content locked: unlocking it requires a premium account"
               : "Content unlocked (click to lock): locks the text/art, not the position"
           }
-          onClick={() => commitLayerChange(layer.id, { contentLocked: !layer.contentLocked })}
+          onClick={() => {
+            if (layer.contentLocked && !entitlements.canEditLockedContent) {
+              setPremiumPrompt({
+                feature: "Unlocking this field",
+                description: "This field's content is locked by the template. Unlocking it to edit requires a premium account.",
+              });
+              return;
+            }
+            commitLayerChange(layer.id, { contentLocked: !layer.contentLocked });
+          }}
         >
           {layer.contentLocked ? <FileLock2 size={18} /> : <FileText size={18} />}
+          {layer.contentLocked && !entitlements.canEditLockedContent && (
+            <Lock
+              size={10}
+              color="var(--cs-text-muted)"
+              style={{ position: "absolute", top: 2, right: 2 }}
+              data-testid="content-lock-toggle-premium-badge"
+            />
+          )}
         </button>
       </div>
 
@@ -299,15 +322,26 @@ export function PropertiesPanel({ width }: { width: number | string }) {
                 <button
                   className="cs-btn"
                   style={{ marginTop: 4, fontSize: 14, padding: "4px 8px" }}
-                  disabled={layer.contentLocked && !entitlements.canEditLockedContent}
                   title={
                     layer.contentLocked && !entitlements.canEditLockedContent
                       ? "This frame is locked by the template: requires a premium account to change"
                       : undefined
                   }
-                  onClick={() => setShowFrameLibrary(true)}
+                  onClick={() => {
+                    if (layer.contentLocked && !entitlements.canEditLockedContent) {
+                      setPremiumPrompt({
+                        feature: "Changing this frame",
+                        description: "This frame is locked by the template. Changing it requires a premium account.",
+                      });
+                      return;
+                    }
+                    setShowFrameLibrary(true);
+                  }}
                 >
                   Change frame…
+                  {layer.contentLocked && !entitlements.canEditLockedContent && (
+                    <Lock size={13} color="var(--cs-text-muted)" data-testid="change-frame-lock-icon" />
+                  )}
                 </button>
               </div>
             </div>
@@ -337,18 +371,47 @@ export function PropertiesPanel({ width }: { width: number | string }) {
                 </span>
               )}
             </span>
+            {/* Not `disabled` when locked, for the same reason as
+                Toolbar.tsx's Rarity select: a disabled textarea never
+                fires a click/focus for a prompt to hook onto. `readOnly`
+                does the actual blocking (typing has no effect even if
+                focus is somehow reached); the mousedown/focus intercepts
+                below stop a pointer or keyboard tab from ever landing a
+                cursor in it at all, opening PremiumFeatureModal instead. */}
             <textarea
               className="cs-input"
               rows={3}
               value={layer.content}
-              disabled={layer.contentLocked && !entitlements.canEditLockedContent}
+              readOnly={layer.contentLocked && !entitlements.canEditLockedContent}
               title={
                 layer.contentLocked && !entitlements.canEditLockedContent
                   ? "This field's content is locked by the template: requires a premium account to edit"
                   : undefined
               }
-              onFocus={beginLiveEdit}
-              onChange={(e) => updateTextContentLive(layer, e.target.value)}
+              onMouseDown={(e) => {
+                if (layer.contentLocked && !entitlements.canEditLockedContent) {
+                  e.preventDefault();
+                  setPremiumPrompt({
+                    feature: "Editing this field",
+                    description: "This field's content is locked by the template. Editing it requires a premium account.",
+                  });
+                }
+              }}
+              onFocus={(e) => {
+                if (layer.contentLocked && !entitlements.canEditLockedContent) {
+                  e.target.blur();
+                  setPremiumPrompt({
+                    feature: "Editing this field",
+                    description: "This field's content is locked by the template. Editing it requires a premium account.",
+                  });
+                  return;
+                }
+                beginLiveEdit();
+              }}
+              onChange={(e) => {
+                if (layer.contentLocked && !entitlements.canEditLockedContent) return;
+                updateTextContentLive(layer, e.target.value);
+              }}
               onBlur={commitLiveEdit}
             />
           </div>
@@ -633,6 +696,10 @@ export function PropertiesPanel({ width }: { width: number | string }) {
           }}
           onClose={() => setShowFrameLibrary(false)}
         />
+      )}
+
+      {premiumPrompt && (
+        <PremiumFeatureModal feature={premiumPrompt.feature} description={premiumPrompt.description} onClose={() => setPremiumPrompt(null)} />
       )}
     </div>
   );
