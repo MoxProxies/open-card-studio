@@ -35,22 +35,69 @@ try {
   await page.screenshot({ path: `${SHOT_DIR}/m1-editor-phone.png` });
 
   console.log("== touch targets clear the 44px floor ==");
-  const heights = await page.locator(".cs-btn").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+  // The persistent narrow bar (hamburger + Undo/Redo/Duplicate/Delete —
+  // see Toolbar.tsx) is all icon-only buttons, .cs-icon-btn, not .cs-btn —
+  // check both, since the touch-target rule in styles.css applies to both
+  // classes alike.
+  const heights = await page.locator(".cs-btn, .cs-icon-btn").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
   check("every toolbar button is at least 44px tall", true, heights.length > 0 && heights.every((h) => h >= 44));
   const tabBox = await page.getByTestId("editor-sheet-layers").boundingBox();
   check("the sheet tabs are too", true, (tabBox?.height ?? 0) >= 44);
   const navBox = await page.getByTestId("tab-design").boundingBox();
   check("so are the app's bottom tabs", true, (navBox?.height ?? 0) >= 44);
 
-  console.log("== the toolbar scrolls rather than eating the canvas ==");
+  console.log("== the toolbar is a compact bar + hamburger menu, not a scrolling row ==");
+  // The old horizontally-scrolling toolbar is gone: the narrow bar now
+  // holds only the hamburger and Undo/Redo/Duplicate/Delete, and fits
+  // without overflowing sideways.
   const toolbar = await page
     .getByTestId("toolbar")
     .evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth, height: el.getBoundingClientRect().height }));
-  check("it overflows horizontally", true, toolbar.scroll > toolbar.client);
+  check("it no longer overflows horizontally", true, toolbar.scroll <= toolbar.client + 1);
   check("and stays one row tall", true, toolbar.height < 120);
-  const lastTool = page.getByRole("button", { name: /Export/ });
-  await lastTool.scrollIntoViewIfNeeded();
-  check("the far end of the toolbar is reachable by scrolling", true, await lastTool.isVisible());
+  check("no drawer is open by default", 0, await page.getByTestId("toolbar-drawer").count());
+
+  console.log("== the hamburger opens a drawer with accordion sections, not a floating popup ==");
+  await page.getByTestId("toolbar-menu-button").click();
+  const drawer = page.getByTestId("toolbar-drawer");
+  await drawer.waitFor();
+  check("Insert starts expanded", "true", await page.getByTestId("toolbar-drawer-section-insert").getAttribute("data-expanded"));
+  check("View starts collapsed", "false", await page.getByTestId("toolbar-drawer-section-view").getAttribute("data-expanded"));
+  check("File starts collapsed", "false", await page.getByTestId("toolbar-drawer-section-file").getAttribute("data-expanded"));
+  // Export lives in the (still-collapsed) File section — expand it and
+  // confirm the button is reachable by ordinary vertical scrolling, no
+  // horizontal scroll bar involved anywhere in the drawer.
+  await page.getByTestId("toolbar-drawer-section-file").click();
+  const exportButton = drawer.getByRole("button", { name: /Export/ });
+  await exportButton.scrollIntoViewIfNeeded();
+  check("Export is reachable in the File section without horizontal scrolling", true, await exportButton.isVisible());
+  const drawerScrollBox = page.getByTestId("toolbar-drawer").locator("> div").nth(1);
+  const overflowInfo = await drawerScrollBox.evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+  check("the drawer body never needs to scroll sideways", true, overflowInfo.scroll <= overflowInfo.client + 1);
+  await page.getByTestId("toolbar-drawer-section-file").click(); // collapse it again for the next section
+
+  console.log("== TextTemplateMenu's old clipping bug: the text-field insert menu is fully visible, not clipped ==");
+  // The regression this whole redesign exists to fix: TextTemplateMenu.tsx
+  // used to be a `position: absolute` popup living inside the
+  // horizontally-scrolling (`overflowX: auto`) narrow toolbar — any part
+  // of the popup extending past that ancestor's box got silently clipped.
+  // It's now DrawerSection's "Text Fields" nested accordion: ordinary
+  // in-flow content inside the drawer's plain `overflowY: auto` panel, so
+  // there is no clipping ancestor left to clip it.
+  await page.getByTestId("toolbar-drawer-section-text-fields").click();
+  const textFieldsPanel = page.getByTestId("toolbar-drawer-section-text-fields-panel");
+  await textFieldsPanel.waitFor();
+  check("the text-field insert panel reports visible", true, await textFieldsPanel.isVisible());
+  const [panelBox, viewport] = await Promise.all([textFieldsPanel.boundingBox(), page.viewportSize()]);
+  check("its bottom edge is within the viewport, not clipped off past it", true, (panelBox?.y ?? 0) + (panelBox?.height ?? 0) <= viewport.height);
+  check("'Add all fields' is present and clickable", true, await drawer.getByRole("button", { name: "Add all fields" }).isVisible());
+  const firstFieldButton = textFieldsPanel.locator("button").nth(1);
+  check("individual field buttons are present and clickable", true, await firstFieldButton.isVisible());
+  await page.screenshot({ path: `${SHOT_DIR}/m1b-drawer-textfields-unclipped.png` });
+
+  console.log("== the drawer closes via its close button ==");
+  await page.getByTestId("toolbar-drawer-close").click();
+  check("the drawer is gone", 0, await page.getByTestId("toolbar-drawer").count());
 
   console.log("== the sheet opens, switches and closes ==");
   await page.getByTestId("editor-sheet-layers").click();
@@ -104,12 +151,27 @@ try {
   check("panning didn't change the zoom level", zoomBefore, await zoomLabel.innerText());
   await zoomLabel.click(); // back to 100% / re-centered, for the sections below
 
-  console.log("== you can actually build something on a phone ==");
-  // Frame and Text are icon-only toolbar buttons; their accessible name
-  // comes from their title, not visible text (see components/Toolbar.tsx).
-  await page.getByTitle("Frame", { exact: true }).click();
+  console.log("== you can actually build something on a phone, through the drawer ==");
+  // Frame opens a modal (FrameLibraryModal) — the drawer auto-closes so
+  // the modal owns the screen, same as every other modal-opening item
+  // (see Toolbar.tsx's per-item auto-close policy).
+  await page.getByTestId("toolbar-menu-button").click();
+  await drawer.waitFor();
+  await drawer.getByTitle("Frame", { exact: true }).click();
+  await drawer.waitFor({ state: "hidden" });
+  check("Frame closed the drawer to open its modal", 0, await page.getByTestId("toolbar-drawer").count());
   await page.locator("button.cs-swatch").first().click();
-  await page.getByTitle("Text", { exact: true }).click();
+
+  // Text is a direct one-shot add with no modal of its own — the drawer
+  // stays open, exactly the "add a couple of things in a row without
+  // reopening the menu each time" case that policy is for.
+  await page.getByTestId("toolbar-menu-button").click();
+  await drawer.waitFor();
+  await drawer.getByTitle("Text", { exact: true }).click();
+  check("adding Text leaves the drawer open (a direct add, not a modal)", true, await drawer.isVisible());
+  await page.getByTestId("toolbar-drawer-close").click();
+  await drawer.waitFor({ state: "hidden" });
+
   await page.getByTestId("editor-sheet-layers").click();
   await page.getByTestId("editor-sheet").waitFor();
   await page.waitForFunction(() => document.querySelectorAll("[data-testid='layer-row']").length === 2);
