@@ -5,6 +5,10 @@ import { useRegisterModal } from "../modalStack";
 interface ToolbarDrawerProps {
   onClose: () => void;
   children: ReactNode;
+  /** The persistent narrow bar's own measured bottom edge, in viewport
+   * pixels from the top (Toolbar.tsx) — see the panel's `top` below for
+   * why this can't just be 0. */
+  topOffset: number;
 }
 
 /**
@@ -30,8 +34,21 @@ interface ToolbarDrawerProps {
  * the narrow toolbar's own persistent row (Toolbar.tsx) sits at 901 so it
  * stays visible and usable — Undo/Redo/Duplicate/Delete included — while
  * the drawer is open, per the "always one tap away" call in Toolbar.tsx.
+ *
+ * That same 901 is exactly why the panel can't just start at `top: 0`:
+ * the persistent bar is real in-flow content sitting *above* this panel
+ * in the layout (below the app's own header), and at 901 it paints over
+ * anything of this panel's that shares its screen position — which,
+ * at `top: 0`, used to be this panel's own first section header
+ * ("Insert"). Not just visually gone: the bar's full-width row also
+ * intercepts the tap before it ever reaches the section header
+ * underneath, so the drawer's very first item was both invisible *and*
+ * unclickable on a real phone. `topOffset` (Toolbar.tsx's measured
+ * bottom edge for that bar) starts the panel right below it instead, so
+ * nothing the drawer renders is ever the thing sitting under the "always
+ * reachable" row above it.
  */
-export function ToolbarDrawer({ onClose, children }: ToolbarDrawerProps) {
+export function ToolbarDrawer({ onClose, children, topOffset }: ToolbarDrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const isTopmost = useRegisterModal();
   // Slides in on mount rather than starting in its resting position —
@@ -84,8 +101,26 @@ export function ToolbarDrawer({ onClose, children }: ToolbarDrawerProps) {
         data-testid="toolbar-drawer"
         style={{
           position: "absolute",
-          top: 0,
-          bottom: 0,
+          // Starts below the persistent narrow bar, not at the true
+          // viewport top — see the doc comment above for why `top: 0`
+          // used to bury this panel's own first section header under
+          // that bar's higher z-index.
+          top: topOffset,
+          // Deliberately *not* `bottom: 0` any more. With only `top`
+          // pinned, an absolutely-positioned box with no explicit height
+          // sizes to its content (shrink-to-fit) — Insert alone (the only
+          // section open by default) is nowhere near a phone's viewport
+          // height, so the panel used to stretch edge-to-edge regardless
+          // and leave a large, empty dark gap below whichever section
+          // happened to be last (the "visual artefact ... no padding"
+          // real-device report this is fixing). `maxHeight` below is the
+          // only thing still capping it, for when the content genuinely
+          // is that tall (every section expanded at once) — at which
+          // point flex:1 on the scrollable body div two levels down takes
+          // over and it scrolls internally, same as before. The 16px is
+          // breathing room at the *bottom* only, since `top` already
+          // accounts for the space the persistent bar itself takes.
+          maxHeight: `calc(100dvh - ${topOffset}px - 16px)`,
           right: 0,
           width: "min(320px, 86vw)",
           background: "var(--cs-surface)",
@@ -93,6 +128,16 @@ export function ToolbarDrawer({ onClose, children }: ToolbarDrawerProps) {
           boxShadow: "0 0 32px var(--cs-shadow)",
           display: "flex",
           flexDirection: "column",
+          // Square on top (flush against the persistent bar's own bottom
+          // edge — reads as attached to it, not a separate floating
+          // shape) and on the right (flush against the physical screen
+          // edge); rounded on the bottom two, which are now genuinely
+          // exposed corners floating over the dimmed backdrop once the
+          // panel no longer always reaches the bottom of the screen — a
+          // sharp corner hanging in open space read as unfinished in a
+          // real screenshot, where a full-height panel's bottom corners
+          // were never visible at all.
+          borderRadius: "0 0 14px 14px",
           // Slides in from the right, matching the hamburger button that
           // opens it now sitting at the right end of the persistent bar
           // (Toolbar.tsx) rather than the left.

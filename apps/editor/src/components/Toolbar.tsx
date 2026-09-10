@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useIsNarrow } from "../hooks/useIsNarrow";
 import type Konva from "konva";
 import type { RefObject } from "react";
@@ -117,6 +117,25 @@ export function Toolbar({
   // Rarity picker, the Safe-area/Bleed/Fullscreen toggles).
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = () => setDrawerOpen(false);
+  // Where the persistent narrow bar's own bottom edge actually sits,
+  // measured rather than guessed: ToolbarDrawer's panel is `position:
+  // fixed`-rooted against the true viewport, and it needs to start
+  // *below* this bar rather than under it — see the ref below for why.
+  // Deliberately `.bottom`, not `.height`: this bar isn't glued to
+  // y=0 itself (AppShell's own mobile header sits above it), so its
+  // height alone would still leave that gap unaccounted for and the
+  // panel starting too high, right back under the bar.
+  const narrowBarRef = useRef<HTMLDivElement>(null);
+  const [narrowBarBottom, setNarrowBarBottom] = useState(0);
+  useEffect(() => {
+    if (!narrow || !narrowBarRef.current) return;
+    const el = narrowBarRef.current;
+    const update = () => setNarrowBarBottom(el.getBoundingClientRect().bottom);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [narrow]);
   // Whose public profile is open, if any — set from an author's name in the
   // template gallery or from your own profile editor.
   const [viewingProfile, setViewingProfile] = useState<string | null>(null);
@@ -699,6 +718,7 @@ export function Toolbar({
     <>
       {narrow ? (
         <div
+          ref={narrowBarRef}
           className="cs-root"
           data-testid="toolbar"
           style={{
@@ -948,7 +968,7 @@ export function Toolbar({
           PR's description for the auto-close/stay-open call made per item
           below. */}
       {narrow && drawerOpen && (
-        <ToolbarDrawer onClose={closeDrawer}>
+        <ToolbarDrawer onClose={closeDrawer} topOffset={narrowBarBottom}>
           <DrawerSection id="insert" label="Insert" icon={<PlusSquare size={17} />} defaultOpen>
             <button
               className="cs-btn"
