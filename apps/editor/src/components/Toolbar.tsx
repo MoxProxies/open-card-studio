@@ -697,12 +697,6 @@ export function Toolbar({
             zIndex: 901,
           }}
         >
-          <button className="cs-icon-btn" onClick={() => setDrawerOpen((o) => !o)} title="Menu" data-testid="toolbar-menu-button">
-            <Menu size={19} />
-          </button>
-
-          <div className="cs-divider" />
-
           {/* Undo/Redo/Duplicate/Delete stay outside the drawer entirely.
               Everything else here gets used once in a while (add a frame,
               change the rarity); these four get tapped repeatedly within a
@@ -723,6 +717,17 @@ export function Toolbar({
           </button>
           <button className="cs-icon-btn" onClick={() => removeLayers(selectedLayerIds)} disabled={selectedLayerIds.length === 0} title="Delete (Del)">
             <Trash2 size={19} />
+          </button>
+
+          {/* Pushes the hamburger to the right edge, matching the drawer
+              it opens (see ToolbarDrawer.tsx) sliding in from the right
+              rather than the left. */}
+          <div style={{ flex: 1 }} />
+
+          <div className="cs-divider" />
+
+          <button className="cs-icon-btn" onClick={() => setDrawerOpen((o) => !o)} title="Menu" data-testid="toolbar-menu-button">
+            <Menu size={19} />
           </button>
         </div>
       ) : (

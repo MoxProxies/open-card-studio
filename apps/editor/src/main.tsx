@@ -21,7 +21,20 @@ const entitlements = { ...DEFAULT_ENTITLEMENTS, canEditLockedContent: new URLSea
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("#root element not found");
 
+// 100vh on a mobile browser is the *layout* viewport — sized as if the
+// address bar/toolbar were already hidden, even while it's still showing.
+// Setting it once at load time pins the whole app (BottomTabs included,
+// via the height:100% chain down from here) to whatever that was at that
+// instant. ToolbarDrawer.tsx's `position: fixed` backdrop, by contrast,
+// always sizes itself against the *current* viewport — so if the
+// browser's chrome later shows/hides, the two diverge, and the backdrop
+// stops short of (or overshoots) the real bottom of the screen, leaving
+// BottomTabs visible, undimmed, underneath it. 100dvh tracks the actual
+// visible viewport continuously instead, so both stay in agreement; set
+// after the 100vh fallback since an unsupported unit is simply ignored,
+// leaving the previous value in place rather than erroring.
 document.body.style.height = "100vh";
+document.body.style.height = "100dvh";
 document.body.style.margin = "0";
 rootEl.style.height = "100%";
 
