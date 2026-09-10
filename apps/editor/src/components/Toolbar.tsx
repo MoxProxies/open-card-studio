@@ -21,12 +21,16 @@ import {
   Maximize2,
   Minimize2,
   LayoutTemplate,
+  Menu,
+  PlusSquare,
+  FolderOpen,
 } from "lucide-react";
 import { useDesignStore } from "../store/DesignProvider";
 import { PRINT_DPI, createEmptyDesign, STANDARD_CARD_SIZE_MM } from "@card-studio/scene-schema";
 import { exportStageToPngDataUrl } from "../export";
 import { FrameLibraryModal } from "./FrameLibraryModal";
 import { TextTemplateMenu } from "./TextTemplateMenu";
+import { ToolbarDrawer, DrawerSection, drawerRowStyle } from "./ToolbarDrawer";
 import { AiArtModal } from "./AiArtModal";
 import { DesignLibraryModal } from "./DesignLibraryModal";
 import { TemplateBrowserModal } from "./TemplateBrowserModal";
@@ -96,6 +100,15 @@ export function Toolbar({
   const [showDesignLibrary, setShowDesignLibrary] = useState(false);
   const [showTemplateBrowser, setShowTemplateBrowser] = useState(false);
   const narrow = useIsNarrow();
+  // The narrow-only hamburger menu (see the return below) — closed
+  // whenever a drawer item's action hands off to something that owns the
+  // whole screen on its own (a modal, a native file picker, "Export"'s
+  // one-shot download, "Add all fields"), left open for anything you'd
+  // plausibly do more than once in a row without needing to look away
+  // from the drawer first (Text/Shape, one text field at a time, the
+  // Rarity picker, the Safe-area/Bleed/Fullscreen toggles).
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const closeDrawer = () => setDrawerOpen(false);
   // Whose public profile is open, if any — set from an author's name in the
   // template gallery or from your own profile editor.
   const [viewingProfile, setViewingProfile] = useState<string | null>(null);
@@ -664,163 +677,448 @@ export function Toolbar({
   };
 
   return (
-    <div
-      className="cs-root"
-      data-testid="toolbar"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        padding: 8,
-        borderBottom: "1px solid var(--cs-border)",
-        // On a phone there's no room for every tool at once, so the bar
-        // scrolls sideways rather than wrapping into three stacked rows
-        // that eat the canvas. flex:none on the children stops them being
-        // squashed to nothing by the overflow.
-        ...(narrow ? { overflowX: "auto" as const, overflowY: "hidden" as const, flexWrap: "nowrap" as const, flex: "none" } : {}),
-      }}
-    >
-      <button className="cs-icon-btn" onClick={() => setShowFrameLibrary(true)} title="Frame">
-        <Frame size={19} />
-      </button>
-      <button className="cs-icon-btn" onClick={addText} title="Text">
-        <Type size={19} />
-      </button>
-      <TextTemplateMenu templates={textTemplates} onAdd={addTextField} onAddAll={addAllTextFields} />
-      <button className="cs-icon-btn" onClick={addShape} title="Shape">
-        <Shapes size={19} />
-      </button>
-      {/* Signed in, this opens the art library — where uploading is one
-          of the things you can do, and reusing something already there is
-          the other. Signed out there's no library to open, so it stays a
-          plain file picker. */}
-      {getCurrentUser() ? (
-        <button className="cs-icon-btn" onClick={() => setPickingArt(true)} data-testid="toolbar-image" title="Image">
-          <ImageUp size={19} />
-        </button>
+    <>
+      {narrow ? (
+        <div
+          className="cs-root"
+          data-testid="toolbar"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: 8,
+            borderBottom: "1px solid var(--cs-border)",
+            // Stays above the drawer's dim backdrop (zIndex 900 — see
+            // ToolbarDrawer.tsx) so this whole row — the hamburger and
+            // Undo/Redo/Duplicate/Delete — stays reachable while the
+            // drawer is open, without outranking an actual modal
+            // (Modal.tsx's 1000/1001) that a drawer item just opened.
+            position: "relative",
+            zIndex: 901,
+          }}
+        >
+          <button className="cs-icon-btn" onClick={() => setDrawerOpen((o) => !o)} title="Menu" data-testid="toolbar-menu-button">
+            <Menu size={19} />
+          </button>
+
+          <div className="cs-divider" />
+
+          {/* Undo/Redo/Duplicate/Delete stay outside the drawer entirely.
+              Everything else here gets used once in a while (add a frame,
+              change the rarity); these four get tapped repeatedly within a
+              single editing session — undo a few steps back, duplicate a
+              layer a couple of times in a row. Routing that through
+              open-drawer → tap → drawer-closes → reopen would make the
+              single most repetitive part of editing the most annoying one
+              on a phone, so they stay one tap away, same as the hamburger
+              itself. */}
+          <button className="cs-icon-btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl/Cmd+Z)">
+            <Undo2 size={19} />
+          </button>
+          <button className="cs-icon-btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl/Cmd+Shift+Z)">
+            <Redo2 size={19} />
+          </button>
+          <button className="cs-icon-btn" onClick={() => duplicateLayers(selectedLayerIds)} disabled={selectedLayerIds.length === 0} title="Duplicate (Ctrl/Cmd+D)">
+            <Copy size={19} />
+          </button>
+          <button className="cs-icon-btn" onClick={() => removeLayers(selectedLayerIds)} disabled={selectedLayerIds.length === 0} title="Delete (Del)">
+            <Trash2 size={19} />
+          </button>
+        </div>
       ) : (
-        <label className="cs-icon-btn" style={{ cursor: "pointer" }} data-testid="toolbar-image" title="Image">
-          <ImageUp size={19} />
-          <input
-            type="file"
-            accept="image/*"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void addImage(file);
-              e.target.value = "";
-            }}
-          />
-        </label>
-      )}
-      <select
-        className="cs-input"
-        style={{ width: 130 }}
-        value={currentRarityId}
-        onChange={(e) => setRarity(e.target.value)}
-        disabled={rarityLocked}
-        title={
-          rarityLocked
-            ? "Content-locked by default: requires a premium account to change"
-            : "Rarity symbol: prefills its position from RARITY_SYMBOL_BOX in rarityConfig.ts"
-        }
-      >
-        <option value="">Rarity…</option>
-        {orderedRarities.map((r) => (
-          <option key={r.id} value={r.id}>
-            {r.label}
-          </option>
-        ))}
-      </select>
-      {activeImportSource && (
-        <button
-          className="cs-btn"
-          onClick={() => setShowImportSearch(true)}
-          title={activeImportSource.description ?? `Import from ${activeImportSource.label}`}
+        <div
+          className="cs-root"
+          data-testid="toolbar"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: 8,
+            borderBottom: "1px solid var(--cs-border)",
+          }}
         >
-          <Search size={19} /> Import
-        </button>
+          <button className="cs-icon-btn" onClick={() => setShowFrameLibrary(true)} title="Frame">
+            <Frame size={19} />
+          </button>
+          <button className="cs-icon-btn" onClick={addText} title="Text">
+            <Type size={19} />
+          </button>
+          <TextTemplateMenu templates={textTemplates} onAdd={addTextField} onAddAll={addAllTextFields} />
+          <button className="cs-icon-btn" onClick={addShape} title="Shape">
+            <Shapes size={19} />
+          </button>
+          {/* Signed in, this opens the art library — where uploading is one
+              of the things you can do, and reusing something already there is
+              the other. Signed out there's no library to open, so it stays a
+              plain file picker. */}
+          {getCurrentUser() ? (
+            <button className="cs-icon-btn" onClick={() => setPickingArt(true)} data-testid="toolbar-image" title="Image">
+              <ImageUp size={19} />
+            </button>
+          ) : (
+            <label className="cs-icon-btn" style={{ cursor: "pointer" }} data-testid="toolbar-image" title="Image">
+              <ImageUp size={19} />
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void addImage(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          )}
+          <select
+            className="cs-input"
+            style={{ width: 130 }}
+            value={currentRarityId}
+            onChange={(e) => setRarity(e.target.value)}
+            disabled={rarityLocked}
+            title={
+              rarityLocked
+                ? "Content-locked by default: requires a premium account to change"
+                : "Rarity symbol: prefills its position from RARITY_SYMBOL_BOX in rarityConfig.ts"
+            }
+          >
+            <option value="">Rarity…</option>
+            {orderedRarities.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+          {activeImportSource && (
+            <button
+              className="cs-btn"
+              onClick={() => setShowImportSearch(true)}
+              title={activeImportSource.description ?? `Import from ${activeImportSource.label}`}
+            >
+              <Search size={19} /> Import
+            </button>
+          )}
+          <button
+            className="cs-btn"
+            onClick={() => setShowAiArtModal(true)}
+            disabled={!entitlements.canGenerateAiArt}
+            title={entitlements.canGenerateAiArt ? "Generate an illustration from a text prompt" : "Premium feature: upgrade for AI art generation"}
+          >
+            <Sparkles size={19} /> AI Art
+          </button>
+
+          <div className="cs-divider" />
+
+          <button className="cs-icon-btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl/Cmd+Z)">
+            <Undo2 size={19} />
+          </button>
+          <button className="cs-icon-btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl/Cmd+Shift+Z)">
+            <Redo2 size={19} />
+          </button>
+          <button className="cs-icon-btn" onClick={() => duplicateLayers(selectedLayerIds)} disabled={selectedLayerIds.length === 0} title="Duplicate (Ctrl/Cmd+D)">
+            <Copy size={19} />
+          </button>
+          <button className="cs-icon-btn" onClick={() => removeLayers(selectedLayerIds)} disabled={selectedLayerIds.length === 0} title="Delete (Del)">
+            <Trash2 size={19} />
+          </button>
+
+          <div style={{ flex: 1 }} />
+
+          <button
+            className={`cs-icon-btn${showSafeArea ? " cs-active" : ""}`}
+            onClick={toggleSafeArea}
+            title="Toggle safe-area guide: nothing critical should sit outside it"
+          >
+            <Ruler size={19} />
+          </button>
+          <button
+            className={`cs-icon-btn${!showBleed ? " cs-active" : ""}`}
+            onClick={toggleBleed}
+            title={showBleed ? "Preview trimmed card: hides the bleed margin and rounds the corners" : "Show full bleed"}
+          >
+            <Scissors size={19} />
+          </button>
+          <button
+            className={`cs-icon-btn${isFullscreen ? " cs-active" : ""}`}
+            onClick={onToggleFullscreen}
+            title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
+          >
+            {isFullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
+          </button>
+
+          <span
+            style={{ alignSelf: "center", color: "var(--cs-text-muted)", fontSize: 14, cursor: "help" }}
+            title={
+              `Cut (final card): ${fmt(design.size.cutWidthMm)}×${fmt(design.size.cutHeightMm)}mm\n` +
+              `Full bleed (art must extend to here): ${fmt(design.size.widthMm)}×${fmt(design.size.heightMm)}mm\n` +
+              `Safe area (toggle above): ${fmt(design.size.safeWidthMm)}×${fmt(design.size.safeHeightMm)}mm`
+            }
+          >
+            Cut {fmt(design.size.cutWidthMm)}×{fmt(design.size.cutHeightMm)}mm · bleed to {fmt(design.size.widthMm)}×{fmt(design.size.heightMm)}mm
+          </span>
+          {!hideLocalDesignLibrary && (
+            <button className="cs-btn" onClick={() => setShowDesignLibrary(true)} title="Save or load a design">
+              <Save size={19} /> Designs
+            </button>
+          )}
+          {/* Same `hideLocalDesignLibrary` gate as the Designs button and the
+              account button: a host embedding this editor with its own
+              persistence (moxproxies-website) manages its own content and has
+              no use for this app's community template gallery either. */}
+          {!hideLocalDesignLibrary && (
+            <button
+              className="cs-btn"
+              onClick={() => setShowTemplateBrowser(true)}
+              title="Start a design from a community template, or publish this one as a template"
+            >
+              <LayoutTemplate size={19} /> Templates
+            </button>
+          )}
+          {!hideLocalDesignLibrary && <AccountButton onViewProfile={setViewingProfile} />}
+          <button className="cs-btn" onClick={handleExport} title={`Export PNG at ${PRINT_DPI} DPI`}>
+            <Download size={19} /> Export
+          </button>
+        </div>
       )}
-      <button
-        className="cs-btn"
-        onClick={() => setShowAiArtModal(true)}
-        disabled={!entitlements.canGenerateAiArt}
-        title={entitlements.canGenerateAiArt ? "Generate an illustration from a text prompt" : "Premium feature: upgrade for AI art generation"}
-      >
-        <Sparkles size={19} /> AI Art
-      </button>
 
-      <div className="cs-divider" />
+      {/* The narrow toolbar's hamburger menu. Every one of these was
+          previously an icon-only or icon+label button crammed into the
+          horizontally-scrolling row above, and TextTemplateMenu was a
+          `position: absolute` popup living *inside* that scrolling row —
+          the actual cause of the "renders behind the editor" bug (a CSS
+          `overflow` other than `visible` on an ancestor clips any
+          descendant that visually extends past its box, regardless of the
+          descendant's own z-index). Everything below is ordinary in-flow
+          content inside ToolbarDrawer's plain `overflowY: auto` panel —
+          nothing here is ever `position: absolute` — so there's no
+          clipping ancestor left to clip it. See ToolbarDrawer.tsx and this
+          PR's description for the auto-close/stay-open call made per item
+          below. */}
+      {narrow && drawerOpen && (
+        <ToolbarDrawer onClose={closeDrawer}>
+          <DrawerSection id="insert" label="Insert" icon={<PlusSquare size={17} />} defaultOpen>
+            <button
+              className="cs-btn"
+              style={drawerRowStyle}
+              title="Frame"
+              onClick={() => {
+                setShowFrameLibrary(true);
+                closeDrawer();
+              }}
+            >
+              <Frame size={19} /> Frame
+            </button>
+            <button className="cs-btn" style={drawerRowStyle} title="Text" onClick={addText}>
+              <Type size={19} /> Text
+            </button>
 
-      <button className="cs-icon-btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl/Cmd+Z)">
-        <Undo2 size={19} />
-      </button>
-      <button className="cs-icon-btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl/Cmd+Shift+Z)">
-        <Redo2 size={19} />
-      </button>
-      <button className="cs-icon-btn" onClick={() => duplicateLayers(selectedLayerIds)} disabled={selectedLayerIds.length === 0} title="Duplicate (Ctrl/Cmd+D)">
-        <Copy size={19} />
-      </button>
-      <button className="cs-icon-btn" onClick={() => removeLayers(selectedLayerIds)} disabled={selectedLayerIds.length === 0} title="Delete (Del)">
-        <Trash2 size={19} />
-      </button>
+            {/* TextTemplateMenu.tsx's old floating dropdown, replaced by a
+                nested accordion — "Add all fields" is a comprehensive
+                one-shot action (closes the drawer, same as Export below),
+                but adding one field at a time is exactly the kind of thing
+                you do several times in a row, so that leaves the drawer
+                open. */}
+            <DrawerSection id="text-fields" label="Text Fields" icon={<LayoutTemplate size={17} />}>
+              <button
+                className="cs-btn"
+                style={{ ...drawerRowStyle, fontWeight: 600 }}
+                onClick={() => {
+                  addAllTextFields();
+                  closeDrawer();
+                }}
+              >
+                Add all fields
+              </button>
+              {textTemplates.map((template) => (
+                <button key={template.id} className="cs-btn" style={drawerRowStyle} onClick={() => addTextField(template)}>
+                  {template.label}
+                </button>
+              ))}
+            </DrawerSection>
 
-      <div style={{ flex: narrow ? "none" : 1 }} />
+            <button className="cs-btn" style={drawerRowStyle} title="Shape" onClick={addShape}>
+              <Shapes size={19} /> Shape
+            </button>
 
-      <button
-        className={`cs-icon-btn${showSafeArea ? " cs-active" : ""}`}
-        onClick={toggleSafeArea}
-        title="Toggle safe-area guide: nothing critical should sit outside it"
-      >
-        <Ruler size={19} />
-      </button>
-      <button
-        className={`cs-icon-btn${!showBleed ? " cs-active" : ""}`}
-        onClick={toggleBleed}
-        title={showBleed ? "Preview trimmed card: hides the bleed margin and rounds the corners" : "Show full bleed"}
-      >
-        <Scissors size={19} />
-      </button>
-      <button
-        className={`cs-icon-btn${isFullscreen ? " cs-active" : ""}`}
-        onClick={onToggleFullscreen}
-        title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
-      >
-        {isFullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
-      </button>
+            {getCurrentUser() ? (
+              <button
+                className="cs-btn"
+                style={drawerRowStyle}
+                data-testid="toolbar-image"
+                title="Image"
+                onClick={() => {
+                  setPickingArt(true);
+                  closeDrawer();
+                }}
+              >
+                <ImageUp size={19} /> Image
+              </button>
+            ) : (
+              <label className="cs-btn" style={{ ...drawerRowStyle, cursor: "pointer" }} data-testid="toolbar-image" title="Image" onClick={closeDrawer}>
+                <ImageUp size={19} /> Image
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void addImage(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            )}
 
-      <span
-        style={{ alignSelf: "center", color: "var(--cs-text-muted)", fontSize: 14, cursor: "help" }}
-        title={
-          `Cut (final card): ${fmt(design.size.cutWidthMm)}×${fmt(design.size.cutHeightMm)}mm\n` +
-          `Full bleed (art must extend to here): ${fmt(design.size.widthMm)}×${fmt(design.size.heightMm)}mm\n` +
-          `Safe area (toggle above): ${fmt(design.size.safeWidthMm)}×${fmt(design.size.safeHeightMm)}mm`
-        }
-      >
-        Cut {fmt(design.size.cutWidthMm)}×{fmt(design.size.cutHeightMm)}mm · bleed to {fmt(design.size.widthMm)}×{fmt(design.size.heightMm)}mm
-      </span>
-      {!hideLocalDesignLibrary && (
-        <button className="cs-btn" onClick={() => setShowDesignLibrary(true)} title="Save or load a design">
-          <Save size={19} /> Designs
-        </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "6px 8px 2px" }}>
+              <label htmlFor="toolbar-rarity-select" style={{ fontSize: 13, color: "var(--cs-text-muted)" }}>
+                Rarity
+              </label>
+              <select
+                id="toolbar-rarity-select"
+                className="cs-input"
+                value={currentRarityId}
+                onChange={(e) => setRarity(e.target.value)}
+                disabled={rarityLocked}
+                title={
+                  rarityLocked
+                    ? "Content-locked by default: requires a premium account to change"
+                    : "Rarity symbol: prefills its position from RARITY_SYMBOL_BOX in rarityConfig.ts"
+                }
+              >
+                <option value="">Rarity…</option>
+                {orderedRarities.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {activeImportSource && (
+              <button
+                className="cs-btn"
+                style={drawerRowStyle}
+                title={activeImportSource.description ?? `Import from ${activeImportSource.label}`}
+                onClick={() => {
+                  setShowImportSearch(true);
+                  closeDrawer();
+                }}
+              >
+                <Search size={19} /> Import
+              </button>
+            )}
+
+            <button
+              className="cs-btn"
+              style={drawerRowStyle}
+              disabled={!entitlements.canGenerateAiArt}
+              title={entitlements.canGenerateAiArt ? "Generate an illustration from a text prompt" : "Premium feature: upgrade for AI art generation"}
+              onClick={() => {
+                setShowAiArtModal(true);
+                closeDrawer();
+              }}
+            >
+              <Sparkles size={19} /> AI Art
+            </button>
+          </DrawerSection>
+
+          <DrawerSection id="view" label="View" icon={<Ruler size={17} />}>
+            <button
+              className={`cs-btn${showSafeArea ? " cs-active" : ""}`}
+              style={drawerRowStyle}
+              onClick={toggleSafeArea}
+              title="Toggle safe-area guide: nothing critical should sit outside it"
+            >
+              <Ruler size={19} /> Safe area{showSafeArea ? " (on)" : ""}
+            </button>
+            <button
+              className={`cs-btn${!showBleed ? " cs-active" : ""}`}
+              style={drawerRowStyle}
+              onClick={toggleBleed}
+              title={showBleed ? "Preview trimmed card: hides the bleed margin and rounds the corners" : "Show full bleed"}
+            >
+              <Scissors size={19} /> {showBleed ? "Show full bleed" : "Preview trimmed card"}
+            </button>
+            <button
+              className={`cs-btn${isFullscreen ? " cs-active" : ""}`}
+              style={drawerRowStyle}
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />} {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            </button>
+            {/* On the wide toolbar these numbers past the first line only
+                ever showed up in this span's hover `title` tooltip — which
+                a touchscreen has no equivalent for. Spelling all three out
+                here isn't just porting the old markup over; it's the only
+                way a phone user ever sees the bleed/safe-area numbers at
+                all. */}
+            <div data-testid="toolbar-dimensions" style={{ padding: "8px 8px 2px", fontSize: 13, color: "var(--cs-text-muted)", lineHeight: 1.6 }}>
+              <div>
+                Cut (final card): {fmt(design.size.cutWidthMm)}×{fmt(design.size.cutHeightMm)}mm
+              </div>
+              <div>
+                Full bleed (art must extend to here): {fmt(design.size.widthMm)}×{fmt(design.size.heightMm)}mm
+              </div>
+              <div>
+                Safe area: {fmt(design.size.safeWidthMm)}×{fmt(design.size.safeHeightMm)}mm
+              </div>
+            </div>
+          </DrawerSection>
+
+          <DrawerSection id="file" label="File" icon={<FolderOpen size={17} />}>
+            {!hideLocalDesignLibrary && (
+              <button
+                className="cs-btn"
+                style={drawerRowStyle}
+                title="Save or load a design"
+                onClick={() => {
+                  setShowDesignLibrary(true);
+                  closeDrawer();
+                }}
+              >
+                <Save size={19} /> Designs
+              </button>
+            )}
+            {!hideLocalDesignLibrary && (
+              <button
+                className="cs-btn"
+                style={drawerRowStyle}
+                title="Start a design from a community template, or publish this one as a template"
+                onClick={() => {
+                  setShowTemplateBrowser(true);
+                  closeDrawer();
+                }}
+              >
+                <LayoutTemplate size={19} /> Templates
+              </button>
+            )}
+            {/* AccountButton owns its own modals (sign in / edit profile /
+                sign out confirm) rather than taking an onClick prop —
+                closing the drawer on any click inside this row (bubbled up
+                from whichever of AccountButton's own buttons was actually
+                clicked) gets the same "a modal now owns the screen"
+                auto-close behavior as everything else in this section
+                without needing to change AccountButton itself. */}
+            {!hideLocalDesignLibrary && (
+              <div onClick={closeDrawer}>
+                <AccountButton onViewProfile={setViewingProfile} />
+              </div>
+            )}
+            <button
+              className="cs-btn"
+              style={drawerRowStyle}
+              title={`Export PNG at ${PRINT_DPI} DPI`}
+              onClick={() => {
+                handleExport();
+                closeDrawer();
+              }}
+            >
+              <Download size={19} /> Export
+            </button>
+          </DrawerSection>
+        </ToolbarDrawer>
       )}
-      {/* Same `hideLocalDesignLibrary` gate as the Designs button and the
-          account button: a host embedding this editor with its own
-          persistence (moxproxies-website) manages its own content and has
-          no use for this app's community template gallery either. */}
-      {!hideLocalDesignLibrary && (
-        <button
-          className="cs-btn"
-          onClick={() => setShowTemplateBrowser(true)}
-          title="Start a design from a community template, or publish this one as a template"
-        >
-          <LayoutTemplate size={19} /> Templates
-        </button>
-      )}
-      {!hideLocalDesignLibrary && <AccountButton onViewProfile={setViewingProfile} />}
-      <button className="cs-btn" onClick={handleExport} title={`Export PNG at ${PRINT_DPI} DPI`}>
-        <Download size={19} /> Export
-      </button>
 
       {showDesignLibrary && (
         <DesignLibraryModal
@@ -892,6 +1190,6 @@ export function Toolbar({
       )}
 
       {showAiArtModal && <AiArtModal onGenerated={addAiArtLayer} onClose={() => setShowAiArtModal(false)} />}
-    </div>
+    </>
   );
 }
