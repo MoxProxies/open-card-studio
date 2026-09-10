@@ -862,12 +862,16 @@
 
 /* Shared page-level skeleton primitive (components/Skeleton.tsx) — a
    themed shimmering block any page composes into an avatar/line/card
-   shaped placeholder while its real content loads. Built from the same
-   --cs-surface-soft/--cs-border-strong tokens every other surface in
-   this stylesheet reads, so it already tracks whatever this palette
-   is set to rather than a hardcoded light- or dark-only value. */
+   shaped placeholder while its real content loads. Same shimmer color
+   as .cs-insp-skeleton-block/-line above (DesignInspiration's own,
+   older skeleton) rather than --cs-border-strong: that token is a
+   translucent-white *border* color, tuned for a 1px stroke — spread
+   across a whole block instead of a hairline, its 18% opacity reads as
+   a distinctly pale, almost-white streak against this otherwise fully
+   dark palette, like a stray patch of a light theme bleeding through
+   rather than a subtle dark-mode sheen. */
 .cs-skeleton {
-  background: linear-gradient(90deg, var(--cs-surface-soft) 0%, var(--cs-border-strong) 50%, var(--cs-surface-soft) 100%);
+  background: linear-gradient(90deg, var(--cs-surface-soft) 0%, rgba(255, 255, 255, 0.06) 50%, var(--cs-surface-soft) 100%);
   background-size: 200% 100%;
   animation: cs-skeleton-shimmer 1.4s ease-in-out infinite;
 }
