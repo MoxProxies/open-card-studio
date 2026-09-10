@@ -86,14 +86,17 @@ export function ToolbarDrawer({ onClose, children }: ToolbarDrawerProps) {
           position: "absolute",
           top: 0,
           bottom: 0,
-          left: 0,
+          right: 0,
           width: "min(320px, 86vw)",
           background: "var(--cs-surface)",
-          borderRight: "1px solid var(--cs-border)",
+          borderLeft: "1px solid var(--cs-border)",
           boxShadow: "0 0 32px var(--cs-shadow)",
           display: "flex",
           flexDirection: "column",
-          transform: entered ? "translateX(0)" : "translateX(-100%)",
+          // Slides in from the right, matching the hamburger button that
+          // opens it now sitting at the right end of the persistent bar
+          // (Toolbar.tsx) rather than the left.
+          transform: entered ? "translateX(0)" : "translateX(100%)",
           transition: "transform 200ms ease",
           outline: "none",
         }}
