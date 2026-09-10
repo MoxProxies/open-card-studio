@@ -227,7 +227,16 @@ export function AppShell() {
               every other tab switch (see the comment above `main`), it's
               just covered until there's something to look at. */}
           {showInspiration && (
-            <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
+            // zIndex 950: above the narrow toolbar's persistent bar
+            // (Toolbar.tsx, 901) and its drawer (ToolbarDrawer.tsx, 900)
+            // — both live inside <App/>, mounted underneath this the whole
+            // time (see the comment above `main`), and without this being
+            // higher than both, the toolbar bar punches through this
+            // "nothing to look at yet" screen and shows up before a design
+            // has actually been started. Still below Modal.tsx's
+            // 1000/1001 — an actual dialog (signing in, from the header
+            // above) should still be able to sit on top of this.
+            <div style={{ position: "absolute", inset: 0, zIndex: 950 }}>
               <DesignInspiration
                 onStartBlank={() => {
                   const fresh = createEmptyDesign(randomUUID(), STANDARD_CARD_SIZE_MM);
