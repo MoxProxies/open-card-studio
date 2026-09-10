@@ -88,8 +88,23 @@ try {
   const textFieldsPanel = page.getByTestId("toolbar-drawer-section-text-fields-panel");
   await textFieldsPanel.waitFor();
   check("the text-field insert panel reports visible", true, await textFieldsPanel.isVisible());
-  const [panelBox, viewport] = await Promise.all([textFieldsPanel.boundingBox(), page.viewportSize()]);
-  check("its bottom edge is within the viewport, not clipped off past it", true, (panelBox?.y ?? 0) + (panelBox?.height ?? 0) <= viewport.height);
+  // The drawer's own body scrolls (`overflowY: auto` — see
+  // ToolbarDrawer.tsx), and the drawer no longer always spans the full
+  // viewport height itself (it sizes to its content, below the
+  // persistent narrow bar, up to a max-height — see ToolbarDrawer.tsx's
+  // `topOffset`) — so "not clipped" here means reachable by ordinary
+  // scrolling *within the drawer*, not necessarily on-screen with zero
+  // scrolling. Scroll it into view first, same as the File section's
+  // Export button below, then check it lands fully inside the drawer's
+  // own box — the thing that would actually clip it if this bug came
+  // back — rather than against the raw page viewport.
+  await textFieldsPanel.scrollIntoViewIfNeeded();
+  const [panelBox, drawerBox] = await Promise.all([textFieldsPanel.boundingBox(), drawer.boundingBox()]);
+  check(
+    "its bottom edge is within the drawer, not clipped off past it",
+    true,
+    (panelBox?.y ?? 0) >= (drawerBox?.y ?? 0) && (panelBox?.y ?? 0) + (panelBox?.height ?? 0) <= (drawerBox?.y ?? 0) + (drawerBox?.height ?? 0)
+  );
   check("'Add all fields' is present and clickable", true, await drawer.getByRole("button", { name: "Add all fields" }).isVisible());
   const firstFieldButton = textFieldsPanel.locator("button").nth(1);
   check("individual field buttons are present and clickable", true, await firstFieldButton.isVisible());
